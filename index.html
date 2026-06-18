@@ -130,8 +130,9 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 .cam-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:999;flex-direction:column;align-items:center;justify-content:center}
 .cam-modal.open{display:flex}
 .cam-wrap{width:260px;height:260px;position:relative;border-radius:12px;overflow:hidden;background:#000}
-#scanner-vp{width:100%;height:100%}
+#scanner-vp{position:absolute;inset:0;width:100%;height:100%}
 #scanner-vp video{width:100%;height:100%;object-fit:cover}
+#bd-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .scan-guide{position:absolute;inset:36px;border:2px solid var(--A);border-radius:8px;pointer-events:none}
 /* 담당자 모달 */
 .modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:700;align-items:flex-end}
@@ -595,7 +596,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 <!-- 카메라 모달 -->
 <div class="cam-modal" id="camModal">
   <p style="color:#fff;font-size:15px;font-weight:700;margin-bottom:14px">바코드를 네모 안에 맞춰주세요</p>
-  <div class="cam-wrap"><div id="scanner-vp"></div><div class="scan-guide"></div></div>
+  <div class="cam-wrap"><div id="scanner-vp"></div><video id="bd-video" style="display:none" playsinline muted autoplay></video><div class="scan-guide"></div></div>
   <p style="color:rgba(255,255,255,.55);font-size:13px;margin-top:12px">카메라가 자동으로 바코드를 인식합니다</p>
   <button onclick="closeScanner()" style="margin-top:16px;padding:10px 28px;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:8px;font-size:14px;font-family:'Noto Sans KR',sans-serif;cursor:pointer">닫기</button>
 </div>
@@ -1764,34 +1765,124 @@ async function aiReadImg(){
 
 // ── 스캐너 ──
 var scanning=false, scanMode='order';
+var bdDetector=null, bdStream=null, bdRAF=null, bdLastCode='', bdSameCount=0;
 function openScanner(mode){
   scanMode=mode||'order';
   document.getElementById('camModal').classList.add('open');
   if(scanning) return;
-  Quagga.init({
-    inputStream:{name:'Live',type:'LiveStream',target:document.querySelector('#scanner-vp'),constraints:{facingMode:'environment',width:640,height:480}},
-    decoder:{readers:['ean_13_reader','ean_8_reader','code_128_reader']}
-  },function(err){ if(!err){Quagga.start();scanning=true;} });
-  Quagga.onDetected(function(r){
-    var bc=r.codeResult.code;
-    Quagga.offDetected();
+  scanning=true;
+  bdLastCode=''; bdSameCount=0;
+  // HTTPS 체크 (카메라는 https에서만 동작)
+  if(location.protocol!=='https:' && location.hostname!=='localhost'){
+    showToast('⚠ 카메라는 https에서만 작동합니다');
     closeScanner();
-    if(scanMode==='bc'){
-      var p=bcMap[bc];
-      if(p) openQtyModal(p,bc);
-      else showToast('⚠ 미등록 바코드: '+bc);
-    } else {
-      var p2=bcMap[bc];
-      if(p2){
-        var g=G.find(function(gr){return gr.variants.some(function(v){return v.bc===bc;});});
-        if(g){ selProduct(g); var vi=g.variants.findIndex(function(v){return v.bc===bc;}); if(vi>=0) setTimeout(function(){selV(vi);},50); }
-      } else showToast('⚠ 미등록 바코드: '+bc);
-    }
+    return;
+  }
+  // BarcodeDetector 지원 여부 실제 확인 (안드로이드 일부는 객체만 있고 동작X)
+  if('BarcodeDetector' in window){
+    BarcodeDetector.getSupportedFormats().then(function(formats){
+      if(formats && formats.length>0){ startBarcodeDetector(); }
+      else { startQuagga(); }
+    }).catch(function(){ startQuagga(); });
+  } else {
+    startQuagga();
+  }
+}
+
+function startBarcodeDetector(){
+  var video=document.getElementById('bd-video');
+  document.getElementById('scanner-vp').style.display='none';
+  video.style.display='block';
+  try{
+    bdDetector=new BarcodeDetector({formats:['ean_13','ean_8','code_128','code_39','upc_a','upc_e','codabar','itf']});
+  }catch(e){
+    // 포맷 미지원 시 기본
+    try{ bdDetector=new BarcodeDetector(); }catch(e2){ startQuagga(); return; }
+  }
+  navigator.mediaDevices.getUserMedia({
+    video:{facingMode:'environment', width:{ideal:1280}, height:{ideal:720}}
+  }).then(function(stream){
+    bdStream=stream;
+    video.srcObject=stream;
+    video.onloadedmetadata=function(){
+      video.play().then(function(){ bdScanLoop(); }).catch(function(e){
+        console.warn('video play 실패:', e); bdScanLoop();
+      });
+    };
+  }).catch(function(err){
+    console.warn('카메라 접근 실패, Quagga 폴백:', err);
+    video.style.display='none';
+    document.getElementById('scanner-vp').style.display='block';
+    startQuagga();
   });
 }
+
+function bdScanLoop(){
+  if(!scanning || !bdDetector){ return; }
+  var video=document.getElementById('bd-video');
+  if(video.readyState===video.HAVE_ENOUGH_DATA){
+    bdDetector.detect(video).then(function(codes){
+      if(codes && codes.length>0){
+        var bc=codes[0].rawValue;
+        // 연속 2회 같은 값 검증 (오인식 방지)
+        if(bc===bdLastCode){ bdSameCount++; } else { bdLastCode=bc; bdSameCount=1; }
+        if(bdSameCount>=2){ onBarcodeFound(bc); return; }
+      }
+      bdRAF=requestAnimationFrame(bdScanLoop);
+    }).catch(function(e){
+      bdRAF=requestAnimationFrame(bdScanLoop);
+    });
+  } else {
+    bdRAF=requestAnimationFrame(bdScanLoop);
+  }
+}
+
+function startQuagga(){
+  document.getElementById('bd-video').style.display='none';
+  document.getElementById('scanner-vp').style.display='block';
+  Quagga.init({
+    inputStream:{name:'Live',type:'LiveStream',target:document.querySelector('#scanner-vp'),
+      constraints:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}},
+    locator:{patchSize:'medium',halfSample:false},
+    numOfWorkers:2,
+    frequency:10,
+    decoder:{readers:['ean_13_reader','ean_8_reader','code_128_reader','code_39_reader','upc_reader','upc_e_reader']}
+  },function(err){ if(!err){Quagga.start();} else { showToast('카메라 시작 실패'); scanning=false; } });
+  Quagga.onDetected(function(r){
+    var bc=r.codeResult.code;
+    // 연속 검증
+    if(bc===bdLastCode){ bdSameCount++; } else { bdLastCode=bc; bdSameCount=1; }
+    if(bdSameCount>=2){ Quagga.offDetected(); onBarcodeFound(bc); }
+  });
+}
+
+function onBarcodeFound(bc){
+  closeScanner();
+  // 짧은 진동 (지원 시)
+  if(navigator.vibrate) navigator.vibrate(80);
+  if(scanMode==='bc'){
+    var p=bcMap[bc];
+    if(p) openQtyModal(p,bc);
+    else showToast('⚠ 미등록 바코드: '+bc);
+  } else {
+    var p2=bcMap[bc];
+    if(p2){
+      var g=G.find(function(gr){return gr.variants.some(function(v){return v.bc===bc;});});
+      if(g){ selProduct(g); var vi=g.variants.findIndex(function(v){return v.bc===bc;}); if(vi>=0) setTimeout(function(){selV(vi);},50); }
+    } else showToast('⚠ 미등록 바코드: '+bc);
+  }
+}
+
 function closeScanner(){
   document.getElementById('camModal').classList.remove('open');
-  if(scanning){Quagga.stop();scanning=false;}
+  scanning=false;
+  // BarcodeDetector 정리
+  if(bdRAF){ cancelAnimationFrame(bdRAF); bdRAF=null; }
+  if(bdStream){ bdStream.getTracks().forEach(function(t){t.stop();}); bdStream=null; }
+  var v=document.getElementById('bd-video'); if(v){ v.srcObject=null; }
+  bdDetector=null;
+  // Quagga 정리
+  try{ Quagga.stop(); Quagga.offDetected(); }catch(e){}
 }
 
 // ── 수량 바텀시트 (바코드탭) ──
@@ -2949,6 +3040,53 @@ function spCheck() {
 
 // ── 구글시트 재고 로드 ──
 var SHEET_CSV = 'https://script.google.com/macros/s/AKfycbzkHJKjnCtZv0XJ1vDPBnAFcBGEMCPbIZEOIDWb5NEZL6siD9ZAMgWCic8Bpip-Jbv3/exec';
+// 스프레드시트 R4(병합셀)에서 재고 기준 날짜 추출
+function extractStockDate(data){
+  if(!data || !Array.isArray(data)) return '';
+  // R4 = 4행(인덱스3), R열(인덱스17). 병합셀이라 S4(18)도 확인
+  var candidates = [];
+  if(data[3]){ candidates.push(data[3][17], data[3][18]); }
+  // 혹시 행이 밀렸을 경우 주변도 탐색 (2~5행, Q~T열)
+  for(var r=1; r<=4; r++){
+    if(!data[r]) continue;
+    for(var c=16; c<=19; c++){
+      if(data[r][c]!==undefined) candidates.push(data[r][c]);
+    }
+  }
+  for(var i=0;i<candidates.length;i++){
+    var v = candidates[i];
+    if(v===undefined || v===null || v==='') continue;
+    var fmt = fmtStockDate(v);
+    if(fmt) return fmt;
+  }
+  return '';
+}
+
+// 다양한 날짜 형식 → "6월 17일" 형태로 변환
+function fmtStockDate(v){
+  if(v===undefined || v===null) return '';
+  var s = String(v).trim();
+  if(!s) return '';
+  // ISO 형식 (2026-06-17 또는 2026-06-17T00:00:00)
+  var iso = s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(iso){ return parseInt(iso[2])+'월 '+parseInt(iso[3])+'일'; }
+  // 6/17, 6.17, 6-17 형식
+  var md = s.match(/^(\d{1,2})[\/\.\-](\d{1,2})$/);
+  if(md){ return parseInt(md[1])+'월 '+parseInt(md[2])+'일'; }
+  // 2026/6/17, 2026.6.17 형식
+  var ymd = s.match(/(\d{4})[\/\.](\d{1,2})[\/\.](\d{1,2})/);
+  if(ymd){ return parseInt(ymd[2])+'월 '+parseInt(ymd[3])+'일'; }
+  // 이미 "6월 17일" 형태면 그대로
+  if(/\d+월\s*\d+일/.test(s)) return s.replace(/\s+/g,' ');
+  // 엑셀 날짜 시리얼 숫자 (40000~60000 범위)
+  var n = parseFloat(s);
+  if(!isNaN(n) && n>40000 && n<60000){
+    var d = new Date(Math.round((n-25569)*86400*1000));
+    if(!isNaN(d.getTime())) return (d.getMonth()+1)+'월 '+d.getDate()+'일';
+  }
+  return '';
+}
+
 function loadStockFromSheet() {
   var el = document.getElementById('stockStatus');
   if (el) el.textContent = '재고 불러오는 중...';
@@ -2967,8 +3105,10 @@ function loadStockFromSheet() {
       if (cnt > 0) {
         Object.keys(STOCK).forEach(function(k) { delete STOCK[k]; });
         Object.assign(STOCK, ns);
-        var today = new Date().toLocaleDateString('ko-KR', {month:'numeric', day:'numeric'});
-        if (el) el.textContent = '재고 ' + today + ' 기준';
+        // 시트 R4 병합셀의 재고 기준일 사용 (없으면 오늘)
+        var sheetDate = extractStockDate(data);
+        var dispDate = sheetDate || new Date().toLocaleDateString('ko-KR', {month:'numeric', day:'numeric'});
+        if (el) el.textContent = '재고 ' + dispDate + ' 기준';
         var q = document.getElementById('srchInp').value;
         if (q) onSearch(q); else renderLeft(null);
         showToast('재고 업데이트 완료 (' + cnt + '개)');
