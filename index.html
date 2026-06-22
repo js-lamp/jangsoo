@@ -593,6 +593,47 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
   </div>
 </div>
 
+<!-- 첫 사용 환영 가이드 -->
+<div id="welcomeMod" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);align-items:center;justify-content:center;padding:18px">
+  <div style="background:#fff;border-radius:16px;max-width:380px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,.3)">
+    <div style="background:linear-gradient(135deg,#2855A0,#1a3d75);padding:20px;border-radius:16px 16px 0 0;text-align:center">
+      <div style="font-size:34px;margin-bottom:6px">💡</div>
+      <div style="color:#fff;font-size:18px;font-weight:800">장수램프 발주 시스템</div>
+      <div style="color:rgba(255,255,255,.85);font-size:12px;margin-top:4px">처음 오셨네요! 발주는 4단계면 끝나요</div>
+    </div>
+    <div style="padding:18px">
+      <div style="display:flex;gap:12px;margin-bottom:16px;align-items:flex-start">
+        <div style="flex-shrink:0;width:30px;height:30px;background:#2855A0;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px">1</div>
+        <div><div style="font-weight:700;font-size:14px;color:#1A1814;margin-bottom:2px">대리점명 입력</div>
+        <div style="font-size:12.5px;color:#5C5850;line-height:1.55">상단 <b>대리점 이름 입력</b> 칸에 발주처(대리점) 이름을 적어주세요.</div></div>
+      </div>
+      <div style="display:flex;gap:12px;margin-bottom:16px;align-items:flex-start">
+        <div style="flex-shrink:0;width:30px;height:30px;background:#2855A0;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px">2</div>
+        <div><div style="font-weight:700;font-size:14px;color:#1A1814;margin-bottom:2px">품목 선택 · 수량 입력</div>
+        <div style="font-size:12.5px;color:#5C5850;line-height:1.55">품목을 눌러 색온도를 고르고 <b>박스/개</b> 수량을 정한 뒤 <b>+ 추가</b>를 누르세요. 여러 품목을 계속 담을 수 있어요.</div></div>
+      </div>
+      <div style="display:flex;gap:12px;margin-bottom:16px;align-items:flex-start">
+        <div style="flex-shrink:0;width:30px;height:30px;background:#2855A0;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px">3</div>
+        <div><div style="font-weight:700;font-size:14px;color:#1A1814;margin-bottom:2px">발주서 전송</div>
+        <div style="font-size:12.5px;color:#5C5850;line-height:1.55"><b>발주목록</b> 탭에서 <b>발주서 전송</b>을 누르고 배송방법을 선택하면 발주 내용이 <b>자동 복사</b>돼요.</div></div>
+      </div>
+      <div style="display:flex;gap:12px;margin-bottom:8px;align-items:flex-start">
+        <div style="flex-shrink:0;width:30px;height:30px;background:#FEE500;color:#3C1E1E;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px">4</div>
+        <div><div style="font-weight:700;font-size:14px;color:#1A1814;margin-bottom:2px">카카오톡으로 붙여넣기</div>
+        <div style="font-size:12.5px;color:#5C5850;line-height:1.55">담당자 카톡방을 열고 입력창을 <b>길게 눌러 → 붙여넣기</b> 하면 발주 끝! (PC는 Ctrl+V)</div></div>
+      </div>
+      <div style="background:#FFF8E8;border:1px solid #F0DCA0;border-radius:8px;padding:10px;font-size:11.5px;color:#8A6D1A;line-height:1.5;margin-top:14px">
+        💡 <b>팁</b> · 이 블로그 주소를 즐겨찾기 해두면 다음에 바로 들어올 수 있어요. 상단 <b>❓ 설명서</b>에서 자세한 사용법을 볼 수 있어요.
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12.5px;color:#5C5850;margin-top:16px">
+        <input type="checkbox" id="welcomeHideCb" style="width:17px;height:17px;cursor:pointer">
+        다시 보지 않기
+      </label>
+      <button onclick="closeWelcome()" style="width:100%;padding:14px;background:#2855A0;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;margin-top:12px">시작하기</button>
+    </div>
+  </div>
+</div>
+
 <!-- 카메라 모달 -->
 <div class="cam-modal" id="camModal">
   <p style="color:#fff;font-size:15px;font-weight:700;margin-bottom:14px">바코드를 네모 안에 맞춰주세요</p>
@@ -2758,8 +2799,26 @@ function dClose(){
   document.getElementById('dov').classList.remove('show');
 }
 
+function showWelcome(){
+  document.getElementById('welcomeMod').style.display='flex';
+}
+function closeWelcome(){
+  var cb=document.getElementById('welcomeHideCb');
+  if(cb && cb.checked){
+    localStorage.setItem('jsWelcomeHide','1');
+  }
+  document.getElementById('welcomeMod').style.display='none';
+  // 환영창 닫은 뒤 공지 팝업 표시
+  setTimeout(loadNotice, 300);
+}
+
 document.addEventListener('DOMContentLoaded', function(){
-  setTimeout(loadNotice, 800);
+  // 첫 접속이면 환영 가이드, 아니면 바로 공지
+  if(!localStorage.getItem('jsWelcomeHide')){
+    setTimeout(showWelcome, 400);
+  } else {
+    setTimeout(loadNotice, 800);
+  }
   document.getElementById('dov').addEventListener('click', function(e){
     if(e.target === this) dClose();
   });
@@ -3056,28 +3115,37 @@ var SHEET_CSV = 'https://script.google.com/macros/s/AKfycbzkHJKjnCtZv0XJ1vDPBnAF
 // 스프레드시트 R4(병합셀)에서 재고 기준 날짜 추출
 function extractStockDate(data){
   if(!data || !Array.isArray(data)) return '';
-  // R4 = 4행(인덱스3), R열(인덱스17). 병합셀이라 S4(18)도 확인
-  var candidates = [];
-  if(data[3]){ candidates.push(data[3][17], data[3][18]); }
-  // 혹시 행이 밀렸을 경우 주변도 탐색 (2~5행, Q~T열)
-  for(var r=1; r<=4; r++){
+  // R4 = 4행(인덱스3), R열(인덱스17). 정확히 그 셀 우선
+  if(data[3] && data[3][17]!==undefined && data[3][17]!==null && data[3][17]!==''){
+    var direct = fmtStockDate(data[3][17]);
+    console.log('재고날짜 R4 원본:', data[3][17], '→', direct);
+    if(direct) return direct;
+  }
+  // 병합셀이라 S4(18)도 확인
+  if(data[3] && data[3][18]!==undefined && data[3][18]!==null && data[3][18]!==''){
+    var d18 = fmtStockDate(data[3][18]);
+    if(d18) return d18;
+  }
+  // 못 찾으면 주변 탐색 (1~5행, P~U열) - 날짜처럼 보이는 값만
+  for(var r=0; r<=5; r++){
     if(!data[r]) continue;
-    for(var c=16; c<=19; c++){
-      if(data[r][c]!==undefined) candidates.push(data[r][c]);
+    for(var c=15; c<=20; c++){
+      if(data[r][c]===undefined || data[r][c]===null || data[r][c]==='') continue;
+      var fmt = fmtStockDate(data[r][c]);
+      if(fmt){ console.log('재고날짜 발견 ['+r+']['+c+']:', data[r][c], '→', fmt); return fmt; }
     }
   }
-  for(var i=0;i<candidates.length;i++){
-    var v = candidates[i];
-    if(v===undefined || v===null || v==='') continue;
-    var fmt = fmtStockDate(v);
-    if(fmt) return fmt;
-  }
+  console.log('재고날짜 못찾음 - data[3]:', data[3]);
   return '';
 }
 
 // 다양한 날짜 형식 → "6월 17일" 형태로 변환
 function fmtStockDate(v){
   if(v===undefined || v===null) return '';
+  // Date 객체인 경우
+  if(v instanceof Date && !isNaN(v.getTime())){
+    return (v.getMonth()+1)+'월 '+v.getDate()+'일';
+  }
   var s = String(v).trim();
   if(!s) return '';
   // ISO 형식 (2026-06-17 또는 2026-06-17T00:00:00)
