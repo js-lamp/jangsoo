@@ -50,6 +50,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 .srch{flex:1;padding:7px 11px;font-size:13px;font-family:'Noto Sans KR',sans-serif;background:var(--sur2);border:1px solid var(--bdr);border-radius:var(--r2);outline:none;color:var(--ink)}
 .srch::placeholder{color:var(--ink3);font-size:12px}
 .scanbtn{padding:7px 11px;background:var(--ink);color:#fff;border:none;border-radius:var(--r2);font-size:11px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;white-space:nowrap}
+.parsebtn{padding:5px 10px;background:var(--B,#2855A0);color:#fff;border:none;border-radius:var(--r2);font-size:10px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;white-space:nowrap;line-height:1.25}
 .split{display:flex;flex:1;overflow:hidden;min-height:0}
 .left{width:50%;border-right:1px solid var(--bdr);background:var(--sur);overflow-y:auto;-webkit-overflow-scrolling:touch}
 .right{flex:1;background:var(--sur2);overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column}
@@ -326,16 +327,17 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 .inv-search-btn{padding:9px 14px;background:var(--ink);color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer}
 .inv-grade-tag{display:inline-block;padding:3px 10px;border-radius:5px;font-size:12px;font-weight:700;margin-bottom:12px}
 /* 명세서 미리보기 */
-#invPreview{background:#fff;border:1px solid #ccc;padding:16px;font-size:11px;color:#111;font-family:'Noto Sans KR',sans-serif}
+#invPreview{background:#fff;border:1px solid #ccc;padding:16px;font-size:11px;color:#111;font-family:'Noto Sans KR',sans-serif;-webkit-user-select:text;user-select:text}
 .inv-title{text-align:center;font-size:16px;font-weight:900;letter-spacing:4px;border-bottom:2px solid #111;padding-bottom:6px;margin-bottom:10px}
 .inv-stamp{float:right;border:1px solid #ccc;padding:4px 8px;font-size:10px;text-align:center;margin-top:-28px}
 .inv-info-table{width:100%;border-collapse:collapse;margin-bottom:8px;font-size:10px}
 .inv-info-table td{border:1px solid #aaa;padding:3px 5px}
 .inv-info-table .lbl{background:#f5f5f5;font-weight:700;width:60px;text-align:center}
 .inv-items-table{width:100%;border-collapse:collapse;margin-bottom:8px;font-size:10px}
-.inv-items-table th{background:#222;color:#fff;padding:4px 3px;text-align:center;font-size:9px}
-.inv-items-table td{border:1px solid #ccc;padding:3px;text-align:center}
+.inv-items-table th{background:#222;color:#fff;padding:5px 3px;text-align:center;font-size:10px}
+.inv-items-table td{border:1px solid #ccc;padding:5px 3px;text-align:center;font-size:10px}
 .inv-items-table td.left{text-align:left}
+.inv-items-table .inv-namerow td{border-bottom:none}
 .inv-total{border-top:1px solid #111;padding-top:6px;font-size:11px}
 .inv-total-row{display:flex;justify-content:flex-end;gap:8px;margin-bottom:2px}
 .inv-total-label{width:60px;text-align:right;font-weight:700}
@@ -459,8 +461,9 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
     </div>
     <!-- 검색 -->
     <div class="srchrow">
-      <input class="srch" id="srchInp" type="text" placeholder="품명·와트·별칭 검색..." oninput="onSearch(this.value)"/>
+      <input class="srch" id="srchInp" type="text" placeholder="품명·별칭 검색..." oninput="onSearch(this.value)"/>
       <button class="scanbtn" onclick="openScanner('order')">📷 스캔</button>
+      <button class="parsebtn" onclick="openParseMod()">📨 발주서<br>변환</button>
     </div>
   </div>
   <!-- 좌우 분할 -->
@@ -859,33 +862,54 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
       <button class="invhd-x" onclick="closeInvMod()">&#215;</button>
     </div>
     <div class="invscroll">
-      <!-- 비번 화면 -->
-      <div id="invPinWrap" style="padding:16px 0">
-        <div style="font-size:12px;color:var(--ink2);text-align:center;margin-bottom:10px">관리자 비밀번호를 입력하세요</div>
-        <div class="stkmpin-dots"><div class="stkmpin-dot" id="ip0"></div><div class="stkmpin-dot" id="ip1"></div><div class="stkmpin-dot" id="ip2"></div><div class="stkmpin-dot" id="ip3"></div></div>
-        <div style="min-height:16px;text-align:center;font-size:11px;color:var(--R);margin-bottom:8px" id="invPinErr"></div>
-        <div class="stkmpad">
-          <button class="stkmpad-btn" onclick="invPinPress('1')">1</button><button class="stkmpad-btn" onclick="invPinPress('2')">2</button><button class="stkmpad-btn" onclick="invPinPress('3')">3</button>
-          <button class="stkmpad-btn" onclick="invPinPress('4')">4</button><button class="stkmpad-btn" onclick="invPinPress('5')">5</button><button class="stkmpad-btn" onclick="invPinPress('6')">6</button>
-          <button class="stkmpad-btn" onclick="invPinPress('7')">7</button><button class="stkmpad-btn" onclick="invPinPress('8')">8</button><button class="stkmpad-btn" onclick="invPinPress('9')">9</button>
-          <button class="stkmpad-btn" onclick="invPinPress('')"></button><button class="stkmpad-btn" onclick="invPinPress('0')">0</button><button class="stkmpad-btn" onclick="invPinDel()">&#9003;</button>
-        </div>
-      </div>
-      <!-- 메인 화면 -->
-      <div id="invMainWrap" style="display:none">
+      <!-- 메인 화면 (비번 없이 바로 표시) -->
+      <div id="invMainWrap">
         <div class="inv-search-row">
-          <input class="inv-inp" id="invCompany" type="text" placeholder="상호명 입력 (예: 브라이트 조명)"/>
+          <input class="inv-inp" id="invCompany" type="text" placeholder="상호명 입력 (예: 지노라이팅)"/>
           <button class="inv-search-btn" onclick="invSearch()">확인</button>
         </div>
         <div id="invGradeInfo" style="min-height:24px;margin-bottom:8px;font-size:12px;color:var(--ink2)"></div>
+        <!-- 단가 표시 토글 영역 -->
+        <div id="invPriceToggle" style="margin-bottom:10px">
+          <button onclick="openInvPricePin()" style="width:100%;padding:11px;background:#FFF8E8;color:#8A6D1A;border:1.5px solid #F0DCA0;border-radius:8px;font-size:13px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer">🔒 단가·금액 표시 (영업사원용)</button>
+        </div>
+        <!-- 단가 비번 입력 (숨김) -->
+        <div id="invPinWrap" style="display:none;padding:8px 0 16px;background:#fafafa;border-radius:10px;margin-bottom:10px">
+          <div style="font-size:12px;color:var(--ink2);text-align:center;margin-bottom:10px">🔑 영업사원 비밀번호를 입력하세요</div>
+          <div class="stkmpin-dots"><div class="stkmpin-dot" id="ip0"></div><div class="stkmpin-dot" id="ip1"></div><div class="stkmpin-dot" id="ip2"></div><div class="stkmpin-dot" id="ip3"></div></div>
+          <div style="min-height:16px;text-align:center;font-size:11px;color:var(--R);margin-bottom:8px" id="invPinErr"></div>
+          <div class="stkmpad" style="max-width:260px;margin:0 auto">
+            <button class="stkmpad-btn" onclick="invPinPress('1')">1</button><button class="stkmpad-btn" onclick="invPinPress('2')">2</button><button class="stkmpad-btn" onclick="invPinPress('3')">3</button>
+            <button class="stkmpad-btn" onclick="invPinPress('4')">4</button><button class="stkmpad-btn" onclick="invPinPress('5')">5</button><button class="stkmpad-btn" onclick="invPinPress('6')">6</button>
+            <button class="stkmpad-btn" onclick="invPinPress('7')">7</button><button class="stkmpad-btn" onclick="invPinPress('8')">8</button><button class="stkmpad-btn" onclick="invPinPress('9')">9</button>
+            <button class="stkmpad-btn" onclick="invPinPress('')"></button><button class="stkmpad-btn" onclick="invPinPress('0')">0</button><button class="stkmpad-btn" onclick="invPinDel()">&#9003;</button>
+          </div>
+        </div>
         <div id="invPreview"></div>
       </div>
     </div>
-    <div class="invfoot">
+    <div class="invfoot" style="flex-wrap:wrap">
       <button class="inv-cancel-btn" onclick="closeInvMod()">닫기</button>
-      <button class="inv-dl-btn" id="invCopyBtn" onclick="invCopyImage()" style="display:none;background:#475569">📋 이미지 복사</button>
-      <button class="inv-dl-btn" id="invDlBtn" onclick="invDownload()" style="display:none">📥 이미지 저장</button>
+      <button class="inv-dl-btn" id="invCopyBtn" onclick="invCopyImage()" style="display:none;background:#475569">📋 이미지</button>
+      <button class="inv-dl-btn" id="invDlBtn" onclick="invDownload()" style="display:none">📥 저장</button>
+      <button class="inv-dl-btn" id="invXlsBtn" onclick="invDownloadExcel()" style="display:none;background:#16A34A">📊 엑셀</button>
     </div>
+  </div>
+</div>
+
+<!-- 품목 수정 모달 -->
+<div id="itemFixMod" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.5);align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:14px;max-width:420px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="padding:14px 16px;background:#2855A0;color:#fff;display:flex;align-items:center;gap:8px">
+      <span style="font-size:16px">✏️</span>
+      <div style="font-weight:700;font-size:15px;flex:1">품목 수정</div>
+      <button onclick="closeItemFix()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1">&times;</button>
+    </div>
+    <div style="padding:12px 16px;border-bottom:1px solid #eee">
+      <div style="font-size:11px;color:#888;margin-bottom:6px">원본: <span id="itemFixRaw" style="color:#DC2626;font-weight:600"></span></div>
+      <input id="itemFixSearch" type="text" oninput="itemFixRender()" placeholder="품명 검색 (예: 매장램프 30, 투광등 50 흑색)" style="width:100%;padding:10px;font-size:13px;border:1.5px solid #ddd;border-radius:8px;outline:none;font-family:Noto Sans KR,sans-serif">
+    </div>
+    <div id="itemFixList" style="flex:1;overflow-y:auto;padding:8px 12px"></div>
   </div>
 </div>
 
@@ -898,9 +922,9 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
       <button onclick="closeParseMod()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--ink2);line-height:1">&#215;</button>
     </div>
     <div style="padding:10px 16px;font-size:11px;color:var(--ink2);background:var(--A3);border-bottom:1px solid var(--bdr)">
-      받은 발주서 내용을 아래에 붙여넣으세요. ERP코드를 자동으로 인식해서 명세서를 만들어드립니다.
+      받은 발주서를 그대로 붙여넣으세요. <b>ERP코드</b>뿐 아니라 <b>품명(예: 10" 엣지 원형직부 주광 1박스)</b>도 자동 인식합니다. 색온도(주광/전구/주백)와 수량도 함께 읽어요.
     </div>
-    <textarea class="parse-ta" id="parseTa" placeholder="예시:&#10;6873-1162   LED 퓨어 사각 방등 50W  /  6개&#10;6873-1609   6인치 다운라이트 15W  /  1박스&#10;&#10;카카오톡에서 받은 발주서를 그대로 붙여넣기 하세요"></textarea>
+    <textarea class="parse-ta" id="parseTa" placeholder="예시 1 (코드):&#10;6873-1162  LED 퓨어 사각 방등 50W  /  6개&#10;&#10;예시 2 (품명):&#10;10\&quot; 엣지 원형직부&#10;주광 1박스&#10;&#10;미니크립톤 5W 17B 전구 2박스&#10;&#10;카톡 발주를 그대로 붙여넣으세요"></textarea>
     <div class="parse-foot">
       <button class="parse-btn secondary" onclick="closeParseMod()">취소</button>
       <button class="parse-btn primary" onclick="parseOrder()">📋 명세서 변환</button>
@@ -2384,70 +2408,379 @@ function closeParseMod(){
 }
 document.getElementById('parseMod').addEventListener('click',function(e){if(e.target===this)closeParseMod();});
 
+// 텍스트 정규화 (품명 매칭용)
+function poNorm(s){
+  return String(s||'').replace(/["”″]/g,'인치').replace(/\(|\)/g,'').replace(/\s+/g,'').replace(/[·\.\-_\/]/g,'').toLowerCase();
+}
+// 색온도 추출
+function poExtractCt(line){
+  if(/전구|3000|웜|warm/i.test(line)) return '전구';
+  if(/주백|4000|5700/i.test(line)) return '주백';
+  if(/주광|6500|화이트|white|cw/i.test(line)) return '주광';
+  return null;
+}
+// 품명 동의어 사전 (발주표현 → 품목명 키워드)
+var PO_SYNONYMS = [
+  ['블랙바디','흑색'],['블랙','흑색'],['화이트바디','백색'],['화이트','백색'],
+  ['매장','매장램프'],['다운','다운라이트'],['크립톤','미니크립톤'],
+  ['엣지원형','엣지 원형'],['엣지사각','엣지 사각'],
+  ['모듈','리폼모듈'],['cfl','EL'],['CFL','EL'],['삼파장','EL'],['삼파장전구','EL']
+];
+function poApplySynonyms(s){
+  var r=s;
+  PO_SYNONYMS.forEach(function(p){
+    // 결과값(p[1])이 검색어(p[0])를 포함하면, 이미 완성형은 보호 후 치환
+    if(p[1].indexOf(p[0])>=0){
+      // 이미 p[1] 형태로 있는 부분을 임시 토큰으로 보호
+      var token = '\u0001';
+      r = r.split(p[1]).join(token);     // 완성형 → 토큰
+      r = r.split(p[0]).join(p[1]);      // 단독 검색어 → 완성형
+      r = r.split(token).join(p[1]);     // 토큰 → 완성형 복원
+    } else {
+      r = r.split(p[0]).join(p[1]);
+    }
+  });
+  return r;
+}
+// 와트 숫자 추출 (50W 우선, 없으면 박스/개/인치 아닌 단독 숫자)
+function poExtractWatt(s){
+  var m=s.match(/(\d+)\s*[wW]/);
+  if(m) return m[1];
+  // W 없는 경우: 박스/개/인치/색온도 숫자가 아닌 첫 숫자
+  var cleaned = s.replace(/\d+\s*(박스|개|인치|["”″])/g,'').replace(/6500|3000|4000|5700/g,'');
+  var m2 = cleaned.match(/(\d{2,3})/); // 2~3자리 (와트는 보통 8~200)
+  if(m2){ var n=parseInt(m2[1]); if(n>=3 && n<=300) return m2[1]; }
+  return null;
+}
+// 인치 추출
+function poExtractInch(s){
+  var m=s.match(/(\d+)\s*(인치|["”″])/);
+  if(m) return m[1];
+  return null;
+}
+
+// 품명으로 품목 찾기 (키워드 점수 + 와트/인치 매칭)
+var PO_KEY_TERMS = ['직부','센서','원형','사각','센서등','직부등','백색','흑색','투명','불투명','집중','확산','국산','이너','cob'];
+// 구별 단어 (이게 발주에 있으면 해당 품목 강한 우대)
+var PO_DISTINCT = ['거실주방','거실','주방','방등','라이트','센서등','직부등','센서','직부','원형','사각','집중','확산','펜던트','다운라이트','평판','매입','벽등','벽부','투광','공장'];
+function poFindByName(line){
+  var sLine = poApplySynonyms(line);
+  var nLine = poNorm(sLine);
+  var lineWatt = poExtractWatt(sLine);
+  var lineInch = poExtractInch(sLine);
+  var best=null, bestScore=0;
+  for(var i=0;i<G.length;i++){
+    var g=G[i];
+    var nName = poNorm(g.name);
+    var nameTokens = g.name.replace(/[()]/g,' ').split(/\s+/).filter(Boolean);
+    var hit=0, total=0;
+    nameTokens.forEach(function(tok){
+      var nTok=poNorm(tok);
+      if(/^\d+[wW]$/.test(tok) || /^\d+인치$/.test(tok)) return;
+      total++;
+      if(nTok && nLine.indexOf(nTok)>=0) hit++;
+    });
+    var score = total>0 ? hit/total : 0;
+    if(nName && nLine.indexOf(nName)>=0) score += 1;
+    // 와트 일치 (중요)
+    var nameWatt = poExtractWatt(g.name);
+    if(lineWatt && nameWatt){
+      if(lineWatt===nameWatt) score += 0.8;
+      else score -= 0.6;
+    }
+    // 인치 일치
+    var nameInch = poExtractInch(g.name);
+    if(lineInch && nameInch){
+      if(lineInch===nameInch) score += 0.8;
+      else score -= 0.6;
+    }
+    PO_KEY_TERMS.forEach(function(kt){
+      var nKt=poNorm(kt);
+      var inName = nName.indexOf(nKt)>=0;
+      var inLine = nLine.indexOf(nKt)>=0;
+      if(inName && inLine) score += 0.5;
+      else if(inName && !inLine) score -= 0.3;
+      else if(!inName && inLine) score -= 0.5;
+    });
+    // 구별 단어: 품명에 있는 특수 단어가 발주에도 있으면 강한 보너스, 없으면 강한 감점
+    PO_DISTINCT.forEach(function(dt){
+      var nDt=poNorm(dt);
+      var inName = nName.indexOf(nDt)>=0;
+      var inLine = nLine.indexOf(nDt)>=0;
+      if(inName && inLine) score += 1.2;       // 둘다 있으면 큰 보너스
+      else if(inName && !inLine) score -= 0.5; // 품명엔 있는데 발주에 없으면 감점
+    });
+    if(score>bestScore){ bestScore=score; best=g; }
+  }
+  return bestScore>=0.6 ? best : null;
+}
+
+// 품목어 포함 여부
+function poHasProduct(line){
+  return /\d+\s*[wW]|인치|["”″]|등|램프|크립톤|투광|다운|평판|벌브|볼구|mr|par|t5|t8|t10|촛대|볼구|스틱|매장|인지|방등|거실|주방|스탠드|실링|트랙/i.test(line);
+}
+// 배송/연락처/헤더 등 무시할 줄
+function poIsJunk(line){
+  return /^\[|대리점|날짜|배송|요청사항|총\s*\d+\s*품목|구분|━|─|=====/.test(line)
+    || /\d{2,4}-\d{3,4}-\d{4}/.test(line)   // 전화번호
+    || /부탁|지점|\^\^|감사|드립니다/.test(line);
+}
+// 발주 텍스트에서 대리점(업체)명 찾기
+function poFindDealer(text){
+  var nText = text.replace(/\s+/g,'');
+  var best=null, bestLen=0;
+  for(var code in DEALERS){
+    var name = DEALERS[code].name;
+    if(!name) continue;
+    // 공백 제거하고 포함 여부 확인
+    var nName = name.replace(/\s+/g,'');
+    if(nText.indexOf(nName)>=0){
+      // 가장 긴 이름 우선 (정확도 ↑)
+      if(nName.length>bestLen){ bestLen=nName.length; best=name; }
+    }
+  }
+  // 정식명 못찾으면 핵심어로 부분 매칭
+  if(!best){
+    for(var code2 in DEALERS){
+      var name2 = DEALERS[code2].name;
+      if(!name2) continue;
+      var core = name2.replace(/\(주\)|주식회사|\(|\)/g,'').replace(/\s+/g,'');
+      if(core.length>=2 && nText.indexOf(core)>=0){
+        if(core.length>bestLen){ bestLen=core.length; best=name2; }
+      }
+    }
+  }
+  // 그래도 못찾으면 업체명 앞 2~4글자로 매칭 (예: "지노" → "지노라이팅")
+  if(!best){
+    var candidates=[];
+    for(var code3 in DEALERS){
+      var name3 = DEALERS[code3].name;
+      if(!name3) continue;
+      var core3 = name3.replace(/\(주\)|주식회사|\(|\)/g,'').replace(/\s+/g,'');
+      // 앞 2,3,4글자 중 텍스트에 있으면 후보
+      for(var len=4; len>=2; len--){
+        if(core3.length>=len){
+          var prefix = core3.slice(0,len);
+          if(nText.indexOf(prefix)>=0){ candidates.push({name:name3, score:len}); break; }
+        }
+      }
+    }
+    // 가장 긴 prefix 매칭이 유일하면 채택
+    if(candidates.length>0){
+      candidates.sort(function(a,b){ return b.score-a.score; });
+      // 최고점이 단 하나일 때만 (모호하면 안 넣음)
+      var top=candidates.filter(function(c){ return c.score===candidates[0].score; });
+      if(top.length===1) best=top[0].name;
+    }
+  }
+  return best;
+}
+
+// 여러 줄을 품목 블록으로 병합 (품명과 색온도/수량이 다른 줄일 때 대응)
+// 실제 존재하는 ERP 코드인지 확인
+function poIsRealCode(code){
+  for(var i=0;i<G.length;i++){
+    for(var j=0;j<G[i].variants.length;j++){
+      if(G[i].variants[j].code===code) return true;
+    }
+  }
+  return false;
+}
+// 전화번호 줄인지 (010-xxxx-xxxx 또는 전화/연락처 표현)
+function poIsPhone(line){
+  return /01[0-9][-\s]?\d{3,4}[-\s]?\d{4}/.test(line) || /\d{2,3}[-\s]\d{3,4}[-\s]\d{4}/.test(line);
+}
+
+function poMergeBlocks(text){
+  var rawLines = text.split('\n').map(function(l){return l.trim();}).filter(Boolean);
+  var blocks=[], cur='';
+  rawLines.forEach(function(line){
+    // 전화번호 포함 줄은 무시 (현재 블록 마감만)
+    if(poIsPhone(line) && !poHasProduct(line)){ if(cur){blocks.push(cur);cur='';} return; }
+    // 실제 존재하는 ERP 코드 줄만 독립 블록
+    var cm = line.match(/(\d{4}-\d{4})/);
+    if(cm && poIsRealCode(cm[1])){ if(cur){blocks.push(cur);cur='';} blocks.push(line); return; }
+    if(poIsJunk(line) && !poHasProduct(line)){ if(cur){blocks.push(cur);cur='';} return; }
+    if(poHasProduct(line)){
+      if(cur) blocks.push(cur);
+      cur=line;
+    } else {
+      // 색온도/수량 등 보조정보 → 현재 블록에 합침
+      if(cur) cur += ' '+line;
+    }
+  });
+  if(cur) blocks.push(cur);
+  return blocks;
+}
+
 function parseOrder(){
   var text = document.getElementById('parseTa').value.trim();
   if(!text){ showToast('발주서 내용을 붙여넣어 주세요'); return; }
 
-  // ERP 코드 패턴으로 라인 파싱
-  var lines = text.split('\n');
+  var blocks = poMergeBlocks(text);
   var parsed = [];
+  var unmatched = [];
 
-  lines.forEach(function(line){
-    line = line.trim();
+  blocks.forEach(function(line){
     if(!line) return;
-    // ERP 코드 찾기: XXXX-XXXX 패턴
-    var codeMatch = line.match(/(\d{4}-\d{4})/);
-    if(!codeMatch) return;
-    var code = codeMatch[1];
 
-    // 수량 파싱: 숫자 + (박스|개) 패턴
+    // 수량 파싱
     var qtyMatch = line.match(/(\d+)\s*(박스|개)/);
     var qty = qtyMatch ? parseInt(qtyMatch[1]) : 1;
     var unit = qtyMatch ? qtyMatch[2] : '개';
 
-    // G에서 품목 찾기
-    var found = null;
-    for(var i=0;i<G.length;i++){
-      for(var j=0;j<G[i].variants.length;j++){
-        if(G[i].variants[j].code===code){
-          found={g:G[i],v:G[i].variants[j]};
-          break;
+    // 전화번호 줄은 건너뜀
+    if(poIsPhone(line) && !poHasProduct(line)) return;
+
+    // 1순위: 실제 존재하는 ERP 코드만
+    var codeMatch = line.match(/(\d{4}-\d{4})/);
+    if(codeMatch && poIsRealCode(codeMatch[1])){
+      var code = codeMatch[1];
+      var found = null;
+      for(var i=0;i<G.length;i++){
+        for(var j=0;j<G[i].variants.length;j++){
+          if(G[i].variants[j].code===code){ found={g:G[i],v:G[i].variants[j]}; break; }
         }
+        if(found) break;
       }
-      if(found) break;
+      if(found){
+        parsed.push({code:code, ename:found.v.ename, gname:found.g.name, ct:found.v.ct, qty:qty, unit:unit});
+      }
+      return;
     }
 
-    if(found){
-      parsed.push({
-        code:code,
-        ename:found.v.ename,
-        gname:found.g.name,
-        ct:found.v.ct,
-        qty:qty,
-        unit:unit
-      });
+    // 2순위: 품명으로 매칭
+    if(!poHasProduct(line)) return;
+    var g = poFindByName(line);
+    if(g){
+      var ct = poExtractCt(line);
+      var v = null;
+      if(ct) v = g.variants.find(function(x){ return x.ct===ct; });
+      if(!v) v = g.variants[0];
+      parsed.push({code:v.code, ename:v.ename, gname:g.name, ct:v.ct, qty:qty, unit:unit});
     } else {
-      // G에 없으면 코드만으로 추가
-      parsed.push({code:code,ename:code,gname:code,ct:'-',qty:qty,unit:unit});
+      // 미인식 → 미확정 품목으로 추가 (원본 텍스트 보존, 수정 가능)
+      parsed.push({code:'?', ename:line, gname:line, ct:'-', qty:qty, unit:unit, unconfirmed:true, rawText:line});
+      unmatched.push(line);
     }
   });
 
-  if(!parsed.length){ showToast('ERP 코드를 찾을 수 없습니다'); return; }
+  if(!parsed.length){
+    showToast('인식된 품목이 없습니다. 코드나 품명을 확인해주세요');
+    return;
+  }
 
-  // cart에 추가 (기존 cart 대체)
   if(cart.length>0){
     if(!confirm('기존 발주 목록('+cart.length+'개)을 지우고 새로 불러올까요?')) return;
   }
   cart = parsed;
   renderCart();
-  closeParseMod();
-  showToast('✓ '+parsed.length+'개 품목 불러옴');
 
-  // 명세서 바로 오픈 (2클릭 없이 바로)
-  setTimeout(function(){
-    invClickCount = 1; // 첫번째 클릭 처리된 것으로
-    openInvMod();
-  },300);
+  // 업체명 자동 인식
+  var dealer = poFindDealer(text);
+  if(dealer){
+    poDetectedDealer = dealer;
+    // 대리점명 입력칸에도 자동 입력
+    var storeInput = document.getElementById('storeName');
+    if(storeInput && !storeInput.value.trim()) storeInput.value = dealer;
+  } else {
+    poDetectedDealer = '';
+  }
+
+  closeParseMod();
+
+  var confirmedCnt = parsed.filter(function(p){ return !p.unconfirmed; }).length;
+  var msg = '✓ '+confirmedCnt+'개 인식';
+  if(dealer) msg += ' · '+dealer;
+  if(unmatched.length) msg += ' · ⚠'+unmatched.length+'개 확인필요';
+  showToast(msg);
+
+  // 명세서 바로 오픈
+  setTimeout(function(){ openInvMod(); },300);
+}
+var poDetectedDealer = '';
+
+// ── 품목 수정 (미확정/잘못 매칭된 품목 교체) ──
+var itemFixIdx = -1;
+function openItemFix(idx){
+  itemFixIdx = idx;
+  var it = cart[idx];
+  document.getElementById('itemFixRaw').textContent = it.rawText || it.ename || '';
+  var inp = document.getElementById('itemFixSearch');
+  // 미확정이면 원본을, 아니면 품명을 검색어로
+  inp.value = it.unconfirmed ? (it.rawText||'') : (it.gname||'');
+  document.getElementById('itemFixMod').style.display = 'flex';
+  itemFixRender();
+  setTimeout(function(){ inp.focus(); }, 100);
+}
+function closeItemFix(){
+  document.getElementById('itemFixMod').style.display = 'none';
+  itemFixIdx = -1;
+}
+function itemFixRender(){
+  var q = document.getElementById('itemFixSearch').value.trim();
+  var box = document.getElementById('itemFixList');
+  var nq = poNorm(poApplySynonyms(q));
+  var results = [];
+  if(nq.length>=1){
+    G.forEach(function(g){
+      var nName = poNorm(g.name);
+      var nAlias = poNorm(g.alias||'');
+      // 검색어 토큰이 모두 포함되는지
+      var tokens = poApplySynonyms(q).split(/\s+/).filter(Boolean);
+      var allHit = tokens.every(function(t){ var nt=poNorm(t); return nt==='' || nName.indexOf(nt)>=0 || nAlias.indexOf(nt)>=0; });
+      // 부분 점수
+      var score = 0;
+      if(allHit) score = 10;
+      else { tokens.forEach(function(t){ var nt=poNorm(t); if(nt && (nName.indexOf(nt)>=0||nAlias.indexOf(nt)>=0)) score++; }); }
+      if(score>0) results.push({g:g, score:score});
+    });
+    results.sort(function(a,b){ return b.score-a.score; });
+    results = results.slice(0, 30);
+  }
+  if(!results.length){
+    box.innerHTML = '<div style="text-align:center;color:#aaa;padding:30px;font-size:13px">검색 결과가 없습니다<br><span style="font-size:11px">다른 품명으로 검색해보세요</span></div>';
+    return;
+  }
+  var h = '';
+  results.forEach(function(r){
+    var g = r.g;
+    g.variants.forEach(function(v){
+      var ctL = (v.ct && v.ct!=='-') ? ctText(v.ct) : '';
+      h += '<div onclick="pickItemFix(\''+v.code+'\')" style="padding:10px;border:1px solid #eee;border-radius:8px;margin-bottom:6px;cursor:pointer;background:#fff" ontouchstart="">';
+      h += '<div style="font-size:13px;font-weight:600;color:#1A1814">'+g.name+(ctL?' <span style="color:#2855A0">'+ctL+'</span>':'')+'</div>';
+      h += '<div style="font-size:10px;color:#999;font-family:monospace;margin-top:2px">'+v.code+' · '+g.sub+'</div>';
+      h += '</div>';
+    });
+  });
+  box.innerHTML = h;
+}
+function pickItemFix(code){
+  if(itemFixIdx<0) return;
+  // 코드로 품목 찾기
+  var found = null;
+  for(var i=0;i<G.length;i++){
+    for(var j=0;j<G[i].variants.length;j++){
+      if(G[i].variants[j].code===code){ found={g:G[i],v:G[i].variants[j]}; break; }
+    }
+    if(found) break;
+  }
+  if(!found) return;
+  var it = cart[itemFixIdx];
+  cart[itemFixIdx] = {
+    code: found.v.code,
+    ename: found.v.ename,
+    gname: found.g.name,
+    ct: found.v.ct,
+    qty: it.qty,
+    unit: it.unit
+  };
+  closeItemFix();
+  renderCart();
+  // 명세서 다시 그리기
+  var company = document.getElementById('invCompany').value.trim();
+  invRender(company);
+  showToast('✓ 품목 수정됨');
 }
 
 // ── 사용설명서 ──
@@ -3582,28 +3915,42 @@ var invGrade = null, invGradeName = '', invUnlocked = false;
 var GRADE_LABEL = {'20':'최저가','21':'A등급','22':'B등급','23':'C등급','24':'D등급','25':'볼륨'};
 var GRADE_KEY   = {'20':'20','21':'21','22':'22','23':'23','24':'24','25':'25'};
 
-var invClickCount = 0;
 function openInvMod() {
   if (!cart.length) { showToast('발주 품목을 먼저 추가하세요'); return; }
-  invClickCount++;
-  if (invClickCount < 2) { return; } // 1번은 무반응
-  invClickCount=0;
   invGrade = null; invGradeName = ''; invUnlocked = false;
-  var storeVal = document.getElementById('storeName').value.trim();
+  // 인식된 업체명 > 대리점 입력칸 순으로 사용
+  var storeVal = (poDetectedDealer || document.getElementById('storeName').value.trim());
   document.getElementById('invCompany').value = storeVal;
+  // 업체가 DEALERS에 있으면 등급 미리 조회 (단가는 비번 후에만 노출)
+  if(storeVal){
+    for(var dc in DEALERS){
+      if(DEALERS[dc].name===storeVal){ invGrade=String(DEALERS[dc].grade); invGradeName=(typeof GRADE_LABEL!=='undefined'?(GRADE_LABEL[invGrade]||invGrade):invGrade); break; }
+    }
+  }
+  // 단가 토글 초기화
+  document.getElementById('invPriceToggle').style.display = 'block';
+  document.getElementById('invPinWrap').style.display = 'none';
+  document.getElementById('invPinErr').textContent = '';
+  invPinInput = '';
+  document.getElementById('invGradeInfo').innerHTML = '<span style="color:var(--ink3);font-size:11px">품명·수량 명세서입니다. 단가를 넣으려면 위 버튼을 누르세요.</span>';
+  document.getElementById('invMod').classList.add('open');
+  // 비번 없이 바로 품명·수량 명세서 표시
+  invRender(storeVal);
+  document.getElementById('invDlBtn').style.display = '';
+  document.getElementById('invCopyBtn').style.display = '';
+  document.getElementById('invXlsBtn').style.display = '';
+}
+function closeInvMod() { document.getElementById('invMod').classList.remove('open'); poDetectedDealer=''; }
+
+// 단가 표시 비번 (영업사원용)
+var invPinInput = '';
+function openInvPricePin(){
+  document.getElementById('invPriceToggle').style.display = 'none';
   document.getElementById('invPinWrap').style.display = 'block';
-  document.getElementById('invMainWrap').style.display = 'none';
-  document.getElementById('invDlBtn').style.display = 'none';
-  document.getElementById('invCopyBtn').style.display = 'none';
   document.getElementById('invPinErr').textContent = '';
   invPinInput = '';
   invUpdateDots();
-  document.getElementById('invMod').classList.add('open');
 }
-function closeInvMod() { document.getElementById('invMod').classList.remove('open'); }
-
-// 명세서 비번
-var invPinInput = '';
 function invPinPress(n) {
   if (!n || invPinInput.length >= 4) return;
   invPinInput += n; invUpdateDots();
@@ -3611,7 +3958,7 @@ function invPinPress(n) {
 }
 function invPinDel() { invPinInput = invPinInput.slice(0,-1); invUpdateDots(); }
 function invUpdateDots() {
-  for (var i=0;i<4;i++) document.getElementById('ip'+i).classList.toggle('on', i < invPinInput.length);
+  for (var i=0;i<4;i++){ var el=document.getElementById('ip'+i); if(el) el.classList.toggle('on', i < invPinInput.length); }
 }
 function invPinCheck() {
   if (invPinInput !== '1233') {
@@ -3620,9 +3967,11 @@ function invPinCheck() {
   }
   invUnlocked = true;
   document.getElementById('invPinWrap').style.display = 'none';
-  document.getElementById('invMainWrap').style.display = 'block';
-  document.getElementById('invGradeInfo').innerHTML = '<span style="color:var(--ink3);font-size:11px">상호명 입력 시 등급별 단가가 자동 적용됩니다 (생략 가능)</span>';
-  invRender('');
+  document.getElementById('invGradeInfo').innerHTML = '<span style="color:#16A34A;font-size:11px;font-weight:700">✅ 단가 표시 모드 (영업사원용)</span> · 상호명 입력 시 등급별 단가 자동 적용';
+  // 단가 포함하여 다시 렌더링
+  var q = document.getElementById('invCompany').value.trim();
+  invSearch();
+  showToast('✓ 단가 표시 모드');
 }
 document.getElementById('invMod').addEventListener('click', function(e){ if(e.target===this) closeInvMod(); });
 
@@ -3716,7 +4065,8 @@ function invRender(company) {
 
   var gradeNote = '';
 
-  // 행 - 부가세/총금액 컬럼 추가
+  // 행 생성 - 단가 잠금 여부로 분기
+  var colCount = invUnlocked ? 5 : 3; // 단가모드=5칸, 일반=3칸(코드·품명·수량 한줄)
   var rows2 = '', totalSupply2 = 0;
   cart.forEach(function(it, i) {
     var pd = PRICES[it.code];
@@ -3728,23 +4078,57 @@ function invRender(company) {
     var itemVat = Math.round(amount2 * 0.1);
     var itemTotal = amount2 + itemVat;
     totalSupply2 += amount2;
-    var prStr = invUnlocked && unitPrice > 0 ? unitPrice.toLocaleString() : '-';
-    var amStr = invUnlocked && amount2 > 0 ? amount2.toLocaleString() : '-';
-    var vatItemStr = invUnlocked && itemVat > 0 ? itemVat.toLocaleString() : '-';
-    var totItemStr = invUnlocked && itemTotal > 0 ? itemTotal.toLocaleString() : '-';
-    rows2 += '<tr>' +
-      '<td style="white-space:nowrap;font-size:9px">' + it.code + '</td>' +
-      '<td class="left" style="font-size:9px;word-break:keep-all">' + it.ename + '</td>' +
-      '<td>' + String(qtyEach2) + '</td>' +
-      '<td style="text-align:right;white-space:nowrap">' + prStr + '</td>' +
-      '<td style="text-align:right;white-space:nowrap">' + amStr + '</td>' +
-      '<td style="text-align:right;white-space:nowrap">' + vatItemStr + '</td>' +
-      '<td style="text-align:right;white-space:nowrap">' + totItemStr + '</td>' +
-      '</tr>';
+    var pname = (it.gname || it.ename) + (it.ct && it.ct!=='-' ? ' '+ctText(it.ct) : '');
+
+    if(invUnlocked){
+      // ── 단가 모드: 2줄 (코드·품명 윗줄, 숫자 아랫줄) ──
+      if(it.unconfirmed){
+        rows2 += '<tr class="inv-namerow"><td colspan="5" style="text-align:left;padding:6px;background:#FEF2F2;font-weight:700;font-size:10px;border:1px solid #ccc">'
+          + '<span style="color:#DC2626">⚠ 확인필요: ' + (it.rawText||it.ename) + '</span>'
+          + ' <button onclick="openItemFix(' + i + ')" style="background:#DC2626;color:#fff;border:none;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif;margin-left:4px">✏️ 수정</button></td></tr>';
+      } else {
+        rows2 += '<tr class="inv-namerow"><td colspan="5" style="text-align:left;padding:4px 6px;background:#fafafa;font-weight:700;font-size:10px;border:1px solid #ccc">'
+          + '<span style="color:#555;font-family:monospace">' + it.code + '</span>&nbsp;&nbsp;' + pname
+          + ' <button onclick="openItemFix(' + i + ')" style="background:none;border:none;color:#aaa;font-size:11px;cursor:pointer;padding:0 2px">✏️</button></td></tr>';
+      }
+      var prStr = unitPrice > 0 ? unitPrice.toLocaleString() : '-';
+      var amStr = amount2 > 0 ? amount2.toLocaleString() : '-';
+      var vatItemStr = itemVat > 0 ? itemVat.toLocaleString() : '-';
+      var totItemStr = itemTotal > 0 ? itemTotal.toLocaleString() : '-';
+      rows2 += '<tr>' +
+        '<td>' + String(qtyEach2) + '</td>' +
+        '<td style="text-align:right;white-space:nowrap">' + prStr + '</td>' +
+        '<td style="text-align:right;white-space:nowrap">' + amStr + '</td>' +
+        '<td style="text-align:right;white-space:nowrap">' + vatItemStr + '</td>' +
+        '<td style="text-align:right;white-space:nowrap">' + totItemStr + '</td>' +
+        '</tr>';
+    } else {
+      // ── 일반 모드: 한 줄 (코드 · 품명 · 수량) ──
+      if(it.unconfirmed){
+        rows2 += '<tr style="background:#FEF2F2">'
+          + '<td style="font-family:monospace;font-size:9px;color:#DC2626">⚠</td>'
+          + '<td class="left" style="color:#DC2626;font-weight:600">' + (it.rawText||it.ename)
+          + ' <button onclick="openItemFix(' + i + ')" style="background:#DC2626;color:#fff;border:none;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif">✏️수정</button></td>'
+          + '<td style="font-weight:700">' + String(qtyEach2) + '</td>'
+          + '</tr>';
+      } else {
+        rows2 += '<tr>'
+          + '<td style="font-family:monospace;font-size:9px;color:#555;white-space:nowrap">' + it.code + '</td>'
+          + '<td class="left" style="font-weight:600">' + pname
+          + ' <button onclick="openItemFix(' + i + ')" style="background:none;border:none;color:#bbb;font-size:10px;cursor:pointer;padding:0 1px">✏️</button></td>'
+          + '<td style="font-weight:700">' + String(qtyEach2) + '</td>'
+          + '</tr>';
+      }
+    }
   });
-  var emptyRows2 = Math.max(0, 8 - cart.length);
+  // 빈 행
+  var emptyRows2 = Math.max(0, 5 - cart.length);
   for (var i = 0; i < emptyRows2; i++) {
-    rows2 += '<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
+    if(invUnlocked){
+      rows2 += '<tr><td colspan="5" style="padding:9px;border:1px solid #ccc">&nbsp;</td></tr>';
+    } else {
+      rows2 += '<tr><td style="padding:9px;border:1px solid #ccc">&nbsp;</td><td></td><td></td></tr>';
+    }
   }
   var vat2 = Math.round(totalSupply2 * 0.1);
   var total2 = totalSupply2 + vat2;
@@ -3786,35 +4170,23 @@ function invRender(company) {
     '</table></td>' +
     '</tr></table>' +
 
-    // 품목 테이블
+    // 품목 테이블 (단가 잠금 여부로 컬럼 분기)
     '<table class="inv-items-table" style="margin-top:6px;table-layout:fixed;width:100%">' +
-    '<colgroup>' +
-    '<col style="width:72px"/>' +
-    '<col/>' +
-    '<col style="width:44px"/>' +
-    '<col style="width:58px"/>' +
-    '<col style="width:62px"/>' +
-    '<col style="width:58px"/>' +
-    '<col style="width:66px"/>' +
-    '</colgroup>' +
-    '<thead><tr>' +
-    '<th>CODE NO.</th>' +
-    '<th style="text-align:left;padding-left:4px">품&nbsp;&nbsp;명</th>' +
-    '<th>수량</th>' +
-    '<th>단가</th>' +
-    '<th>금액</th>' +
-    '<th>부가세</th>' +
-    '<th>총금액</th>' +
-    '</tr></thead>' +
+    (invUnlocked ?
+      '<colgroup><col style="width:18%"/><col style="width:20%"/><col style="width:23%"/><col style="width:18%"/><col style="width:21%"/></colgroup>' +
+      '<thead><tr><th>수량</th><th>단가</th><th>금액</th><th>부가세</th><th>총금액</th></tr></thead>'
+      :
+      '<colgroup><col style="width:24%"/><col style="width:58%"/><col style="width:18%"/></colgroup>' +
+      '<thead><tr><th>코드</th><th style="text-align:left;padding-left:6px">품명</th><th>수량</th></tr></thead>'
+    ) +
     '<tbody>' + rows2 + '</tbody>' +
-    '<tfoot><tr style="background:#f0f0f0;font-weight:700">' +
-    '<td colspan="2" style="text-align:center">합&nbsp;&nbsp;계</td>' +
-    '<td></td>' +
-    '<td></td>' +
-    '<td style="text-align:right">' + supStr + '</td>' +
-    '<td style="text-align:right">' + vatStr2 + '</td>' +
-    '<td style="text-align:right">' + totStr2 + '</td>' +
-    '</tr></tfoot>' +
+    (invUnlocked ?
+      '<tfoot><tr style="background:#f0f0f0;font-weight:700">' +
+      '<td style="text-align:center">합계</td><td></td>' +
+      '<td style="text-align:right">' + supStr + '</td>' +
+      '<td style="text-align:right">' + vatStr2 + '</td>' +
+      '<td style="text-align:right">' + totStr2 + '</td></tr></tfoot>'
+      : '') +
     '</table>' +
 
     // 담당/부서장
@@ -3834,6 +4206,7 @@ function invRender(company) {
   preview.style.display = 'block';
   document.getElementById('invDlBtn').style.display = '';
   document.getElementById('invCopyBtn').style.display = '';
+  document.getElementById('invXlsBtn').style.display = '';
 }
 
 function invCopyImage(){
@@ -3882,6 +4255,79 @@ function invDownloadBlob(blob){
   URL.revokeObjectURL(a.href);
 }
 
+function invDownloadExcel() {
+  if (!cart.length) { showToast('품목이 없습니다'); return; }
+  // SheetJS 동적 로드
+  if (typeof XLSX === 'undefined') {
+    showToast('엑셀 모듈 로딩 중...');
+    var script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    script.onload = function() { invBuildExcel(); };
+    script.onerror = function(){ showToast('엑셀 모듈 로드 실패'); };
+    document.head.appendChild(script);
+  } else {
+    invBuildExcel();
+  }
+}
+function invBuildExcel() {
+  try {
+    var company = document.getElementById('invCompany').value.trim() || '명세서';
+    var today = new Date();
+    var dateStr = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+
+    var aoa = [];
+    aoa.push(['거래명세서']);
+    aoa.push(['공급자','우리엔터프라이즈(주)','','공급받는자',company]);
+    aoa.push(['발행일자',dateStr]);
+    aoa.push([]);
+
+    // 헤더
+    if(invUnlocked){
+      aoa.push(['코드','품명','수량','단가','금액','부가세','총금액']);
+    } else {
+      aoa.push(['코드','품명','수량']);
+    }
+
+    var totalSupply=0;
+    cart.forEach(function(it){
+      var pd = PRICES[it.code];
+      var unitPrice = 0;
+      if(pd && invGrade && pd.p[invGrade]) unitPrice = pd.p[invGrade];
+      var boxQty = QTY_MAP[it.code] || 1;
+      var qtyEach = it.unit === '박스' ? it.qty*boxQty : it.qty;
+      var amount = unitPrice * qtyEach;
+      var vat = Math.round(amount*0.1);
+      var pname = (it.gname||it.ename) + (it.ct&&it.ct!=='-' ? ' '+ctText(it.ct) : '');
+      if(invUnlocked){
+        totalSupply += amount;
+        aoa.push([it.code, pname, qtyEach, unitPrice||'', amount||'', vat||'', (amount+vat)||'']);
+      } else {
+        aoa.push([it.code, pname, qtyEach]);
+      }
+    });
+
+    if(invUnlocked){
+      var totVat = Math.round(totalSupply*0.1);
+      aoa.push([]);
+      aoa.push(['','합계','','',totalSupply, totVat, totalSupply+totVat]);
+    }
+
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    // 컬럼 너비
+    ws['!cols'] = invUnlocked
+      ? [{wch:12},{wch:30},{wch:8},{wch:12},{wch:14},{wch:12},{wch:14}]
+      : [{wch:12},{wch:34},{wch:8}];
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '거래명세서');
+
+    var fname = '거래명세서_'+company+'_'+dateStr.replace(/-/g,'')+'.xlsx';
+    XLSX.writeFile(wb, fname);
+    showToast('✓ 엑셀 다운로드 완료');
+  } catch(e) {
+    showToast('엑셀 생성 실패: '+e.message);
+  }
+}
+
 function invDownload() {
   var preview = document.getElementById('invPreview');
   if (!preview || preview.style.display === 'none') return;
@@ -3907,11 +4353,29 @@ function invCapture(el) {
   }).then(function(canvas) {
     var company = document.getElementById('invCompany').value.trim() || '명세서';
     var today = new Date().toLocaleDateString('ko-KR').replace(/\./g,'').replace(/ /g,'');
-    var a = document.createElement('a');
-    a.href = canvas.toDataURL('image/png');
-    a.download = '거래명세서_' + company + '_' + today + '.png';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    showToast('✓ 명세서 이미지 저장됨');
+    var fname = '거래명세서_' + company + '_' + today + '.png';
+    // Blob 방식 (안드로이드 크롬 호환)
+    canvas.toBlob(function(blob){
+      if(!blob){ showToast('이미지 생성 실패'); return; }
+      var url = URL.createObjectURL(blob);
+      var isMobile=/Mobi|Android|iPhone/i.test(navigator.userAgent);
+      // 다운로드 시도
+      var a = document.createElement('a');
+      a.href = url; a.download = fname;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      // 모바일은 다운로드가 막히는 경우 많음 → 새 탭으로도 열어서 길게눌러 저장 가능하게
+      setTimeout(function(){
+        if(isMobile){
+          var w = window.open();
+          if(w){
+            w.document.write('<html><head><title>'+fname+'</title><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#222;text-align:center"><p style="color:#fff;font-family:sans-serif;font-size:14px;padding:12px">이미지를 길게 눌러 저장하세요</p><img src="'+url+'" style="width:100%;height:auto"></body></html>');
+          }
+        }
+        showToast('✓ 명세서 이미지 저장됨');
+      }, 300);
+    }, 'image/png');
   }).catch(function(e) {
     showToast('이미지 저장 실패: ' + e.message);
   });
