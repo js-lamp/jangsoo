@@ -47,7 +47,11 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 .chip.son{background:var(--A);color:#fff;border-color:var(--A)}
 .chip.gon{background:#2855A0!important;color:#fff!important;border-color:#2855A0!important;font-weight:700!important}
 .srchrow{display:flex;gap:8px;padding:7px 12px;border-bottom:1px solid var(--bdr);background:var(--sur)}
-.srch{flex:1;padding:7px 11px;font-size:13px;font-family:'Noto Sans KR',sans-serif;background:var(--sur2);border:1px solid var(--bdr);border-radius:var(--r2);outline:none;color:var(--ink)}
+.srch-wrap{flex:1;position:relative;display:flex;align-items:center}
+.srch{flex:1;padding:7px 36px 7px 11px;font-size:13px;font-family:'Noto Sans KR',sans-serif;background:var(--sur2);border:1px solid var(--bdr);border-radius:var(--r2);outline:none;color:var(--ink);width:100%}
+.micbtn{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:16px;cursor:pointer;padding:2px 5px;border-radius:6px;line-height:1}
+.micbtn.listening{background:#DC2626;animation:micPulse 1s infinite}
+@keyframes micPulse{0%,100%{opacity:1}50%{opacity:.5}}
 .srch::placeholder{color:var(--ink3);font-size:12px}
 .scanbtn{padding:7px 11px;background:var(--ink);color:#fff;border:none;border-radius:var(--r2);font-size:11px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;white-space:nowrap}
 .parsebtn{padding:5px 10px;background:var(--B,#2855A0);color:#fff;border:none;border-radius:var(--r2);font-size:10px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;white-space:nowrap;line-height:1.25}
@@ -167,6 +171,8 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 .qty-sheet{background:var(--sur);border-radius:16px 16px 0 0;padding:20px;width:100%}
 /* 관리자 */
 .admin-fab{position:fixed;bottom:20px;right:16px;width:44px;height:44px;background:var(--ink);color:#fff;border:none;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:100}
+.voice-fab{position:fixed;bottom:74px;right:16px;width:54px;height:54px;background:linear-gradient(135deg,#2855A0,#1a3d75);color:#fff;border:none;border-radius:50%;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(40,85,160,.4);z-index:100}
+.voice-fab:active{transform:scale(.94)}
 .lock-wrap{display:flex;flex-direction:column;gap:12px;padding:20px 0}
 .pin-row{display:flex;justify-content:center;gap:8px}
 .pin-dot{width:13px;height:13px;border-radius:50%;border:2px solid var(--bdr);background:transparent;transition:background .15s}
@@ -461,7 +467,10 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
     </div>
     <!-- 검색 -->
     <div class="srchrow">
-      <input class="srch" id="srchInp" type="text" placeholder="품명·별칭 검색..." oninput="onSearch(this.value)"/>
+      <div class="srch-wrap">
+        <input class="srch" id="srchInp" type="text" placeholder="품명·별칭 검색..." oninput="onSearch(this.value)"/>
+        <button class="micbtn" id="micBtn" onclick="startVoiceSearch()" title="음성 검색">🎤</button>
+      </div>
       <button class="scanbtn" onclick="openScanner('order')">📷 스캔</button>
       <button class="parsebtn" onclick="openParseMod()">📨 발주서<br>변환</button>
     </div>
@@ -634,6 +643,92 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
       </label>
       <button onclick="closeWelcome()" style="width:100%;padding:14px;background:#2855A0;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;margin-top:12px">시작하기</button>
     </div>
+  </div>
+</div>
+
+<!-- 음성 검색 오버레이 -->
+<div id="voiceOverlay" style="display:none;position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.75);flex-direction:column;align-items:center;justify-content:center" onclick="stopVoiceSearch()">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:20px" onclick="event.stopPropagation()">
+    <!-- 펄스 애니메이션 마이크 -->
+    <div style="position:relative;width:120px;height:120px;display:flex;align-items:center;justify-content:center">
+      <div id="voicePulse1" style="position:absolute;width:120px;height:120px;border-radius:50%;background:rgba(40,85,160,.3)"></div>
+      <div id="voicePulse2" style="position:absolute;width:90px;height:90px;border-radius:50%;background:rgba(40,85,160,.5)"></div>
+      <div style="position:relative;width:64px;height:64px;border-radius:50%;background:#2855A0;display:flex;align-items:center;justify-content:center;font-size:30px;z-index:2">🎤</div>
+    </div>
+    <div id="voiceStatus" style="color:#fff;font-size:17px;font-weight:700;text-align:center">듣고 있어요...</div>
+    <div id="voiceText" style="color:#FFD479;font-size:15px;min-height:24px;text-align:center;max-width:80vw;padding:0 20px"></div>
+    <div style="color:rgba(255,255,255,.6);font-size:12px;margin-top:4px">예: "투광등 50", "엣지 원형 센서등"</div>
+    <button onclick="stopVoiceSearch()" style="margin-top:10px;padding:10px 28px;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:24px;font-size:14px;font-weight:600;font-family:'Noto Sans KR',sans-serif;cursor:pointer">취소</button>
+  </div>
+</div>
+
+<style>
+@keyframes voicePulseAnim{0%{transform:scale(.8);opacity:.7}100%{transform:scale(1.4);opacity:0}}
+#voiceOverlay.active #voicePulse1{animation:voicePulseAnim 1.5s infinite}
+#voiceOverlay.active #voicePulse2{animation:voicePulseAnim 1.5s infinite .4s}
+</style>
+
+<!-- 음성 주문 마법사 -->
+<div id="voWizard" style="display:none;position:fixed;inset:0;z-index:10002;background:#1a1a2e;flex-direction:column">
+  <!-- 헤더 -->
+  <div style="padding:16px;background:#16213e;display:flex;align-items:center;gap:10px;flex-shrink:0">
+    <span style="font-size:22px">🎙️</span>
+    <div style="flex:1">
+      <div style="color:#fff;font-size:16px;font-weight:700">음성 주문</div>
+      <div id="voStepLabel" style="color:#8b9dc3;font-size:12px">1단계 · 대리점명</div>
+    </div>
+    <button onclick="voCancel()" style="background:rgba(255,255,255,.1);color:#fff;border:none;width:34px;height:34px;border-radius:50%;font-size:18px;cursor:pointer">×</button>
+  </div>
+
+  <!-- 진행 표시 -->
+  <div style="display:flex;gap:4px;padding:0 16px 12px;background:#16213e;flex-shrink:0">
+    <div class="vo-prog" data-step="1" style="flex:1;height:4px;border-radius:2px;background:#2855A0"></div>
+    <div class="vo-prog" data-step="2" style="flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.15)"></div>
+    <div class="vo-prog" data-step="3" style="flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.15)"></div>
+    <div class="vo-prog" data-step="4" style="flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.15)"></div>
+  </div>
+
+  <!-- 본문 (스크롤) -->
+  <div style="flex:1;overflow-y:auto;padding:16px">
+    <!-- 안내 문구 -->
+    <div id="voGuide" style="background:rgba(40,85,160,.2);border:1px solid rgba(40,85,160,.4);border-radius:12px;padding:14px;margin-bottom:14px;color:#cdd9ee;font-size:13px;line-height:1.7"></div>
+
+    <!-- 인식 중인 텍스트 -->
+    <div id="voLiveBox" style="display:none;background:rgba(255,212,121,.12);border:1px solid rgba(255,212,121,.3);border-radius:10px;padding:12px;margin-bottom:14px">
+      <div style="color:#FFD479;font-size:11px;margin-bottom:4px">🎤 듣는 중...</div>
+      <div id="voLiveText" style="color:#fff;font-size:15px;min-height:20px"></div>
+    </div>
+
+    <!-- 대리점명 표시 -->
+    <div id="voDealerBox" style="display:none;background:rgba(255,255,255,.06);border-radius:10px;padding:12px;margin-bottom:12px">
+      <div style="color:#8b9dc3;font-size:11px;margin-bottom:4px">🏪 대리점</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <input id="voDealerInput" style="flex:1;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:8px 10px;color:#fff;font-size:15px;font-weight:700;font-family:'Noto Sans KR',sans-serif;outline:none">
+      </div>
+    </div>
+
+    <!-- 주문 품목 목록 -->
+    <div id="voItemsBox" style="display:none;margin-bottom:12px">
+      <div style="color:#8b9dc3;font-size:11px;margin-bottom:6px">📦 주문 품목 (<span id="voItemCnt">0</span>)</div>
+      <div id="voItemsList"></div>
+    </div>
+
+    <!-- 배송/비용 선택 표시 -->
+    <div id="voDeliveryBox" style="display:none;background:rgba(255,255,255,.06);border-radius:10px;padding:12px;margin-bottom:12px">
+      <div style="color:#8b9dc3;font-size:11px;margin-bottom:4px">🚚 배송방법</div>
+      <div id="voDeliveryText" style="color:#fff;font-size:15px;font-weight:700"></div>
+    </div>
+  </div>
+
+  <!-- 하단 컨트롤 -->
+  <div style="padding:14px 16px;background:#16213e;flex-shrink:0">
+    <!-- 마이크 버튼 -->
+    <div id="voMicArea" style="display:flex;flex-direction:column;align-items:center;gap:8px">
+      <button id="voMicBtn" onclick="voToggleMic()" style="width:64px;height:64px;border-radius:50%;background:#2855A0;border:none;font-size:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(40,85,160,.5)">🎤</button>
+      <div id="voMicHint" style="color:#8b9dc3;font-size:12px">탭하여 말하기</div>
+    </div>
+    <!-- 단계별 액션 버튼 -->
+    <div id="voActions" style="display:none;gap:8px;margin-top:10px"></div>
   </div>
 </div>
 
@@ -1014,6 +1109,8 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
   </div>
 </div>
 
+<!-- 음성주문 FAB -->
+<button class="voice-fab" onclick="startVoiceOrder()" title="음성으로 주문">🎙️</button>
 <!-- 관리자 FAB -->
 <button class="admin-fab" onclick="openAdmin()">⚙️</button>
 
@@ -1427,6 +1524,394 @@ function updateBadge(){
 
 // ── 검색 ──
 function norm(s){ return (s||'').toLowerCase().replace(/\s/g,''); }
+// ── 음성 검색 ──
+var voiceRecognition = null;
+var voiceActive = false;
+
+function startVoiceSearch(){
+  // 브라우저 지원 확인
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){
+    showToast('이 브라우저는 음성 검색을 지원하지 않습니다');
+    return;
+  }
+  if(voiceActive) return;
+  voiceActive = true;
+
+  // 오버레이 표시
+  var overlay = document.getElementById('voiceOverlay');
+  overlay.style.display = 'flex';
+  overlay.classList.add('active');
+  document.getElementById('voiceStatus').textContent = '듣고 있어요...';
+  document.getElementById('voiceText').textContent = '';
+  document.getElementById('micBtn').classList.add('listening');
+
+  voiceRecognition = new SR();
+  voiceRecognition.lang = 'ko-KR';
+  voiceRecognition.continuous = false;
+  voiceRecognition.interimResults = true;  // 실시간 중간 결과
+  voiceRecognition.maxAlternatives = 1;
+
+  var finalText = '';
+
+  voiceRecognition.onresult = function(event){
+    var interim = '';
+    finalText = '';
+    for(var i=event.resultIndex; i<event.results.length; i++){
+      var transcript = event.results[i][0].transcript;
+      if(event.results[i].isFinal){
+        finalText += transcript;
+      } else {
+        interim += transcript;
+      }
+    }
+    // 실시간 표시
+    var display = finalText || interim;
+    document.getElementById('voiceText').textContent = display;
+    if(display) document.getElementById('voiceStatus').textContent = '인식 중...';
+  };
+
+  voiceRecognition.onerror = function(event){
+    console.warn('음성 인식 오류:', event.error);
+    if(event.error === 'no-speech'){
+      document.getElementById('voiceStatus').textContent = '소리가 안 들려요. 다시 시도해주세요';
+    } else if(event.error === 'not-allowed' || event.error === 'service-not-allowed'){
+      document.getElementById('voiceStatus').textContent = '마이크 권한을 허용해주세요';
+      setTimeout(stopVoiceSearch, 1500);
+    } else {
+      document.getElementById('voiceStatus').textContent = '인식 실패';
+      setTimeout(stopVoiceSearch, 1200);
+    }
+  };
+
+  voiceRecognition.onend = function(){
+    document.getElementById('micBtn').classList.remove('listening');
+    // 최종 텍스트로 검색 실행
+    if(finalText.trim()){
+      var q = finalText.trim();
+      document.getElementById('voiceStatus').textContent = '"' + q + '" 검색';
+      // 검색창에 입력하고 자동 검색
+      var inp = document.getElementById('srchInp');
+      inp.value = q;
+      onSearch(q);
+      setTimeout(function(){ closeVoiceOverlay(); }, 600);
+    } else {
+      // 인식 결과 없으면 잠시 후 닫기
+      setTimeout(function(){ closeVoiceOverlay(); }, 800);
+    }
+    voiceActive = false;
+  };
+
+  try {
+    voiceRecognition.start();
+  } catch(e){
+    console.warn('음성 시작 실패:', e);
+    showToast('음성 검색 시작 실패');
+    closeVoiceOverlay();
+  }
+}
+
+function stopVoiceSearch(){
+  if(voiceRecognition){
+    try { voiceRecognition.stop(); } catch(e){}
+  }
+  voiceActive = false;
+}
+
+function closeVoiceOverlay(){
+  var overlay = document.getElementById('voiceOverlay');
+  overlay.style.display = 'none';
+  overlay.classList.remove('active');
+  document.getElementById('micBtn').classList.remove('listening');
+  voiceActive = false;
+}
+
+// ═══════════════════════════════════════
+// 음성 주문 마법사 (단계별)
+// ═══════════════════════════════════════
+var voStep = 1;
+var voRec = null;
+var voListening = false;
+var voOrder = { dealer:'', items:[], method:'', pay:'' };
+
+var VO_GUIDES = {
+  1: '<b>1단계 · 대리점명</b><br>🎤 버튼을 누르고 <b>대리점 이름</b>을 말씀하세요.<br><span style="color:#8b9dc3">예) "지노라이팅", "샤인"</span>',
+  2: '<b>2단계 · 주문 품목</b><br>🎤 버튼을 누르고 <b>품목과 수량</b>을 말씀하세요. 여러 번 눌러 계속 추가할 수 있어요.<br><span style="color:#8b9dc3">예) "엣지 원형 직부등 주광 1박스"</span><br><br>주문을 마치려면 <b>"주문완료"</b>라고 말하거나 아래 <b>완료</b> 버튼을 누르세요.',
+  3: '<b>3단계 · 배송방법</b><br>🎤 버튼을 누르고 배송방법을 말씀하세요.<br><span style="color:#8b9dc3">자차 · 용차 · 화물 · 택배 · 퀵</span>',
+  4: '<b>4단계 · 비용구분</b><br>🎤 버튼을 누르고 비용 부담을 말씀하세요.<br><span style="color:#8b9dc3">선불(비대부) · 착불</span>'
+};
+
+function startVoiceOrder(){
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ showToast('이 브라우저는 음성 기능을 지원하지 않습니다'); return; }
+  voStep = 1;
+  voOrder = { dealer:'', items:[], method:'', pay:'' };
+  document.getElementById('voWizard').style.display = 'flex';
+  document.getElementById('voDealerBox').style.display = 'none';
+  document.getElementById('voItemsBox').style.display = 'none';
+  document.getElementById('voDeliveryBox').style.display = 'none';
+  document.getElementById('voActions').style.display = 'none';
+  voGoStep(1);
+}
+
+function voGoStep(step){
+  voStep = step;
+  // 진행 표시
+  document.querySelectorAll('.vo-prog').forEach(function(el){
+    var s = parseInt(el.getAttribute('data-step'));
+    el.style.background = s <= step ? '#2855A0' : 'rgba(255,255,255,.15)';
+  });
+  var labels = {1:'1단계 · 대리점명', 2:'2단계 · 주문 품목', 3:'3단계 · 배송방법', 4:'4단계 · 비용구분'};
+  document.getElementById('voStepLabel').textContent = labels[step] || '';
+  document.getElementById('voGuide').innerHTML = VO_GUIDES[step] || '';
+  document.getElementById('voLiveBox').style.display = 'none';
+  document.getElementById('voActions').style.display = 'none';
+  document.getElementById('voMicArea').style.display = 'flex';
+  document.getElementById('voMicHint').textContent = '탭하여 말하기';
+
+  if(step===2){
+    document.getElementById('voItemsBox').style.display = 'block';
+    voRenderItems();
+    // 완료 버튼 표시
+    var act = document.getElementById('voActions');
+    act.style.display = 'flex';
+    act.innerHTML = '<button onclick="voFinishItems()" style="flex:1;padding:13px;background:#16A34A;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer">✓ 품목 완료 → 배송방법</button>';
+  }
+}
+
+function voToggleMic(){
+  if(voListening){ voStopMic(); return; }
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  voRec = new SR();
+  voRec.lang = 'ko-KR';
+  voRec.continuous = false;
+  voRec.interimResults = true;
+  voRec.maxAlternatives = 1;
+  voListening = true;
+
+  document.getElementById('voMicBtn').style.background = '#DC2626';
+  document.getElementById('voMicHint').textContent = '듣는 중... (탭하면 중지)';
+  document.getElementById('voLiveBox').style.display = 'block';
+  document.getElementById('voLiveText').textContent = '';
+
+  var finalText = '';
+  voRec.onresult = function(e){
+    var interim=''; finalText='';
+    for(var i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal) finalText += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
+    }
+    document.getElementById('voLiveText').textContent = finalText || interim;
+  };
+  voRec.onerror = function(e){
+    if(e.error==='not-allowed'||e.error==='service-not-allowed'){
+      document.getElementById('voMicHint').textContent = '마이크 권한을 허용해주세요';
+    }
+  };
+  voRec.onend = function(){
+    voListening = false;
+    document.getElementById('voMicBtn').style.background = '#2855A0';
+    document.getElementById('voMicHint').textContent = '탭하여 말하기';
+    var txt = finalText.trim();
+    if(txt) voHandleSpeech(txt);
+    else document.getElementById('voLiveBox').style.display = 'none';
+  };
+  try { voRec.start(); } catch(err){ voListening=false; }
+}
+
+function voStopMic(){
+  if(voRec){ try{ voRec.stop(); }catch(e){} }
+  voListening = false;
+}
+
+function voHandleSpeech(text){
+  if(voStep===1){
+    // 대리점명 - DEALERS에서 매칭 시도
+    var matched = poFindDealer(text);
+    voOrder.dealer = matched || text;
+    document.getElementById('voDealerBox').style.display = 'block';
+    document.getElementById('voDealerInput').value = voOrder.dealer;
+    document.getElementById('voLiveBox').style.display = 'none';
+    // 다음 단계 버튼
+    var act = document.getElementById('voActions');
+    act.style.display = 'flex';
+    act.innerHTML = '<button onclick="voConfirmDealer()" style="flex:1;padding:13px;background:#2855A0;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer">다음 → 품목 주문</button>';
+  } else if(voStep===2){
+    // "주문완료" 감지
+    if(/주문\s*완료|완료|끝|다음/.test(text.replace(/\s/g,''))){
+      voFinishItems();
+      return;
+    }
+    // 품목 파싱 (발주서 변환 로직 재사용)
+    var blocks = poMergeBlocks(text);
+    var added = 0;
+    blocks.forEach(function(line){
+      if(!poHasProduct(line) && !/\d{4}-\d{4}/.test(line)) return;
+      var qtyMatch = line.match(/(\d+)\s*(박스|개)/);
+      var qty = qtyMatch ? parseInt(qtyMatch[1]) : 1;
+      var unit = qtyMatch ? qtyMatch[2] : '개';
+      var g = poFindByName(line);
+      if(g){
+        var ct = poExtractCt(line);
+        var v = ct ? g.variants.find(function(x){return x.ct===ct;}) : null;
+        if(!v) v = g.variants[0];
+        voOrder.items.push({code:v.code, ename:v.ename, gname:g.name, ct:v.ct, qty:qty, unit:unit});
+        added++;
+      } else {
+        voOrder.items.push({code:'?', ename:line, gname:line, ct:'-', qty:qty, unit:unit, unconfirmed:true, rawText:line});
+        added++;
+      }
+    });
+    document.getElementById('voLiveBox').style.display = 'none';
+    voRenderItems();
+    if(added) showToast('✓ '+added+'개 품목 추가');
+    else showToast('품목을 인식하지 못했어요');
+  } else if(voStep===3){
+    // 배송방법
+    var m = voMatchMethod(text);
+    if(m){
+      voOrder.method = m;
+      document.getElementById('voDeliveryBox').style.display = 'block';
+      document.getElementById('voDeliveryText').textContent = MTHE[m] || m;
+      document.getElementById('voLiveBox').style.display = 'none';
+      // 용차/퀵이면 비용단계 건너뛰고 바로 완료, 화물/택배면 비용 단계
+      if(m==='charter' || m==='quick'){
+        voOrder.pay = '';
+        var act = document.getElementById('voActions');
+        act.style.display = 'flex';
+        act.innerHTML = '<div style="flex:1;padding:11px;background:rgba(240,220,160,.15);border:1px solid rgba(240,220,160,.3);border-radius:8px;color:#FFD479;font-size:12px;line-height:1.5;text-align:center">⚠️ '+MTHL[m]+'은 배차정보만 전달됩니다 (선불 불가)</div>';
+        setTimeout(function(){
+          act.innerHTML += '<button onclick="voFinishOrder()" style="width:100%;padding:13px;background:#16A34A;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer;margin-top:8px">발주서 완성 →</button>';
+        }, 100);
+      } else if(m==='freight' || m==='parcel'){
+        voGoStep(4);
+        document.getElementById('voDeliveryBox').style.display = 'block';
+      } else {
+        // 자차 - 비용 없음
+        voOrder.pay = '';
+        var act2 = document.getElementById('voActions');
+        act2.style.display = 'flex';
+        act2.innerHTML = '<button onclick="voFinishOrder()" style="flex:1;padding:13px;background:#16A34A;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer">발주서 완성 →</button>';
+      }
+    } else {
+      showToast('배송방법을 인식하지 못했어요 (자차/용차/화물/택배/퀵)');
+    }
+  } else if(voStep===4){
+    // 비용구분
+    var p = voMatchPay(text);
+    if(p){
+      voOrder.pay = p;
+      document.getElementById('voLiveBox').style.display = 'none';
+      voFinishOrder();
+    } else {
+      showToast('비용구분을 인식하지 못했어요 (선불/비대부/착불)');
+    }
+  }
+}
+
+function voMatchMethod(text){
+  var t = text.replace(/\s/g,'');
+  if(/자차|회사차|회사차량|직접/.test(t)) return 'car';
+  if(/용차/.test(t)) return 'charter';
+  if(/화물/.test(t)) return 'freight';
+  if(/택배/.test(t)) return 'parcel';
+  if(/퀵|퀵서비스/.test(t)) return 'quick';
+  return null;
+}
+function voMatchPay(text){
+  var t = text.replace(/\s/g,'');
+  if(/선불|비대부|미리|대리점부담/.test(t)) return 'dealer';
+  if(/착불|받고|도착/.test(t)) return 'cod';
+  if(/현불|현금/.test(t)) return 'cash';
+  return null;
+}
+
+function voRenderItems(){
+  document.getElementById('voItemCnt').textContent = voOrder.items.length;
+  var box = document.getElementById('voItemsList');
+  if(!voOrder.items.length){
+    box.innerHTML = '<div style="color:#8b9dc3;font-size:13px;text-align:center;padding:16px">아직 품목이 없어요. 🎤를 눌러 말씀하세요.</div>';
+    return;
+  }
+  var h='';
+  voOrder.items.forEach(function(it, i){
+    var pname = it.unconfirmed ? ('⚠ '+(it.rawText||it.ename)) : ((it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct):''));
+    var color = it.unconfirmed ? '#DC2626' : '#fff';
+    h += '<div style="background:rgba(255,255,255,.08);border-radius:9px;padding:10px;margin-bottom:6px;display:flex;align-items:center;gap:8px">';
+    h += '<div style="flex:1"><div style="color:'+color+';font-size:13px;font-weight:600">'+pname+'</div>';
+    h += '<div style="color:#8b9dc3;font-size:11px;margin-top:2px">'+(it.code!=='?'?it.code+' · ':'')+'<span style="color:#FFD479">'+it.qty+it.unit+'</span></div></div>';
+    h += '<button onclick="voDelItem('+i+')" style="background:rgba(220,38,38,.2);color:#ff8080;border:none;width:30px;height:30px;border-radius:7px;font-size:15px;cursor:pointer">🗑</button>';
+    h += '</div>';
+  });
+  box.innerHTML = h;
+}
+
+function voDelItem(i){
+  voOrder.items.splice(i,1);
+  voRenderItems();
+}
+
+function voConfirmDealer(){
+  voOrder.dealer = document.getElementById('voDealerInput').value.trim();
+  voGoStep(2);
+}
+
+function voFinishItems(){
+  if(!voOrder.items.length){ showToast('품목을 1개 이상 추가해주세요'); return; }
+  voGoStep(3);
+}
+
+function voFinishOrder(){
+  // 발주 메시지 생성
+  var mStr = MTHE[voOrder.method] || voOrder.method;
+  if(voOrder.pay==='dealer') mStr += ' (비대부)';
+  if(voOrder.pay==='cod') mStr += ' (착불)';
+  if(voOrder.pay==='cash') mStr += ' (현불)';
+  if(voOrder.method==='charter'||voOrder.method==='quick') mStr += ' ※비대부 불가, 배차정보 주시면 대리점 입금';
+
+  var msg = dBuildMsg(voOrder.items, voOrder.dealer, '', mStr, '');
+
+  // 클립보드 복사
+  function copied(){
+    document.getElementById('voGuide').innerHTML = '<div style="text-align:center;padding:10px"><div style="font-size:40px;margin-bottom:8px">✅</div><b style="font-size:16px">복사되었습니다!</b><br><span style="color:#8b9dc3">카카오톡에 붙여넣기(길게 눌러 → 붙여넣기) 하시면 됩니다.</span></div>';
+    document.getElementById('voMicArea').style.display = 'none';
+    document.getElementById('voLiveBox').style.display = 'none';
+    var act = document.getElementById('voActions');
+    act.style.display = 'flex';
+    act.style.flexDirection = 'column';
+    act.innerHTML = '<button onclick="voCopyAgain()" style="width:100%;padding:12px;background:#2855A0;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer;margin-bottom:8px">📋 다시 복사</button>'
+      + '<button onclick="voCancel()" style="width:100%;padding:12px;background:rgba(255,255,255,.1);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer">닫기</button>';
+    // 진행 100%
+    document.querySelectorAll('.vo-prog').forEach(function(el){ el.style.background='#16A34A'; });
+    document.getElementById('voStepLabel').textContent = '완료!';
+  }
+  voLastMsg = msg;
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(msg).then(copied).catch(function(){ voFallbackCopy(msg); copied(); });
+  } else { voFallbackCopy(msg); copied(); }
+}
+
+var voLastMsg = '';
+function voCopyAgain(){
+  if(navigator.clipboard) navigator.clipboard.writeText(voLastMsg).then(function(){ showToast('✓ 복사됨'); });
+  else voFallbackCopy(voLastMsg);
+}
+function voFallbackCopy(text){
+  var ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); }catch(e){}
+  document.body.removeChild(ta);
+}
+
+function voCancel(){
+  voStopMic();
+  document.getElementById('voWizard').style.display = 'none';
+  var act = document.getElementById('voActions');
+  act.style.flexDirection = '';
+}
+
+
+
 function onSearch(q){
   if(!q.trim()){ renderCats(); renderSubs(); renderLeft(null); return; }
   var nq=norm(q);
