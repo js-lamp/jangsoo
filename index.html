@@ -490,7 +490,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
         </div>
         <div class="btn-row">
           <button class="addbtn2" id="addBtn" onclick="addToCart()" disabled>＋ 추가</button>
-          <button class="cartbtn" id="cartViewBtn" onclick="goTab('cart')">🛒 확인<br><span id="cartBtnCnt" style="font-size:9px;font-weight:400">0개</span></button>
+          <button class="cartbtn" id="cartViewBtn" onclick="goTab('cart')">📝 발주서<br><span id="cartBtnCnt" style="font-size:9px;font-weight:400">작성 0개</span></button>
         </div>
         <div class="mini-cart" id="miniCart">
           <div class="mini-cart-hd">발주 목록 <span id="miniCartCnt">0개</span></div>
@@ -640,7 +640,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 <!-- 카메라 모달 -->
 <div class="cam-modal" id="camModal">
   <p style="color:#fff;font-size:15px;font-weight:700;margin-bottom:14px">바코드를 네모 안에 맞춰주세요</p>
-  <div class="cam-wrap"><div id="scanner-vp"></div><video id="bd-video" style="display:none" playsinline muted autoplay></video><div class="scan-guide"></div></div>
+  <div class="cam-wrap"><div id="scanner-vp"></div><video id="bd-video" style="display:none;pointer-events:none" playsinline webkit-playsinline muted autoplay disablepictureinpicture controlslist="nodownload noplaybackrate"></video><div class="scan-guide"></div></div>
   <p style="color:rgba(255,255,255,.55);font-size:13px;margin-top:12px">카메라가 자동으로 바코드를 인식합니다</p>
   <p id="bdDebug" style="color:#7CFC00;font-size:12px;margin-top:6px;font-family:monospace;min-height:16px"></p>
   <button onclick="closeScanner()" style="margin-top:16px;padding:10px 28px;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:8px;font-size:14px;font-family:'Noto Sans KR',sans-serif;cursor:pointer">닫기</button>
@@ -1869,6 +1869,13 @@ function startBarcodeDetector(){
     video:{facingMode:'environment', width:{ideal:1920}, height:{ideal:1080}}
   }).then(function(stream){
     bdStream=stream;
+    // 자동재생 보장: 속성 강제 설정
+    video.muted = true;
+    video.defaultMuted = true;
+    video.setAttribute('muted','');
+    video.setAttribute('playsinline','');
+    video.playsInline = true;
+    video.controls = false;
     video.srcObject=stream;
     // 연속 자동초점 시도 (지원 기기)
     try{
@@ -1878,11 +1885,26 @@ function startBarcodeDetector(){
       if(caps.focusMode && caps.focusMode.indexOf('continuous')>=0) adv.push({focusMode:'continuous'});
       if(adv.length) track.applyConstraints({advanced:adv}).catch(function(){});
     }catch(e){}
-    video.onloadedmetadata=function(){
-      video.play().then(function(){ bdScanLoop(); }).catch(function(e){
-        console.warn('video play 실패:', e); bdScanLoop();
-      });
-    };
+    function tryPlay(){
+      var p = video.play();
+      if(p && p.then){
+        p.then(function(){ bdScanLoop(); }).catch(function(e){
+          console.warn('video play 실패, 재시도:', e);
+          // 사용자 제스처 없이 막힌 경우 잠시 후 재시도
+          setTimeout(function(){
+            video.play().then(function(){ bdScanLoop(); }).catch(function(e2){
+              console.warn('재시도 실패:', e2);
+              bdScanLoop(); // 그래도 스캔 루프는 돌림
+            });
+          }, 300);
+        });
+      } else {
+        bdScanLoop();
+      }
+    }
+    video.onloadedmetadata=function(){ tryPlay(); };
+    // onloadedmetadata가 안 불릴 경우 대비
+    if(video.readyState>=1){ tryPlay(); }
   }).catch(function(err){
     console.warn('카메라 접근 실패, Quagga 폴백:', err);
     video.style.display='none';
@@ -1894,6 +1916,8 @@ function startBarcodeDetector(){
 function bdScanLoop(){
   if(!scanning || !bdDetector){ return; }
   var video=document.getElementById('bd-video');
+  // 영상이 멈춰있으면 재생 재시도 (재생버튼 표시 방지)
+  if(video.paused && bdStream){ video.play().catch(function(){}); }
   if(video.readyState>=2 && video.videoWidth>0){
     bdDetector.detect(video).then(function(codes){
       if(codes && codes.length>0){
@@ -2422,9 +2446,10 @@ function poExtractCt(line){
 // 품명 동의어 사전 (발주표현 → 품목명 키워드)
 var PO_SYNONYMS = [
   ['블랙바디','흑색'],['블랙','흑색'],['화이트바디','백색'],['화이트','백색'],
-  ['매장','매장램프'],['다운','다운라이트'],['크립톤','미니크립톤'],
+  ['매장','매장램프'],['크립톤','미니크립톤'],
   ['엣지원형','엣지 원형'],['엣지사각','엣지 사각'],
-  ['모듈','리폼모듈'],['cfl','EL'],['CFL','EL'],['삼파장','EL'],['삼파장전구','EL']
+  ['모듈','리폼모듈'],['cfl','EL'],['CFL','EL'],['삼파장','EL'],['삼파장전구','EL'],
+  ['벌브','BULB'],['전구색벌브','BULB'],['led벌브','LED BULB'],['엘이디벌브','LED BULB']
 ];
 function poApplySynonyms(s){
   var r=s;
@@ -2462,7 +2487,9 @@ function poExtractInch(s){
 // 품명으로 품목 찾기 (키워드 점수 + 와트/인치 매칭)
 var PO_KEY_TERMS = ['직부','센서','원형','사각','센서등','직부등','백색','흑색','투명','불투명','집중','확산','국산','이너','cob'];
 // 구별 단어 (이게 발주에 있으면 해당 품목 강한 우대)
-var PO_DISTINCT = ['거실주방','거실','주방','방등','라이트','센서등','직부등','센서','직부','원형','사각','집중','확산','펜던트','다운라이트','평판','매입','벽등','벽부','투광','공장'];
+var PO_DISTINCT = ['거실주방','거실','주방','방등','라이트','센서등','직부등','센서','직부','원형','사각','집중','확산','펜던트','다운라이트','평판','매입','벽등','벽부','투광','공장','주차장','방수','작업등'];
+var PO_MODIFIERS = ['스마트','원터치','리모컨','슬림베젤','소프트','루브','엣지','퓨어','국산','에코'];
+var PO_BRANDS = ['퓨어','슬림베젤','엣지','에코','소프트','루브','국산','미니크립톤','매장램프','리폼모듈','다용도랜턴','샤인','라온','노렐','윈디','캐논','무드','멀티','BULB','MR16','PAR','촛대구','인지구','EL','FL','FPL','FHF','FDX'];
 function poFindByName(line){
   var sLine = poApplySynonyms(line);
   var nLine = poNorm(sLine);
@@ -2476,23 +2503,27 @@ function poFindByName(line){
     var hit=0, total=0;
     nameTokens.forEach(function(tok){
       var nTok=poNorm(tok);
-      if(/^\d+[wW]$/.test(tok) || /^\d+인치$/.test(tok)) return;
+      if(/^\d+[wW]$/.test(tok) || /^\d+\uc778\uce58$/.test(tok)) return;
       total++;
       if(nTok && nLine.indexOf(nTok)>=0) hit++;
     });
     var score = total>0 ? hit/total : 0;
-    if(nName && nLine.indexOf(nName)>=0) score += 1;
-    // 와트 일치 (중요)
+    if(nName && nLine.indexOf(nName)>=0) score += 1.5;
+    PO_BRANDS.forEach(function(bd){
+      var nBd=poNorm(bd);
+      var inName=nName.indexOf(nBd)>=0, inLine=nLine.indexOf(nBd)>=0;
+      if(inName && inLine) score += 1.5;
+      else if(inName && !inLine) score -= 0.8;
+    });
     var nameWatt = poExtractWatt(g.name);
     if(lineWatt && nameWatt){
-      if(lineWatt===nameWatt) score += 0.8;
-      else score -= 0.6;
+      if(lineWatt===nameWatt) score += 1.0;
+      else score -= 1.5;
     }
-    // 인치 일치
     var nameInch = poExtractInch(g.name);
     if(lineInch && nameInch){
-      if(lineInch===nameInch) score += 0.8;
-      else score -= 0.6;
+      if(lineInch===nameInch) score += 1.0;
+      else score -= 1.5;
     }
     PO_KEY_TERMS.forEach(function(kt){
       var nKt=poNorm(kt);
@@ -2502,17 +2533,22 @@ function poFindByName(line){
       else if(inName && !inLine) score -= 0.3;
       else if(!inName && inLine) score -= 0.5;
     });
-    // 구별 단어: 품명에 있는 특수 단어가 발주에도 있으면 강한 보너스, 없으면 강한 감점
     PO_DISTINCT.forEach(function(dt){
       var nDt=poNorm(dt);
       var inName = nName.indexOf(nDt)>=0;
       var inLine = nLine.indexOf(nDt)>=0;
-      if(inName && inLine) score += 1.2;       // 둘다 있으면 큰 보너스
-      else if(inName && !inLine) score -= 0.5; // 품명엔 있는데 발주에 없으면 감점
+      if(inName && inLine) score += 1.2;
+      else if(inName && !inLine) score -= 0.5;
+    });
+    PO_MODIFIERS.forEach(function(md){
+      var nMd=poNorm(md);
+      var inName = nName.indexOf(nMd)>=0;
+      var inLine = nLine.indexOf(nMd)>=0;
+      if(inName && !inLine) score -= 1.0;
     });
     if(score>bestScore){ bestScore=score; best=g; }
   }
-  return bestScore>=0.6 ? best : null;
+  return bestScore>=0.8 ? best : null;
 }
 
 // 품목어 포함 여부
@@ -3361,7 +3397,7 @@ function renderMiniCart() {
   var mcnt = document.getElementById('miniCartCnt');
   var cbcnt = document.getElementById('cartBtnCnt');
   if (!mc) return;
-  if (cbcnt) cbcnt.textContent = cart.length + '개';
+  if (cbcnt) cbcnt.textContent = '작성 ' + cart.length + '개';
   if (mcnt) mcnt.textContent = cart.length + '개';
   mc.classList.toggle('show', cart.length > 0);
   if (!cart.length) { if (ml) ml.innerHTML = ''; return; }
@@ -4066,7 +4102,7 @@ function invRender(company) {
   var gradeNote = '';
 
   // 행 생성 - 단가 잠금 여부로 분기
-  var colCount = invUnlocked ? 5 : 3; // 단가모드=5칸, 일반=3칸(코드·품명·수량 한줄)
+  var colCount = invUnlocked ? 5 : 4; // 단가모드=5칸, 일반=4칸(No·코드·품명·수량)
   var rows2 = '', totalSupply2 = 0;
   cart.forEach(function(it, i) {
     var pd = PRICES[it.code];
@@ -4081,13 +4117,15 @@ function invRender(company) {
     var pname = (it.gname || it.ename) + (it.ct && it.ct!=='-' ? ' '+ctText(it.ct) : '');
 
     if(invUnlocked){
-      // ── 단가 모드: 2줄 (코드·품명 윗줄, 숫자 아랫줄) ──
+      // ── 단가 모드: 2줄 (No·코드·품명 윗줄, 숫자 아랫줄) ──
+      var rowNoU = i + 1;
       if(it.unconfirmed){
         rows2 += '<tr class="inv-namerow"><td colspan="5" style="text-align:left;padding:6px;background:#FEF2F2;font-weight:700;font-size:10px;border:1px solid #ccc">'
-          + '<span style="color:#DC2626">⚠ 확인필요: ' + (it.rawText||it.ename) + '</span>'
+          + '<span style="color:#DC2626">' + rowNoU + '. ⚠ 확인필요: ' + (it.rawText||it.ename) + '</span>'
           + ' <button onclick="openItemFix(' + i + ')" style="background:#DC2626;color:#fff;border:none;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif;margin-left:4px">✏️ 수정</button></td></tr>';
       } else {
         rows2 += '<tr class="inv-namerow"><td colspan="5" style="text-align:left;padding:4px 6px;background:#fafafa;font-weight:700;font-size:10px;border:1px solid #ccc">'
+          + '<span style="color:#888;font-weight:700">' + rowNoU + '.</span>&nbsp;'
           + '<span style="color:#555;font-family:monospace">' + it.code + '</span>&nbsp;&nbsp;' + pname
           + ' <button onclick="openItemFix(' + i + ')" style="background:none;border:none;color:#aaa;font-size:11px;cursor:pointer;padding:0 2px">✏️</button></td></tr>';
       }
@@ -4103,9 +4141,11 @@ function invRender(company) {
         '<td style="text-align:right;white-space:nowrap">' + totItemStr + '</td>' +
         '</tr>';
     } else {
-      // ── 일반 모드: 한 줄 (코드 · 품명 · 수량) ──
+      // ── 일반 모드: 한 줄 (No · 코드 · 품명 · 수량) ──
+      var rowNo = i + 1;
       if(it.unconfirmed){
         rows2 += '<tr style="background:#FEF2F2">'
+          + '<td style="font-weight:700;color:#DC2626">' + rowNo + '</td>'
           + '<td style="font-family:monospace;font-size:9px;color:#DC2626">⚠</td>'
           + '<td class="left" style="color:#DC2626;font-weight:600">' + (it.rawText||it.ename)
           + ' <button onclick="openItemFix(' + i + ')" style="background:#DC2626;color:#fff;border:none;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif">✏️수정</button></td>'
@@ -4113,6 +4153,7 @@ function invRender(company) {
           + '</tr>';
       } else {
         rows2 += '<tr>'
+          + '<td style="font-weight:700;color:#888">' + rowNo + '</td>'
           + '<td style="font-family:monospace;font-size:9px;color:#555;white-space:nowrap">' + it.code + '</td>'
           + '<td class="left" style="font-weight:600">' + pname
           + ' <button onclick="openItemFix(' + i + ')" style="background:none;border:none;color:#bbb;font-size:10px;cursor:pointer;padding:0 1px">✏️</button></td>'
@@ -4121,13 +4162,13 @@ function invRender(company) {
       }
     }
   });
-  // 빈 행
-  var emptyRows2 = Math.max(0, 5 - cart.length);
+  // 빈 행 (명세서 양식 길게 - 최소 15줄)
+  var emptyRows2 = Math.max(0, 15 - cart.length);
   for (var i = 0; i < emptyRows2; i++) {
     if(invUnlocked){
       rows2 += '<tr><td colspan="5" style="padding:9px;border:1px solid #ccc">&nbsp;</td></tr>';
     } else {
-      rows2 += '<tr><td style="padding:9px;border:1px solid #ccc">&nbsp;</td><td></td><td></td></tr>';
+      rows2 += '<tr><td style="padding:9px;border:1px solid #ccc">&nbsp;</td><td></td><td></td><td></td></tr>';
     }
   }
   var vat2 = Math.round(totalSupply2 * 0.1);
@@ -4176,8 +4217,8 @@ function invRender(company) {
       '<colgroup><col style="width:18%"/><col style="width:20%"/><col style="width:23%"/><col style="width:18%"/><col style="width:21%"/></colgroup>' +
       '<thead><tr><th>수량</th><th>단가</th><th>금액</th><th>부가세</th><th>총금액</th></tr></thead>'
       :
-      '<colgroup><col style="width:24%"/><col style="width:58%"/><col style="width:18%"/></colgroup>' +
-      '<thead><tr><th>코드</th><th style="text-align:left;padding-left:6px">품명</th><th>수량</th></tr></thead>'
+      '<colgroup><col style="width:10%"/><col style="width:22%"/><col style="width:50%"/><col style="width:18%"/></colgroup>' +
+      '<thead><tr><th>No.</th><th>코드</th><th style="text-align:left;padding-left:6px">품명</th><th>수량</th></tr></thead>'
     ) +
     '<tbody>' + rows2 + '</tbody>' +
     (invUnlocked ?
@@ -4283,13 +4324,13 @@ function invBuildExcel() {
 
     // 헤더
     if(invUnlocked){
-      aoa.push(['코드','품명','수량','단가','금액','부가세','총금액']);
+      aoa.push(['No.','코드','품명','수량','단가','금액','부가세','총금액']);
     } else {
-      aoa.push(['코드','품명','수량']);
+      aoa.push(['No.','코드','품명','수량']);
     }
 
     var totalSupply=0;
-    cart.forEach(function(it){
+    cart.forEach(function(it, idx){
       var pd = PRICES[it.code];
       var unitPrice = 0;
       if(pd && invGrade && pd.p[invGrade]) unitPrice = pd.p[invGrade];
@@ -4300,23 +4341,23 @@ function invBuildExcel() {
       var pname = (it.gname||it.ename) + (it.ct&&it.ct!=='-' ? ' '+ctText(it.ct) : '');
       if(invUnlocked){
         totalSupply += amount;
-        aoa.push([it.code, pname, qtyEach, unitPrice||'', amount||'', vat||'', (amount+vat)||'']);
+        aoa.push([idx+1, it.code, pname, qtyEach, unitPrice||'', amount||'', vat||'', (amount+vat)||'']);
       } else {
-        aoa.push([it.code, pname, qtyEach]);
+        aoa.push([idx+1, it.code, pname, qtyEach]);
       }
     });
 
     if(invUnlocked){
       var totVat = Math.round(totalSupply*0.1);
       aoa.push([]);
-      aoa.push(['','합계','','',totalSupply, totVat, totalSupply+totVat]);
+      aoa.push(['','','합계','','',totalSupply, totVat, totalSupply+totVat]);
     }
 
     var ws = XLSX.utils.aoa_to_sheet(aoa);
     // 컬럼 너비
     ws['!cols'] = invUnlocked
-      ? [{wch:12},{wch:30},{wch:8},{wch:12},{wch:14},{wch:12},{wch:14}]
-      : [{wch:12},{wch:34},{wch:8}];
+      ? [{wch:5},{wch:12},{wch:30},{wch:8},{wch:12},{wch:14},{wch:12},{wch:14}]
+      : [{wch:5},{wch:12},{wch:34},{wch:8}];
     var wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '거래명세서');
 
@@ -4358,23 +4399,14 @@ function invCapture(el) {
     canvas.toBlob(function(blob){
       if(!blob){ showToast('이미지 생성 실패'); return; }
       var url = URL.createObjectURL(blob);
-      var isMobile=/Mobi|Android|iPhone/i.test(navigator.userAgent);
-      // 다운로드 시도
+      // 다운로드 (한 장)
       var a = document.createElement('a');
       a.href = url; a.download = fname;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      // 모바일은 다운로드가 막히는 경우 많음 → 새 탭으로도 열어서 길게눌러 저장 가능하게
-      setTimeout(function(){
-        if(isMobile){
-          var w = window.open();
-          if(w){
-            w.document.write('<html><head><title>'+fname+'</title><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#222;text-align:center"><p style="color:#fff;font-family:sans-serif;font-size:14px;padding:12px">이미지를 길게 눌러 저장하세요</p><img src="'+url+'" style="width:100%;height:auto"></body></html>');
-          }
-        }
-        showToast('✓ 명세서 이미지 저장됨');
-      }, 300);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+      showToast('✓ 명세서 이미지 저장됨');
     }, 'image/png');
   }).catch(function(e) {
     showToast('이미지 저장 실패: ' + e.message);
