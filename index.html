@@ -173,6 +173,8 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 .admin-fab{position:fixed;bottom:20px;right:16px;width:44px;height:44px;background:var(--ink);color:#fff;border:none;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:100}
 .voice-fab{position:fixed;bottom:74px;right:16px;width:54px;height:54px;background:linear-gradient(135deg,#2855A0,#1a3d75);color:#fff;border:none;border-radius:50%;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(40,85,160,.4);z-index:100}
 .voice-fab:active{transform:scale(.94)}
+.voice-order-btn{flex:0 0 auto;width:42px;background:linear-gradient(135deg,#2855A0,#1a3d75);color:#fff;border:none;border-radius:var(--r2);font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.voice-order-btn:active{transform:scale(.94)}
 .lock-wrap{display:flex;flex-direction:column;gap:12px;padding:20px 0}
 .pin-row{display:flex;justify-content:center;gap:8px}
 .pin-dot{width:13px;height:13px;border-radius:50%;border:2px solid var(--bdr);background:transparent;transition:background .15s}
@@ -360,7 +362,22 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 .parsebox{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:640px;height:90vh;display:flex;flex-direction:column;overflow:hidden}
 .parsehd{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:13px 16px;border-bottom:1px solid var(--bdr)}
 .parsehd-t{font-size:15px;font-weight:700;flex:1}
-.parse-ta{width:100%;flex:1;padding:12px;font-size:12px;font-family:monospace;border:none;outline:none;resize:none;color:var(--ink);background:var(--sur2)}
+.parse-split{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+@media(min-width:560px){.parse-split{flex-direction:row}}
+.parse-left{flex:1;display:flex;flex-direction:column;min-height:0;border-bottom:2px solid var(--bdr)}
+@media(min-width:560px){.parse-left{border-bottom:none;border-right:2px solid var(--bdr)}}
+.parse-right{flex:1;display:flex;flex-direction:column;min-height:0;background:var(--sur2)}
+.parse-col-label{flex-shrink:0;padding:8px 12px;font-size:11px;font-weight:700;color:var(--ink2);background:var(--A3);border-bottom:1px solid var(--bdr)}
+.parse-ta{width:100%;flex:1;padding:12px;font-size:13px;font-family:monospace;border:none;outline:none;resize:none;color:var(--ink);background:#fff;min-height:120px}
+.parse-preview-btn{flex-shrink:0;margin:8px;padding:11px;background:var(--B,#2855A0);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer}
+.parse-preview-list{flex:1;overflow-y:auto;padding:8px}
+.pp-item{background:#fff;border:1px solid var(--bdr);border-radius:8px;padding:8px 10px;margin-bottom:6px}
+.pp-item.ok{border-left:3px solid #22C55E}
+.pp-item.fail{border-left:3px solid #DC2626;background:#FEF2F2}
+.pp-raw{font-size:10px;color:var(--ink3);margin-bottom:2px}
+.pp-name{font-size:12px;font-weight:700;color:var(--ink)}
+.pp-code{font-size:10px;color:var(--ink2);font-family:monospace}
+.pp-qty{font-size:11px;font-weight:700;color:var(--B,#2855A0)}
 .parse-foot{flex-shrink:0;padding:10px 16px 16px;border-top:1px solid var(--bdr);display:flex;gap:8px}
 .parse-btn{flex:1;padding:12px;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer}
 .parse-btn.primary{background:var(--A);color:#fff}
@@ -424,6 +441,14 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
     <div id="mgrHdName" style="font-size:12px;font-weight:700;color:#fff"></div>
     <div id="mgrHdPhone" style="font-size:10px;color:rgba(255,255,255,.6)"></div>
   </div>
+  <button onclick="changeFontSize(-1)" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:14px;cursor:pointer;padding:2px 5px;display:flex;flex-direction:column;align-items:center;gap:1px" title="글자 작게">
+    <span style="font-size:13px;font-weight:700">A-</span>
+    <span style="font-size:7px;opacity:.7">작게</span>
+  </button>
+  <button onclick="changeFontSize(1)" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:14px;cursor:pointer;padding:2px 5px;display:flex;flex-direction:column;align-items:center;gap:1px" title="글자 크게">
+    <span style="font-size:16px;font-weight:700">A+</span>
+    <span style="font-size:7px;opacity:.7">크게</span>
+  </button>
   <button onclick="openHelp()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:14px;cursor:pointer;padding:2px 4px;display:flex;flex-direction:column;align-items:center;gap:1px">
     <span>❓</span>
     <span style="font-size:8px;opacity:.8">설명서</span>
@@ -452,6 +477,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
     <!-- 대리점 + 담당자 -->
     <div class="store-row">
       <input class="store-inp" id="storeName" type="text" placeholder="🏪 대리점 이름 입력"/>
+      <button class="voice-order-btn" onclick="startVoiceOrder()" title="음성으로 주문">🎙️</button>
       <button class="mgr-btn" id="mgrBtn" onclick="openMgrModal()">👤 <span id="mgrBtnTxt">담당자 설정</span></button>
     </div>
 
@@ -664,6 +690,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 
 <style>
 @keyframes voicePulseAnim{0%{transform:scale(.8);opacity:.7}100%{transform:scale(1.4);opacity:0}}
+@keyframes voMicPulse{0%,100%{box-shadow:0 4px 16px rgba(220,38,38,.5)}50%{box-shadow:0 4px 28px rgba(220,38,38,.9)}}
 #voiceOverlay.active #voicePulse1{animation:voicePulseAnim 1.5s infinite}
 #voiceOverlay.active #voicePulse2{animation:voicePulseAnim 1.5s infinite .4s}
 </style>
@@ -729,6 +756,13 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
     </div>
     <!-- 단계별 액션 버튼 -->
     <div id="voActions" style="display:none;gap:8px;margin-top:10px"></div>
+  </div>
+</div>
+
+<!-- 음성주문 품목 선택창 -->
+<div id="voPickMod" style="display:none;position:fixed;inset:0;z-index:10003;background:rgba(10,10,30,.85);align-items:center;justify-content:center;padding:18px">
+  <div style="background:#16213e;border-radius:14px;max-width:400px;width:100%;max-height:80vh;overflow-y:auto;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,.5)">
+    <div id="voPickList"></div>
   </div>
 </div>
 
@@ -1017,12 +1051,26 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
       <button onclick="closeParseMod()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--ink2);line-height:1">&#215;</button>
     </div>
     <div style="padding:10px 16px;font-size:11px;color:var(--ink2);background:var(--A3);border-bottom:1px solid var(--bdr)">
-      받은 발주서를 그대로 붙여넣으세요. <b>ERP코드</b>뿐 아니라 <b>품명(예: 10" 엣지 원형직부 주광 1박스)</b>도 자동 인식합니다. 색온도(주광/전구/주백)와 수량도 함께 읽어요.
+      왼쪽에 발주 내용을 붙여넣고 <b>미리보기</b>를 누르면 오른쪽에 매칭 결과가 표시됩니다. 동일 품목군(예: 슬림샤인 엣지)은 위에 한 번만 적어도 됩니다. 빨간색은 왼쪽에서 수정하세요.
     </div>
-    <textarea class="parse-ta" id="parseTa" placeholder="예시 1 (코드):&#10;6873-1162  LED 퓨어 사각 방등 50W  /  6개&#10;&#10;예시 2 (품명):&#10;10\&quot; 엣지 원형직부&#10;주광 1박스&#10;&#10;미니크립톤 5W 17B 전구 2박스&#10;&#10;카톡 발주를 그대로 붙여넣으세요"></textarea>
+    <div class="parse-split">
+      <!-- 왼쪽: 입력/수정 -->
+      <div class="parse-left">
+        <div class="parse-col-label">📝 발주 내용 (수정 가능)</div>
+        <textarea class="parse-ta" id="parseTa" oninput="parsePreviewDebounced()" placeholder="붙여넣기 예시:&#10;&#10;슬림샤인 엣지&#10;1280*320 주광색 40개&#10;640*320 주광색 4개&#10;&#10;(품목군은 위에 한 번만 적어도 됩니다)"></textarea>
+        <button class="parse-preview-btn" onclick="parsePreview()">🔍 미리보기 (매칭 확인)</button>
+      </div>
+      <!-- 오른쪽: 미리보기 -->
+      <div class="parse-right">
+        <div class="parse-col-label">👀 매칭 미리보기</div>
+        <div id="parsePreviewList" class="parse-preview-list">
+          <div style="text-align:center;color:var(--ink3);font-size:12px;padding:30px 10px">왼쪽에 발주 내용을 입력하고<br><b>미리보기</b>를 누르면<br>매칭 결과가 여기 표시됩니다</div>
+        </div>
+      </div>
+    </div>
     <div class="parse-foot">
       <button class="parse-btn secondary" onclick="closeParseMod()">취소</button>
-      <button class="parse-btn primary" onclick="parseOrder()">📋 명세서 변환</button>
+      <button class="parse-btn primary" onclick="parseOrder()">📋 명세서 만들기</button>
     </div>
   </div>
 </div>
@@ -1109,8 +1157,6 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
   </div>
 </div>
 
-<!-- 음성주문 FAB -->
-<button class="voice-fab" onclick="startVoiceOrder()" title="음성으로 주문">🎙️</button>
 <!-- 관리자 FAB -->
 <button class="admin-fab" onclick="openAdmin()">⚙️</button>
 
@@ -1191,6 +1237,23 @@ var bcImgBase64=null;
 
 // ── 탭 ──
 var TABS=['order','notice','fav','cart','bc'];
+// 화면 글자 크기 조절
+var appFontScale = parseFloat(localStorage.getItem('jsFontScale') || '1');
+function applyFontScale(){
+  // zoom 우선 (크롬/삼성브라우저), 미지원 시 transform
+  if('zoom' in document.body.style || true){
+    document.body.style.zoom = appFontScale;
+  }
+}
+function changeFontSize(dir){
+  appFontScale += dir * 0.1;
+  if(appFontScale < 0.8) appFontScale = 0.8;
+  if(appFontScale > 1.5) appFontScale = 1.5;
+  appFontScale = Math.round(appFontScale*10)/10;
+  localStorage.setItem('jsFontScale', String(appFontScale));
+  applyFontScale();
+  showToast('글자 크기 ' + Math.round(appFontScale*100) + '%');
+}
 function goTab(id, btn){
   TABS.forEach(function(t){
     var el=document.getElementById('p-'+t);
@@ -1634,11 +1697,12 @@ var voRec = null;
 var voListening = false;
 var voOrder = { dealer:'', items:[], method:'', pay:'' };
 
+var VO_NOTE = '<div style="margin-top:10px;padding:8px 10px;background:rgba(255,212,121,.12);border-radius:7px;color:#FFD479;font-size:11px;line-height:1.5">⚠️ 음성 인식이라 100%는 아니에요. 화면에서 확인 후 수정하세요.</div>';
 var VO_GUIDES = {
-  1: '<b>1단계 · 대리점명</b><br>🎤 버튼을 누르고 <b>대리점 이름</b>을 말씀하세요.<br><span style="color:#8b9dc3">예) "지노라이팅", "샤인"</span>',
-  2: '<b>2단계 · 주문 품목</b><br>🎤 버튼을 누르고 <b>품목과 수량</b>을 말씀하세요. 여러 번 눌러 계속 추가할 수 있어요.<br><span style="color:#8b9dc3">예) "엣지 원형 직부등 주광 1박스"</span><br><br>주문을 마치려면 <b>"주문완료"</b>라고 말하거나 아래 <b>완료</b> 버튼을 누르세요.',
-  3: '<b>3단계 · 배송방법</b><br>🎤 버튼을 누르고 배송방법을 말씀하세요.<br><span style="color:#8b9dc3">자차 · 용차 · 화물 · 택배 · 퀵</span>',
-  4: '<b>4단계 · 비용구분</b><br>🎤 버튼을 누르고 비용 부담을 말씀하세요.<br><span style="color:#8b9dc3">선불(비대부) · 착불</span>'
+  1: '<b>1단계 · 대리점명</b><br>🎤 버튼을 누르고 <b>대리점 이름</b>을 말씀하세요.<br><span style="color:#8b9dc3">예) "지노라이팅", "샤인"</span>' + VO_NOTE,
+  2: '<b>2단계 · 주문 품목</b><br>🎤 버튼을 누르고 <b>품목과 수량</b>을 말씀하세요. 한 번에 여러 개를 이어서 말해도 돼요.<br><span style="color:#8b9dc3">예) "엣지 원형 직부등 주광 1박스, 미니크립톤 5와트 2박스"</span><br><br>✅ 다 말했으면 <b>"주문완료"</b>라고 말하거나 아래 <b>품목 완료</b> 버튼을 누르세요.' + VO_NOTE,
+  3: '<b>3단계 · 배송방법</b><br>🎤 버튼을 누르고 배송방법을 말씀하세요.<br><span style="color:#8b9dc3">자차 · 용차 · 화물 · 택배 · 퀵</span>' + VO_NOTE,
+  4: '<b>4단계 · 비용구분</b><br>🎤 버튼을 누르고 비용 부담을 말씀하세요.<br><span style="color:#8b9dc3">선불(비대부) · 착불</span>' + VO_NOTE
 };
 
 function startVoiceOrder(){
@@ -1679,40 +1743,66 @@ function voGoStep(step){
   }
 }
 
+var voAccumText = '';      // 누적된 최종 텍스트
+var voManualStop = false;  // 사용자가 직접 멈춤
 function voToggleMic(){
-  if(voListening){ voStopMic(); return; }
+  if(voListening){ voManualStop = true; voStopMic(); return; }
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   voRec = new SR();
   voRec.lang = 'ko-KR';
-  voRec.continuous = false;
+  // 품목 단계(2)는 길게 여러개 받도록 continuous, 나머지는 단답
+  voRec.continuous = (voStep === 2);
   voRec.interimResults = true;
   voRec.maxAlternatives = 1;
   voListening = true;
+  voManualStop = false;
+  voAccumText = '';
 
-  document.getElementById('voMicBtn').style.background = '#DC2626';
-  document.getElementById('voMicHint').textContent = '듣는 중... (탭하면 중지)';
+  var mb=document.getElementById('voMicBtn'); mb.style.background = '#DC2626'; mb.style.animation='voMicPulse 1s infinite';
+  document.getElementById('voMicHint').textContent = (voStep===2)
+    ? '듣는 중... 품목을 말하고, 끝나면 아래 완료를 누르세요'
+    : '듣는 중... (탭하면 중지)';
   document.getElementById('voLiveBox').style.display = 'block';
   document.getElementById('voLiveText').textContent = '';
 
-  var finalText = '';
   voRec.onresult = function(e){
-    var interim=''; finalText='';
+    var interim='';
     for(var i=e.resultIndex;i<e.results.length;i++){
-      if(e.results[i].isFinal) finalText += e.results[i][0].transcript;
-      else interim += e.results[i][0].transcript;
+      if(e.results[i].isFinal){
+        voAccumText += e.results[i][0].transcript + ' ';
+      } else {
+        interim += e.results[i][0].transcript;
+      }
     }
-    document.getElementById('voLiveText').textContent = finalText || interim;
+    // 누적 + 현재 말하는 중 텍스트 표시
+    document.getElementById('voLiveText').textContent = (voAccumText + interim).trim();
+    // 2단계에서 "주문완료" 음성 감지 시 즉시 종료
+    if(voStep===2){
+      var combined = (voAccumText + interim).replace(/\s/g,'');
+      if(/주문완료|주문끝|끝났어|다음단계/.test(combined)){
+        voManualStop = true;
+        // "주문완료" 단어는 품목에서 제거
+        voAccumText = voAccumText.replace(/주문\s*완료|주문\s*끝|끝났어|다음\s*단계/g,'');
+        voStopMic();
+      }
+    }
   };
   voRec.onerror = function(e){
     if(e.error==='not-allowed'||e.error==='service-not-allowed'){
       document.getElementById('voMicHint').textContent = '마이크 권한을 허용해주세요';
+      voListening=false;
     }
+    // no-speech 오류는 무시 (계속 듣기)
   };
   voRec.onend = function(){
+    // 2단계 continuous 모드에서 자동 종료된 경우(사용자가 안 멈췄으면) 다시 시작
+    if(voStep===2 && voListening && !voManualStop){
+      try { voRec.start(); return; } catch(err){}
+    }
     voListening = false;
-    document.getElementById('voMicBtn').style.background = '#2855A0';
+    var mb2=document.getElementById('voMicBtn'); mb2.style.background = '#2855A0'; mb2.style.animation='';
     document.getElementById('voMicHint').textContent = '탭하여 말하기';
-    var txt = finalText.trim();
+    var txt = voAccumText.trim();
     if(txt) voHandleSpeech(txt);
     else document.getElementById('voLiveBox').style.display = 'none';
   };
@@ -1720,8 +1810,25 @@ function voToggleMic(){
 }
 
 function voStopMic(){
-  if(voRec){ try{ voRec.stop(); }catch(e){} }
   voListening = false;
+  if(voRec){ try{ voRec.stop(); }catch(e){} }
+}
+
+// 음성 텍스트를 여러 품목으로 분리
+// "엣지 원형 직부등 주광 1박스 미니크립톤 5와트 2박스" → 2개로
+function voSplitItems(text){
+  // 쉼표/그리고/하고로 1차 분리
+  var parts = text.split(/[,，]|\s+그리고\s+|\s+하고\s+|\s+또\s+/);
+  var result = [];
+  parts.forEach(function(p){
+    p = p.trim();
+    if(!p) return;
+    // 수량단위(N박스/N개) 뒤에 마커 삽입 후 분리 (lookbehind 대신 호환 방식)
+    var marked = p.replace(/(\d+\s*(?:박스|개))/g, '$1\u0001');
+    var segs = marked.split('\u0001');
+    segs.forEach(function(s){ s=s.trim(); if(s) result.push(s); });
+  });
+  return result.length ? result : [text];
 }
 
 function voHandleSpeech(text){
@@ -1742,30 +1849,48 @@ function voHandleSpeech(text){
       voFinishItems();
       return;
     }
-    // 품목 파싱 (발주서 변환 로직 재사용)
-    var blocks = poMergeBlocks(text);
+    // 음성 품목 분리
+    var blocks = voSplitItems(text);
     var added = 0;
+    var ambiguous = []; // 애매한 품목 (선택창 띄울 것)
     blocks.forEach(function(line){
+      line = line.trim();
+      if(!line) return;
       if(!poHasProduct(line) && !/\d{4}-\d{4}/.test(line)) return;
       var qtyMatch = line.match(/(\d+)\s*(박스|개)/);
       var qty = qtyMatch ? parseInt(qtyMatch[1]) : 1;
       var unit = qtyMatch ? qtyMatch[2] : '개';
-      var g = poFindByName(line);
-      if(g){
-        var ct = poExtractCt(line);
+      var ct = poExtractCt(line);
+      // 후보 조회
+      var cands = poFindCandidates(line, 6);
+      if(cands.length===0){
+        voOrder.items.push({code:'?', ename:line, gname:line, ct:'-', qty:qty, unit:unit, unconfirmed:true, rawText:line});
+        added++;
+        return;
+      }
+      // 1등이 2등보다 충분히 높으면(명확) 바로 채택, 아니면 선택창
+      var clear = (cands.length===1) || (cands[0].score - cands[1].score >= 1.2);
+      if(clear && cands[0].score>=1.5){
+        var g=cands[0].g;
         var v = ct ? g.variants.find(function(x){return x.ct===ct;}) : null;
         if(!v) v = g.variants[0];
         voOrder.items.push({code:v.code, ename:v.ename, gname:g.name, ct:v.ct, qty:qty, unit:unit});
         added++;
       } else {
-        voOrder.items.push({code:'?', ename:line, gname:line, ct:'-', qty:qty, unit:unit, unconfirmed:true, rawText:line});
-        added++;
+        // 애매 → 선택창 대기열
+        ambiguous.push({line:line, qty:qty, unit:unit, ct:ct, cands:cands});
       }
     });
     document.getElementById('voLiveBox').style.display = 'none';
     voRenderItems();
     if(added) showToast('✓ '+added+'개 품목 추가');
-    else showToast('품목을 인식하지 못했어요');
+    // 애매한 품목 선택창 순차 표시
+    if(ambiguous.length){
+      voPickQueue = ambiguous;
+      voShowNextPick();
+    } else if(!added){
+      showToast('품목을 인식하지 못했어요');
+    }
   } else if(voStep===3){
     // 배송방법
     var m = voMatchMethod(text);
@@ -1824,6 +1949,47 @@ function voMatchPay(text){
   if(/착불|받고|도착/.test(t)) return 'cod';
   if(/현불|현금/.test(t)) return 'cash';
   return null;
+}
+
+// 애매한 품목 선택창
+var voPickQueue = [];
+var voPickCur = null;
+function voShowNextPick(){
+  if(!voPickQueue.length){ voPickCur=null; return; }
+  voPickCur = voPickQueue.shift();
+  var modal = document.getElementById('voPickMod');
+  var item = voPickCur;
+  var h = '<div style="color:#8b9dc3;font-size:12px;margin-bottom:4px">🎤 "'+item.line+'"</div>';
+  h += '<div style="color:#fff;font-size:15px;font-weight:700;margin-bottom:12px">어떤 품목인가요? <span style="color:#FFD479">('+item.qty+item.unit+')</span></div>';
+  item.cands.forEach(function(c){
+    var g=c.g;
+    // 색온도 맞는 variant 우선
+    var v = item.ct ? g.variants.find(function(x){return x.ct===item.ct;}) : null;
+    if(!v) v=g.variants[0];
+    var ctL = (v.ct&&v.ct!=='-')?ctText(v.ct):'';
+    h += '<button onclick="voPickChoose(\''+v.code+'\')" style="display:block;width:100%;text-align:left;padding:12px;margin-bottom:7px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:9px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:Noto Sans KR,sans-serif">'+g.name+(ctL?' <span style="color:#8b9dc3">'+ctL+'</span>':'')+'<br><span style="font-size:10px;color:#8b9dc3;font-family:monospace">'+v.code+'</span></button>';
+  });
+  h += '<button onclick="voPickSkip()" style="display:block;width:100%;padding:11px;margin-top:6px;background:rgba(220,38,38,.2);border:none;border-radius:9px;color:#ff8080;font-size:13px;font-weight:600;cursor:pointer;font-family:Noto Sans KR,sans-serif">⚠ 목록에 없음 (나중에 수정)</button>';
+  document.getElementById('voPickList').innerHTML = h;
+  modal.style.display = 'flex';
+}
+function voPickChoose(code){
+  var found=null;
+  for(var i=0;i<G.length;i++){ for(var j=0;j<G[i].variants.length;j++){ if(G[i].variants[j].code===code){ found={g:G[i],v:G[i].variants[j]}; break; } } if(found)break; }
+  if(found && voPickCur){
+    voOrder.items.push({code:found.v.code, ename:found.v.ename, gname:found.g.name, ct:found.v.ct, qty:voPickCur.qty, unit:voPickCur.unit});
+    voRenderItems();
+  }
+  document.getElementById('voPickMod').style.display='none';
+  setTimeout(voShowNextPick, 200);
+}
+function voPickSkip(){
+  if(voPickCur){
+    voOrder.items.push({code:'?', ename:voPickCur.line, gname:voPickCur.line, ct:'-', qty:voPickCur.qty, unit:voPickCur.unit, unconfirmed:true, rawText:voPickCur.line});
+    voRenderItems();
+  }
+  document.getElementById('voPickMod').style.display='none';
+  setTimeout(voShowNextPick, 200);
 }
 
 function voRenderItems(){
@@ -2290,14 +2456,22 @@ async function aiReadImg(){
   var parts=bcImgBase64.split(',');
   var mediaType=parts[0].replace('data:','').replace(';base64','');
   var b64=parts[1];
-  var prompt='이 발주서 이미지에서 바코드(또는 품목코드)와 수량을 모두 추출해주세요.\n'+
-    '다음 형식으로만 응답하세요:\n8809025001885  2박스\n8809025008044  50개\n\n'+
-    '바코드가 없고 품명만 있으면 품명을 그대로 써주세요.\n수량이 없으면 바코드만 써주세요.';
+  var prompt='이 발주서(주문서) 이미지를 분석하세요. 표 형태의 발주서로, 각 행에 상품코드(바코드 번호)·상품명·수량이 있습니다.\n\n'+
+    '각 행에서 다음을 추출하세요:\n'+
+    '1) 바코드 번호: 8 또는 13자리 숫자 (예: 8809025008044). 열 위치는 상관없이 13자리(또는 8자리) 연속 숫자를 찾으세요.\n'+
+    '2) 수량: 해당 행의 수량 숫자와 단위(박스/개)\n\n'+
+    '다음 형식으로만 응답하세요. 다른 설명 없이 한 줄에 하나씩:\n'+
+    '8809025008044  50개\n8809025001885  2박스\n\n'+
+    '규칙:\n'+
+    '- 바코드 번호(13자리/8자리 숫자)를 최우선으로 정확히 읽으세요. 숫자 하나도 틀리면 안 됩니다.\n'+
+    '- 바코드가 안 보이고 품명만 있으면 품명을 그대로 쓰세요.\n'+
+    '- 수량이 없으면 바코드 번호만 쓰세요.\n'+
+    '- 합계나 총계 행은 제외하세요.';
   try{
     var resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,
         messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:mediaType,data:b64}},{type:'text',text:prompt}]}]})
     });
     var data=await resp.json();
@@ -2409,9 +2583,9 @@ function bdScanLoop(){
         var bc=codes[0].rawValue;
         var dbg=document.getElementById('bdDebug');
         if(dbg) dbg.textContent='읽음: '+bc;
-        // 연속 같은 값 검증 (오인식 방지) - BarcodeDetector는 1회로 충분
+        // 연속 2회 검증 (오인식 방지)
         if(bc===bdLastCode){ bdSameCount++; } else { bdLastCode=bc; bdSameCount=1; }
-        if(bdSameCount>=1){ onBarcodeFound(bc); return; }
+        if(bdSameCount>=2){ onBarcodeFound(bc); return; }
       }
       bdRAF=requestAnimationFrame(bdScanLoop);
     }).catch(function(e){
@@ -2443,26 +2617,44 @@ function startQuagga(){
   });
 }
 
+var bdProcessing = false;
 function onBarcodeFound(bc){
-  closeScanner();
-  // 짧은 진동 (지원 시)
-  if(navigator.vibrate) navigator.vibrate(80);
-  if(scanMode==='bc'){
-    var p=bcMap[bc];
-    if(p) openQtyModal(p,bc);
-    else showToast('⚠ 미등록 바코드: '+bc);
-  } else {
-    var p2=bcMap[bc];
-    if(p2){
-      var g=G.find(function(gr){return gr.variants.some(function(v){return v.bc===bc;});});
-      if(g){ selProduct(g); var vi=g.variants.findIndex(function(v){return v.bc===bc;}); if(vi>=0) setTimeout(function(){selV(vi);},50); }
-    } else showToast('⚠ 미등록 바코드: '+bc);
-  }
+  if(bdProcessing) return;
+  bdProcessing = true;
+  // 스캔 루프 멈춤 (카메라는 잠깐 유지)
+  scanning = false;
+  if(bdRAF){ cancelAnimationFrame(bdRAF); bdRAF=null; }
+  try{ Quagga.offDetected(); }catch(e){}
+  // 강한 진동 (인식 확인)
+  if(navigator.vibrate) navigator.vibrate([100,50,100]);
+  // 화면에 "인식됨!" 크게 표시
+  var dbg=document.getElementById('bdDebug');
+  if(dbg){ dbg.innerHTML='<span style="color:#22C55E;font-size:18px;font-weight:800">✓ 인식됨!</span><br><span style="font-size:13px">'+bc+'</span>'; }
+  var guide=document.querySelector('.scan-guide');
+  if(guide){ guide.style.borderColor='#22C55E'; guide.style.boxShadow='0 0 0 9999px rgba(34,197,94,.25)'; }
+  // 1초 후 처리
+  setTimeout(function(){
+    closeScanner();
+    bdProcessing = false;
+    if(guide){ guide.style.borderColor=''; guide.style.boxShadow=''; }
+    if(scanMode==='bc'){
+      var p=bcMap[bc];
+      if(p) openQtyModal(p,bc);
+      else showToast('⚠ 미등록 바코드: '+bc);
+    } else {
+      var p2=bcMap[bc];
+      if(p2){
+        var g=G.find(function(gr){return gr.variants.some(function(v){return v.bc===bc;});});
+        if(g){ selProduct(g); var vi=g.variants.findIndex(function(v){return v.bc===bc;}); if(vi>=0) setTimeout(function(){selV(vi);},50); }
+      } else showToast('⚠ 미등록 바코드: '+bc);
+    }
+  }, 1000);
 }
 
 function closeScanner(){
   document.getElementById('camModal').classList.remove('open');
   scanning=false;
+  bdProcessing=false;
   // BarcodeDetector 정리
   if(bdRAF){ cancelAnimationFrame(bdRAF); bdRAF=null; }
   if(bdStream){ bdStream.getTracks().forEach(function(t){t.stop();}); bdStream=null; }
@@ -2934,8 +3126,17 @@ var PO_SYNONYMS = [
   ['매장','매장램프'],['크립톤','미니크립톤'],
   ['엣지원형','엣지 원형'],['엣지사각','엣지 사각'],
   ['모듈','리폼모듈'],['cfl','EL'],['CFL','EL'],['삼파장','EL'],['삼파장전구','EL'],
-  ['벌브','BULB'],['전구색벌브','BULB'],['led벌브','LED BULB'],['엘이디벌브','LED BULB']
+  ['벌브','BULB'],['전구색벌브','BULB'],['led벌브','LED BULB'],['엘이디벌브','LED BULB'],
+  ['슬림샤인','슬림 샤인'],['직하엣지','슬림 샤인'],['슬림엣지','슬림 샤인'],['슬림 엣지','슬림 샤인'],['직하 엣지','슬림 샤인']
 ];
+// 사이즈 표기 정규화 (1280→1285 등 자주 틀리는 치수)
+function poNormSize(s){
+  return s.replace(/1280\s*[*xX×]\s*320/g,'1285*320')
+          .replace(/1280\s*[*xX×]\s*180/g,'1285*180')
+          .replace(/1280\s*[*xX×]\s*230/g,'1285*230')
+          .replace(/960\s*[*xX×]\s*180/g,'960*180')
+          .replace(/(\d+)\s*[*xX×]\s*(\d+)/g,'$1*$2'); // 공백 제거 통일
+}
 function poApplySynonyms(s){
   var r=s;
   PO_SYNONYMS.forEach(function(p){
@@ -2950,7 +3151,14 @@ function poApplySynonyms(s){
       r = r.split(p[0]).join(p[1]);
     }
   });
+  r = poNormSize(r); // 사이즈 표기 정규화 (1280→1285 등)
   return r;
+}
+// 사이즈(치수) 추출: 1285*320 형태
+function poExtractSize(s){
+  var m = poNormSize(s).match(/(\d{3,4})\s*\*\s*(\d{3,4})/);
+  if(m) return m[1]+'*'+m[2];
+  return null;
 }
 // 와트 숫자 추출 (50W 우선, 없으면 박스/개/인치 아닌 단독 숫자)
 function poExtractWatt(s){
@@ -2973,8 +3181,8 @@ function poExtractInch(s){
 var PO_KEY_TERMS = ['직부','센서','원형','사각','센서등','직부등','백색','흑색','투명','불투명','집중','확산','국산','이너','cob'];
 // 구별 단어 (이게 발주에 있으면 해당 품목 강한 우대)
 var PO_DISTINCT = ['거실주방','거실','주방','방등','라이트','센서등','직부등','센서','직부','원형','사각','집중','확산','펜던트','다운라이트','평판','매입','벽등','벽부','투광','공장','주차장','방수','작업등'];
-var PO_MODIFIERS = ['스마트','원터치','리모컨','슬림베젤','소프트','루브','엣지','퓨어','국산','에코'];
-var PO_BRANDS = ['퓨어','슬림베젤','엣지','에코','소프트','루브','국산','미니크립톤','매장램프','리폼모듈','다용도랜턴','샤인','라온','노렐','윈디','캐논','무드','멀티','BULB','MR16','PAR','촛대구','인지구','EL','FL','FPL','FHF','FDX'];
+var PO_MODIFIERS = ['스마트','원터치','리모컨','슬림베젤','소프트','루브','엣지','퓨어','국산','에코','브라켓','M-bar','고효율','샤인스마트','T담파'];
+var PO_BRANDS = ['슬림 샤인','평판 샤인','퓨어','슬림베젤','엣지','에코','소프트','루브','국산','미니크립톤','매장램프','리폼모듈','다용도랜턴','샤인','라온','노렐','윈디','캐논','무드','멀티','BULB','MR16','PAR','촛대구','인지구','EL','FL','FPL','FHF','FDX'];
 function poFindByName(line){
   var sLine = poApplySynonyms(line);
   var nLine = poNorm(sLine);
@@ -3010,6 +3218,13 @@ function poFindByName(line){
       if(lineInch===nameInch) score += 1.0;
       else score -= 1.5;
     }
+    // 사이즈(치수) 일치 - 평판류에 중요
+    var lineSize = poExtractSize(sLine);
+    var nameSize = poExtractSize(g.name);
+    if(lineSize && nameSize){
+      if(lineSize===nameSize) score += 1.5;
+      else score -= 1.5;
+    }
     PO_KEY_TERMS.forEach(function(kt){
       var nKt=poNorm(kt);
       var inName = nName.indexOf(nKt)>=0;
@@ -3036,9 +3251,50 @@ function poFindByName(line){
   return bestScore>=0.8 ? best : null;
 }
 
+// 상위 후보 여러 개 반환 (선택창용)
+function poScoreOne(g, line){
+  var sLine = poApplySynonyms(line);
+  var nLine = poNorm(sLine);
+  var lineWatt = poExtractWatt(sLine);
+  var lineInch = poExtractInch(sLine);
+  var nName = poNorm(g.name);
+  var nameTokens = g.name.replace(/[()]/g,' ').split(/\s+/).filter(Boolean);
+  var hit=0, total=0;
+  nameTokens.forEach(function(tok){
+    var nTok=poNorm(tok);
+    if(/^\d+[wW]$/.test(tok) || /^\d+\uc778\uce58$/.test(tok)) return;
+    total++;
+    if(nTok && nLine.indexOf(nTok)>=0) hit++;
+  });
+  var score = total>0 ? hit/total : 0;
+  if(nName && nLine.indexOf(nName)>=0) score += 1.5;
+  PO_BRANDS.forEach(function(bd){ var nBd=poNorm(bd); var iN=nName.indexOf(nBd)>=0,iL=nLine.indexOf(nBd)>=0; if(iN&&iL)score+=1.5;else if(iN&&!iL)score-=0.8; });
+  var nameWatt=poExtractWatt(g.name);
+  if(lineWatt&&nameWatt){ if(lineWatt===nameWatt)score+=1.0; else score-=1.5; }
+  var nameInch=poExtractInch(g.name);
+  if(lineInch&&nameInch){ if(lineInch===nameInch)score+=1.0; else score-=1.5; }
+  var lineSize=poExtractSize(sLine), nameSize=poExtractSize(g.name);
+  if(lineSize&&nameSize){ if(lineSize===nameSize)score+=1.5; else score-=1.5; }
+  PO_KEY_TERMS.forEach(function(kt){ var nKt=poNorm(kt); var iN=nName.indexOf(nKt)>=0,iL=nLine.indexOf(nKt)>=0; if(iN&&iL)score+=0.5;else if(iN&&!iL)score-=0.3;else if(!iN&&iL)score-=0.5; });
+  PO_DISTINCT.forEach(function(dt){ var nDt=poNorm(dt); var iN=nName.indexOf(nDt)>=0,iL=nLine.indexOf(nDt)>=0; if(iN&&iL)score+=1.2;else if(iN&&!iL)score-=0.5; });
+  PO_MODIFIERS.forEach(function(md){ var nMd=poNorm(md); var iN=nName.indexOf(nMd)>=0,iL=nLine.indexOf(nMd)>=0; if(iN&&!iL)score-=1.0; });
+  return score;
+}
+function poFindCandidates(line, topN){
+  var scored=[];
+  for(var i=0;i<G.length;i++){
+    var s=poScoreOne(G[i], line);
+    if(s>=0.6) scored.push({g:G[i], score:s});
+  }
+  scored.sort(function(a,b){ return b.score-a.score; });
+  return scored.slice(0, topN||5);
+}
+
 // 품목어 포함 여부
 function poHasProduct(line){
-  return /\d+\s*[wW]|인치|["”″]|등|램프|크립톤|투광|다운|평판|벌브|볼구|mr|par|t5|t8|t10|촛대|볼구|스틱|매장|인지|방등|거실|주방|스탠드|실링|트랙/i.test(line);
+  // 사이즈 표기(1285*320)나 엣지/샤인/슬림 키워드도 품목으로 인정
+  if(/\d{3,4}\s*[*xX×]\s*\d{3,4}/.test(line)) return true;
+  return /\d+\s*[wW]|인치|["”″]|등|램프|크립톤|투광|다운|평판|벌브|볼구|mr|par|t5|t8|t10|촛대|볼구|스틱|매장|인지|방등|거실|주방|스탠드|실링|트랙|엣지|샤인|슬림|모듈|센서|직부|원형|사각|펜던트/i.test(line);
 }
 // 배송/연락처/헤더 등 무시할 줄
 function poIsJunk(line){
@@ -3112,19 +3368,39 @@ function poIsPhone(line){
   return /01[0-9][-\s]?\d{3,4}[-\s]?\d{4}/.test(line) || /\d{2,3}[-\s]\d{3,4}[-\s]\d{4}/.test(line);
 }
 
+// 품목군 헤더 후보 (이름만 있고 사이즈/수량 없는 줄)
+function poIsGroupHeader(line){
+  var t=line.trim();
+  // 품목군 키워드는 있는데 사이즈(1285*320)·와트·수량(개/박스)이 없는 줄
+  var hasSize = /\d{3,4}\s*[*xX×]\s*\d{3,4}/.test(t);
+  var hasWatt = /\d+\s*[wW]/.test(t);
+  var hasQty = /\d+\s*(박스|개|ea|EA)/.test(t);
+  var hasGroupWord = /슬림\s*샤인|평판\s*샤인|엣지평판|평판|샤인|엣지/.test(poApplySynonyms(t));
+  return hasGroupWord && !hasSize && !hasWatt && !hasQty;
+}
 function poMergeBlocks(text){
   var rawLines = text.split('\n').map(function(l){return l.trim();}).filter(Boolean);
-  var blocks=[], cur='';
+  var blocks=[], cur='', groupHeader='';
   rawLines.forEach(function(line){
     // 전화번호 포함 줄은 무시 (현재 블록 마감만)
     if(poIsPhone(line) && !poHasProduct(line)){ if(cur){blocks.push(cur);cur='';} return; }
+    // 품목군 헤더 줄 → 다음 줄들에 상속 (예: "슬림샤인 엣지")
+    if(poIsGroupHeader(line)){ if(cur){blocks.push(cur);cur='';} groupHeader=line; return; }
     // 실제 존재하는 ERP 코드 줄만 독립 블록
     var cm = line.match(/(\d{4}-\d{4})/);
     if(cm && poIsRealCode(cm[1])){ if(cur){blocks.push(cur);cur='';} blocks.push(line); return; }
     if(poIsJunk(line) && !poHasProduct(line)){ if(cur){blocks.push(cur);cur='';} return; }
+    // 사이즈/수량만 있는 줄 → 품목군 헤더 붙이기 (예: "1280*320 주광색 40개" → "슬림샤인 엣지 1280*320 주광색 40개")
+    var sizeOnly = /\d{3,4}\s*[*xX×]\s*\d{3,4}/.test(line) && !poHasProduct(line);
+    if(groupHeader && (sizeOnly || (!poHasProduct(line) && /\d{3,4}\s*[*xX×]/.test(line)))){
+      if(cur) blocks.push(cur);
+      cur = groupHeader + ' ' + line;
+      return;
+    }
     if(poHasProduct(line)){
       if(cur) blocks.push(cur);
-      cur=line;
+      // 품목군 헤더가 있고 현재 줄에 사이즈가 있으면 헤더 결합
+      cur = (groupHeader && /\d{3,4}\s*[*xX×]/.test(line) && line.indexOf(groupHeader)<0) ? (groupHeader+' '+line) : line;
     } else {
       // 색온도/수량 등 보조정보 → 현재 블록에 합침
       if(cur) cur += ' '+line;
@@ -3134,57 +3410,79 @@ function poMergeBlocks(text){
   return blocks;
 }
 
-function parseOrder(){
-  var text = document.getElementById('parseTa').value.trim();
-  if(!text){ showToast('발주서 내용을 붙여넣어 주세요'); return; }
-
+// 텍스트를 파싱해서 품목 배열 반환 (미리보기/변환 공용)
+function parseOrderItems(text){
   var blocks = poMergeBlocks(text);
-  var parsed = [];
-  var unmatched = [];
-
+  var items = [];
   blocks.forEach(function(line){
     if(!line) return;
-
-    // 수량 파싱
     var qtyMatch = line.match(/(\d+)\s*(박스|개)/);
     var qty = qtyMatch ? parseInt(qtyMatch[1]) : 1;
     var unit = qtyMatch ? qtyMatch[2] : '개';
-
-    // 전화번호 줄은 건너뜀
     if(poIsPhone(line) && !poHasProduct(line)) return;
-
-    // 1순위: 실제 존재하는 ERP 코드만
+    // ERP 코드
     var codeMatch = line.match(/(\d{4}-\d{4})/);
     if(codeMatch && poIsRealCode(codeMatch[1])){
-      var code = codeMatch[1];
-      var found = null;
-      for(var i=0;i<G.length;i++){
-        for(var j=0;j<G[i].variants.length;j++){
-          if(G[i].variants[j].code===code){ found={g:G[i],v:G[i].variants[j]}; break; }
-        }
-        if(found) break;
-      }
-      if(found){
-        parsed.push({code:code, ename:found.v.ename, gname:found.g.name, ct:found.v.ct, qty:qty, unit:unit});
-      }
+      var code = codeMatch[1], found=null;
+      for(var i=0;i<G.length;i++){ for(var j=0;j<G[i].variants.length;j++){ if(G[i].variants[j].code===code){ found={g:G[i],v:G[i].variants[j]}; break; } } if(found)break; }
+      if(found) items.push({code:code, ename:found.v.ename, gname:found.g.name, ct:found.v.ct, qty:qty, unit:unit});
       return;
     }
-
-    // 2순위: 품명으로 매칭
+    // 품명 매칭
     if(!poHasProduct(line)) return;
     var g = poFindByName(line);
     if(g){
       var ct = poExtractCt(line);
-      var v = null;
-      if(ct) v = g.variants.find(function(x){ return x.ct===ct; });
+      var v = ct ? g.variants.find(function(x){return x.ct===ct;}) : null;
       if(!v) v = g.variants[0];
-      parsed.push({code:v.code, ename:v.ename, gname:g.name, ct:v.ct, qty:qty, unit:unit});
+      items.push({code:v.code, ename:v.ename, gname:g.name, ct:v.ct, qty:qty, unit:unit});
     } else {
-      // 미인식 → 미확정 품목으로 추가 (원본 텍스트 보존, 수정 가능)
-      parsed.push({code:'?', ename:line, gname:line, ct:'-', qty:qty, unit:unit, unconfirmed:true, rawText:line});
-      unmatched.push(line);
+      items.push({code:'?', ename:line, gname:line, ct:'-', qty:qty, unit:unit, unconfirmed:true, rawText:line});
     }
   });
+  return items;
+}
+
+// 미리보기 (오른쪽 패널에 매칭 결과 표시)
+var parsePreviewTimer = null;
+function parsePreviewDebounced(){
+  clearTimeout(parsePreviewTimer);
+  parsePreviewTimer = setTimeout(parsePreview, 600);
+}
+function parsePreview(){
+  var text = document.getElementById('parseTa').value.trim();
+  var box = document.getElementById('parsePreviewList');
+  if(!text){
+    box.innerHTML = '<div style="text-align:center;color:var(--ink3);font-size:12px;padding:30px 10px">왼쪽에 발주 내용을 입력하고<br><b>미리보기</b>를 누르면<br>매칭 결과가 여기 표시됩니다</div>';
+    return;
+  }
+  var items = parseOrderItems(text);
+  if(!items.length){
+    box.innerHTML = '<div style="text-align:center;color:var(--ink3);font-size:12px;padding:30px 10px">인식된 품목이 없습니다.<br>품명이나 코드를 확인해주세요.</div>';
+    return;
+  }
+  var okCnt = items.filter(function(it){return !it.unconfirmed;}).length;
+  var failCnt = items.length - okCnt;
+  var h = '<div style="font-size:11px;color:var(--ink2);padding:4px 4px 8px">✓ 매칭 '+okCnt+'개'+(failCnt?' · <span style="color:#DC2626">⚠ 확인필요 '+failCnt+'개</span>':'')+'</div>';
+  items.forEach(function(it){
+    var pname = it.unconfirmed ? (it.rawText||it.ename) : ((it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct):''));
+    h += '<div class="pp-item '+(it.unconfirmed?'fail':'ok')+'">';
+    if(it.unconfirmed){
+      h += '<div class="pp-name" style="color:#DC2626">⚠ '+pname+'</div><div class="pp-code" style="color:#DC2626">매칭 실패 - 왼쪽에서 품명 수정</div>';
+    } else {
+      h += '<div class="pp-name">'+pname+'</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px"><span class="pp-code">'+it.code+'</span><span class="pp-qty">'+it.qty+it.unit+'</span></div>';
+    }
+    h += '</div>';
+  });
+  box.innerHTML = h;
+}
+
+function parseOrder(){
+  var text = document.getElementById('parseTa').value.trim();
+  if(!text){ showToast('발주서 내용을 붙여넣어 주세요'); return; }
+
+  var parsed = parseOrderItems(text);
+  var unmatched = parsed.filter(function(p){return p.unconfirmed;}).map(function(p){return p.rawText||p.ename;});
 
   if(!parsed.length){
     showToast('인식된 품목이 없습니다. 코드나 품명을 확인해주세요');
@@ -3667,6 +3965,7 @@ function closeWelcome(){
 }
 
 document.addEventListener('DOMContentLoaded', function(){
+  applyFontScale(); // 저장된 글자 크기 적용
   // 첫 접속이면 환영 가이드, 아니면 바로 공지
   if(!localStorage.getItem('jsWelcomeHide')){
     setTimeout(showWelcome, 400);
@@ -3939,17 +4238,27 @@ function spCheck() {
     var sn = sd ? sd.s.toLocaleString() + '개' : '정보없음';
     var rs = (sd && sd.r !== null && sd.r !== undefined) ? sd.r + '%' : '-';
     var rc = (sd && sd.r !== null) ? (sd.r > 120 ? '#0EA5E9' : sd.r >= 60 ? '#22C55E' : '#F97316') : 'var(--ink3)';
-    // 주차별 입고
+    // 주차별 입고 + AA열 입고예정일
     var weekHtml = '';
-    if (sd && sd.w) {
+    if ((sd && sd.w) || (sd && sd.eta)) {
       weekHtml = '<div style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--bdr)">';
       weekHtml += '<div style="font-size:9px;font-weight:700;color:var(--ink3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">입고 예정</div>';
-      Object.keys(sd.w).forEach(function(label) {
-        weekHtml += '<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0">'
-          + '<span style="color:var(--ink2)">' + label + '</span>'
-          + '<span style="font-weight:700;color:#8B5CF6">' + sd.w[label].toLocaleString() + '개</span>'
+      // AA열 입고 예정일 (날짜)
+      if (sd && sd.eta) {
+        weekHtml += '<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;margin-bottom:2px">'
+          + '<span style="color:var(--ink2)">📅 입고예정일</span>'
+          + '<span style="font-weight:700;color:#0EA5E9">' + sd.eta + '</span>'
           + '</div>';
-      });
+      }
+      // 주차별 입고 수량
+      if (sd && sd.w) {
+        Object.keys(sd.w).forEach(function(label) {
+          weekHtml += '<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0">'
+            + '<span style="color:var(--ink2)">' + label + '</span>'
+            + '<span style="font-weight:700;color:#8B5CF6">' + sd.w[label].toLocaleString() + '개</span>'
+            + '</div>';
+        });
+      }
       weekHtml += '</div>';
     }
     h += '<div class="stkdata-item" style="flex-direction:column;align-items:stretch">' +
@@ -4136,7 +4445,13 @@ function parseStockArray(data) {
       }
     });
 
-    result[code] = {s:s, p:proper, r:r, w:Object.keys(weeks).length>0?weeks:null};
+    // AA열(인덱스 26) = 추가 입고 예정일
+    var etaDate = '';
+    if (row.length > 26 && row[26] !== undefined && row[26] !== null && String(row[26]).trim() !== '') {
+      etaDate = fmtStockDate(row[26]);
+    }
+
+    result[code] = {s:s, p:proper, r:r, w:Object.keys(weeks).length>0?weeks:null, eta:etaDate||null};
   }
   console.log('재고파싱 완료: '+Object.keys(result).length+'개');
   return result;
