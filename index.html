@@ -6,6 +6,7 @@
 <title>장수램프 발주</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -118,6 +119,14 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 .bc-ta::placeholder{font-family:'Noto Sans KR',sans-serif;color:var(--ink3);font-size:12px}
 .conv-btn{width:100%;padding:11px;background:var(--ink);color:#fff;font-size:13px;font-weight:700;font-family:'Noto Sans KR',sans-serif;border:none;border-radius:var(--r2);cursor:pointer;margin-top:10px}
 .ri{display:flex;align-items:flex-start;padding:9px 13px;border-bottom:1px solid var(--bdr);gap:8px}
+.bc-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.bc-tbl th{background:var(--ink);color:#fff;font-size:11px;font-weight:700;padding:7px 6px;text-align:center}
+.bc-tbl td{border-bottom:1px solid var(--bdr);padding:7px 6px;vertical-align:middle}
+.bc-tbl .bc-code{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--A2);text-align:center;white-space:nowrap}
+.bc-tbl .bc-name{font-size:12px;font-weight:600;color:var(--ink);line-height:1.3}
+.bc-tbl .bc-qty{text-align:center}
+.bc-qty-inp{width:100%;max-width:64px;padding:5px 4px;font-size:12px;font-weight:700;text-align:center;border:1px solid var(--bdr);border-radius:6px;color:var(--B,#2855A0);font-family:'Noto Sans KR',sans-serif;outline:none;background:var(--sur2)}
+.bc-tbl .bc-fail-row{background:#FEF2F2}
 .ri:last-child{border-bottom:none}
 .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:4px}
 .dot.ok{background:var(--G)}.dot.fail{background:var(--R)}
@@ -603,15 +612,19 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
         <div class="img-area" id="imgArea" onclick="document.getElementById('bcImgInp').click()">
           <div style="font-size:28px;margin-bottom:6px">📷</div>
           <div style="font-size:13px;font-weight:600;color:var(--ink)">발주서 사진 올리기</div>
-          <div style="font-size:11px;color:var(--ink3);margin-top:3px">터치하여 선택 · AI가 자동으로 읽습니다</div>
+          <div style="font-size:11px;color:var(--ink3);margin-top:3px">터치하여 선택 · 드래그 · 붙여넣기(Ctrl+V) 가능</div>
         </div>
         <input type="file" id="bcImgInp" accept="image/*" style="display:none" onchange="handleBcImg(this)"/>
         <div id="imgPreviewWrap" style="display:none;margin-top:10px;position:relative">
           <img id="imgPreview" style="width:100%;border-radius:var(--r2);border:1px solid var(--bdr);display:block"/>
           <button onclick="clearBcImg()" style="position:absolute;top:6px;right:6px;width:26px;height:26px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;font-size:14px;cursor:pointer">&#215;</button>
         </div>
-        <button id="aiReadBtn" onclick="aiReadImg()" style="display:none;width:100%;padding:11px;background:var(--A);color:#fff;font-size:13px;font-weight:700;font-family:'Noto Sans KR',sans-serif;border:none;border-radius:var(--r2);cursor:pointer;margin-top:10px">🤖 AI로 발주서 읽기</button>
-        <div id="aiLoading" style="display:none;text-align:center;padding:14px;font-size:13px;color:var(--ink2)"><div style="font-size:24px;margin-bottom:6px">🤖</div>발주서를 읽는 중...</div>
+        <button id="decodeBtn" onclick="decodeBarcodesFromImage()" style="display:none;width:100%;padding:12px;background:#16A34A;color:#fff;font-size:14px;font-weight:700;font-family:'Noto Sans KR',sans-serif;border:none;border-radius:var(--r2);cursor:pointer;margin-top:10px">📊 바코드 직접 읽기 (정확)</button>
+        <button id="aiReadBtn" onclick="aiReadImg()" style="display:none;width:100%;padding:10px;background:var(--sur2);color:var(--ink2);font-size:12px;font-weight:600;font-family:'Noto Sans KR',sans-serif;border:1px solid var(--bdr);border-radius:var(--r2);cursor:pointer;margin-top:6px">🔍 OCR로 읽기 (바코드가 흐릴 때)</button>
+        <div id="aiLoading" style="display:none;text-align:center;padding:14px;font-size:13px;color:var(--ink2)"><div style="font-size:24px;margin-bottom:6px">🔍</div>발주서를 읽는 중...</div>
+        <div style="margin-top:8px;text-align:center">
+          <button onclick="setOcrKey()" style="background:none;border:none;color:var(--ink3);font-size:10px;text-decoration:underline;cursor:pointer">⚙️ OCR 키 설정 (인식 잘 안될 때)</button>
+        </div>
       </div>
     </div>
     <div class="card">
@@ -2417,75 +2430,273 @@ function convertBc(){
   });
   var ok=bcResults.filter(function(r){return r.ok;}).length, fail=bcResults.length-ok;
   document.getElementById('bcResultHd').innerHTML='변환 결과 <span class="badge badge-ok">매칭 '+ok+'</span><span class="badge badge-fail">미매칭 '+fail+'</span>';
-  var h='';
-  bcResults.forEach(function(r){
-    h+='<div class="ri"><div class="dot '+(r.ok?'ok':'fail')+'"></div><div style="flex:1;min-width:0"><div class="ri-orig">'+r.bc+'</div>';
-    if(r.ok) h+='<div class="ri-name">'+r.p.ename+'</div><div class="ri-code">'+r.p.code+'</div>';
-    else h+='<div class="ri-name" style="color:var(--R)">미등록 바코드</div>';
-    h+='</div><div class="ri-qty">'+r.qty+'</div></div>';
+  // 코드 / 품명 / 수량 3열 표
+  var h='<table class="bc-tbl"><colgroup><col style="width:24%"><col style="width:54%"><col style="width:22%"></colgroup>';
+  h+='<thead><tr><th>코드</th><th>품명</th><th>수량</th></tr></thead><tbody>';
+  bcResults.forEach(function(r, i){
+    if(r.ok){
+      h+='<tr><td class="bc-code">'+r.p.code+'</td>'
+        +'<td class="bc-name">'+r.p.ename+'</td>'
+        +'<td class="bc-qty"><input type="text" value="'+r.qty+'" onchange="bcEditQty('+i+',this.value)" class="bc-qty-inp"></td></tr>';
+    } else {
+      h+='<tr class="bc-fail-row"><td class="bc-code" style="color:var(--R)">'+r.bc+'</td>'
+        +'<td class="bc-name" style="color:var(--R)">⚠ 미등록 바코드</td>'
+        +'<td class="bc-qty"><input type="text" value="'+r.qty+'" onchange="bcEditQty('+i+',this.value)" class="bc-qty-inp"></td></tr>';
+    }
   });
+  h+='</tbody></table>';
   document.getElementById('bcResultList').innerHTML=h;
   document.getElementById('bcResult').style.display='block';
+}
+// 수량 직접 수정
+function bcEditQty(i, val){
+  if(bcResults[i]) bcResults[i].qty = val.trim() || '1박스';
 }
 
 // ── 이미지 업로드 ──
 var bcImgBase64=null;
 function handleBcImg(input){
   var file=input.files[0]; if(!file) return;
+  loadBcImgFile(file);
+}
+// 파일 객체를 받아 미리보기 표시 (업로드/드롭/붙여넣기 공용)
+function loadBcImgFile(file){
+  if(!file || !file.type || file.type.indexOf('image')<0){ showToast('이미지 파일만 가능합니다'); return; }
   var reader=new FileReader();
   reader.onload=function(e){
     bcImgBase64=e.target.result;
     document.getElementById('imgPreview').src=bcImgBase64;
     document.getElementById('imgPreviewWrap').style.display='block';
     document.getElementById('aiReadBtn').style.display='block';
+    var dbtn=document.getElementById('decodeBtn'); if(dbtn) dbtn.style.display='block';
     document.getElementById('imgArea').style.display='none';
+    showToast('✓ 이미지 준비됨 - 바코드 직접 읽기를 누르세요');
   };
   reader.readAsDataURL(file);
+}
+// 드래그 앤 드롭 + 붙여넣기 설정
+function setupBcImgDropPaste(){
+  var area = document.getElementById('imgArea');
+  if(area){
+    ['dragenter','dragover'].forEach(function(ev){
+      area.addEventListener(ev, function(e){ e.preventDefault(); e.stopPropagation(); area.style.background='rgba(40,85,160,.1)'; area.style.borderColor='#2855A0'; });
+    });
+    ['dragleave','drop'].forEach(function(ev){
+      area.addEventListener(ev, function(e){ e.preventDefault(); e.stopPropagation(); area.style.background=''; area.style.borderColor=''; });
+    });
+    area.addEventListener('drop', function(e){
+      var files = e.dataTransfer && e.dataTransfer.files;
+      if(files && files.length) loadBcImgFile(files[0]);
+    });
+  }
+  // 전역 붙여넣기 (바코드 탭에서 Ctrl+V 또는 모바일 길게눌러 붙여넣기)
+  document.addEventListener('paste', function(e){
+    // 바코드 탭이 활성일 때만
+    var bcTab = document.getElementById('p-bc');
+    if(!bcTab || !bcTab.classList.contains('on')) return;
+    var items = (e.clipboardData || window.clipboardData).items;
+    if(!items) return;
+    for(var i=0;i<items.length;i++){
+      if(items[i].type.indexOf('image')>=0){
+        var file = items[i].getAsFile();
+        if(file){ loadBcImgFile(file); e.preventDefault(); break; }
+      }
+    }
+  });
 }
 function clearBcImg(){
   bcImgBase64=null;
   document.getElementById('bcImgInp').value='';
   document.getElementById('imgPreviewWrap').style.display='none';
   document.getElementById('aiReadBtn').style.display='none';
+  var dbtn=document.getElementById('decodeBtn'); if(dbtn) dbtn.style.display='none';
   document.getElementById('imgArea').style.display='block';
 }
+// OCR.space 무료 API 키 (공개 데모키 - 실사용 시 본인 키로 교체 권장)
+var OCR_API_KEY = localStorage.getItem('jsOcrKey') || 'helloworld';
+// ═══ 사진 속 바코드 직접 디코딩 (ZXing - 가장 정확) ═══
+async function decodeBarcodesFromImage(){
+  if(!bcImgBase64) return;
+  if(typeof ZXing === 'undefined'){ showToast('바코드 라이브러리 로딩 실패 - OCR로 시도합니다'); return aiReadImg(); }
+  document.getElementById('aiReadBtn').style.display='none';
+  var dz = document.getElementById('decodeBtn'); if(dz) dz.style.display='none';
+  document.getElementById('aiLoading').style.display='block';
+  document.getElementById('aiLoading').innerHTML='<div style="font-size:24px;margin-bottom:6px">📊</div>바코드를 읽는 중...<br><span style="font-size:11px;color:var(--ink3)">사진 속 바코드를 정밀 분석합니다</span>';
+
+  try {
+    var img = new Image();
+    await new Promise(function(res, rej){ img.onload=res; img.onerror=rej; img.src=bcImgBase64; });
+
+    var hints = new Map();
+    var formats = [
+      ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+      ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
+      ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E, ZXing.BarcodeFormat.ITF
+    ];
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+    var reader = new ZXing.MultiFormatReader();
+    reader.setHints(hints);
+
+    var found = {}; // 바코드 → true (중복 제거)
+    var foundOrder = [];
+
+    // 전체 + 가로 띠 분할로 여러 바코드 찾기
+    function tryDecodeCanvas(canvas){
+      try {
+        var lum = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+        var bitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
+        var result = reader.decode(bitmap);
+        if(result && result.text){
+          var t = result.text.replace(/\D/g,'');
+          if(t.length>=8 && !found[t]){ found[t]=true; foundOrder.push(t); }
+        }
+      } catch(e){ /* 이 영역엔 바코드 없음 */ }
+      try{ reader.reset(); }catch(e){}
+    }
+
+    // 1) 전체 이미지
+    var fullCanvas = document.createElement('canvas');
+    var scale = img.width > 2000 ? 2000/img.width : 1;
+    fullCanvas.width = img.width*scale; fullCanvas.height = img.height*scale;
+    fullCanvas.getContext('2d').drawImage(img,0,0,fullCanvas.width,fullCanvas.height);
+
+    // 2) 가로 띠로 분할 (발주서는 행마다 바코드 → 띠로 잘라 각각 디코딩)
+    var stripCount = Math.max(8, Math.round(fullCanvas.height/60));
+    var stripH = fullCanvas.height / stripCount;
+    for(var s=0; s<stripCount; s++){
+      // 약간 겹치게 잘라서 경계 바코드도 포착
+      var y0 = Math.max(0, s*stripH - stripH*0.3);
+      var h = Math.min(fullCanvas.height-y0, stripH*1.6);
+      var strip = document.createElement('canvas');
+      strip.width = fullCanvas.width; strip.height = h;
+      strip.getContext('2d').drawImage(fullCanvas, 0, y0, fullCanvas.width, h, 0, 0, fullCanvas.width, h);
+      tryDecodeCanvas(strip);
+    }
+    // 전체도 한 번
+    tryDecodeCanvas(fullCanvas);
+
+    document.getElementById('aiLoading').style.display='none';
+    document.getElementById('aiReadBtn').style.display='block';
+    if(dz) dz.style.display='block';
+
+    if(foundOrder.length){
+      // 디코딩된 바코드를 입력란에 (수량은 사용자가 확인)
+      document.getElementById('bcInp').value = foundOrder.join('\n');
+      showToast('✓ 바코드 '+foundOrder.length+'개 인식! (수량 확인하세요)');
+      setTimeout(convertBc, 300);
+    } else {
+      showToast('바코드를 못 읽었어요. OCR로 다시 시도해보세요');
+    }
+  } catch(e){
+    document.getElementById('aiLoading').style.display='none';
+    document.getElementById('aiReadBtn').style.display='block';
+    if(dz) dz.style.display='block';
+    showToast('바코드 디코딩 실패: '+e.message);
+  }
+}
+
 async function aiReadImg(){
   if(!bcImgBase64) return;
   document.getElementById('aiReadBtn').style.display='none';
   document.getElementById('aiLoading').style.display='block';
-  var parts=bcImgBase64.split(',');
-  var mediaType=parts[0].replace('data:','').replace(';base64','');
-  var b64=parts[1];
-  var prompt='이 발주서(주문서) 이미지를 분석하세요. 표 형태의 발주서로, 각 행에 상품코드(바코드 번호)·상품명·수량이 있습니다.\n\n'+
-    '각 행에서 다음을 추출하세요:\n'+
-    '1) 바코드 번호: 8 또는 13자리 숫자 (예: 8809025008044). 열 위치는 상관없이 13자리(또는 8자리) 연속 숫자를 찾으세요.\n'+
-    '2) 수량: 해당 행의 수량 숫자와 단위(박스/개)\n\n'+
-    '다음 형식으로만 응답하세요. 다른 설명 없이 한 줄에 하나씩:\n'+
-    '8809025008044  50개\n8809025001885  2박스\n\n'+
-    '규칙:\n'+
-    '- 바코드 번호(13자리/8자리 숫자)를 최우선으로 정확히 읽으세요. 숫자 하나도 틀리면 안 됩니다.\n'+
-    '- 바코드가 안 보이고 품명만 있으면 품명을 그대로 쓰세요.\n'+
-    '- 수량이 없으면 바코드 번호만 쓰세요.\n'+
-    '- 합계나 총계 행은 제외하세요.';
+  document.getElementById('aiLoading').innerHTML='<div style="font-size:24px;margin-bottom:6px">🔍</div>발주서를 읽는 중...<br><span style="font-size:11px;color:var(--ink3)">잠시만 기다려주세요</span>';
   try{
-    var resp=await fetch('https://api.anthropic.com/v1/messages',{
+    // 이미지 크기 줄이기 (OCR 무료버전 1MB 제한)
+    var compressed = await compressBcImage(bcImgBase64);
+    var formData = new FormData();
+    formData.append('base64Image', compressed);
+    formData.append('language', 'kor');
+    formData.append('isTable', 'true');
+    formData.append('OCREngine', '2');
+    formData.append('scale', 'true');
+    var resp = await fetch('https://api.ocr.space/parse/image', {
       method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,
-        messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:mediaType,data:b64}},{type:'text',text:prompt}]}]})
+      headers:{'apikey': OCR_API_KEY},
+      body: formData
     });
-    var data=await resp.json();
-    if(data.error) throw new Error(data.error.message);
-    var text=data.content.map(function(c){return c.text||'';}).join('').trim();
-    document.getElementById('bcInp').value=text;
+    var data = await resp.json();
+    if(data.IsErroredOnProcessing){
+      throw new Error((data.ErrorMessage && data.ErrorMessage[0]) || 'OCR 처리 실패');
+    }
+    var rawText = (data.ParsedResults && data.ParsedResults[0] && data.ParsedResults[0].ParsedText) || '';
+    if(!rawText.trim()) throw new Error('글자를 인식하지 못했습니다');
+    // OCR 결과에서 바코드(8~13자리) + 수량 추출
+    var lines = extractBarcodeLines(rawText);
+    document.getElementById('bcInp').value = lines;
     document.getElementById('aiLoading').style.display='none';
-    showToast('✓ 발주서 읽기 완료!');
-    setTimeout(convertBc,300);
+    document.getElementById('aiReadBtn').style.display='block';
+    if(lines.trim()){
+      showToast('✓ 발주서 읽기 완료!');
+      setTimeout(convertBc,300);
+    } else {
+      showToast('바코드를 찾지 못했어요. 직접 입력하거나 다시 시도하세요');
+    }
   }catch(e){
     document.getElementById('aiLoading').style.display='none';
     document.getElementById('aiReadBtn').style.display='block';
     showToast('읽기 실패: '+e.message);
   }
+}
+// 이미지 압축 (OCR 무료버전 용량 제한 대응)
+function compressBcImage(dataUrl){
+  return new Promise(function(resolve){
+    var img = new Image();
+    img.onload = function(){
+      var canvas = document.createElement('canvas');
+      var maxW = 1600;
+      var scale = img.width > maxW ? maxW/img.width : 1;
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = function(){ resolve(dataUrl); };
+    img.src = dataUrl;
+  });
+}
+// OCR API 키 설정 (사용자 본인 무료 키)
+function setOcrKey(){
+  var cur = localStorage.getItem('jsOcrKey') || '';
+  var msg = 'OCR.space 무료 API 키를 입력하세요.\n\n무료 키 발급: https://ocr.space/ocrapi/freekey\n(이메일만 입력하면 즉시 발급, 하루 25,000건 무료)\n\n현재 키: ' + (cur || '기본 데모키(제한적)');
+  var key = prompt(msg, cur);
+  if(key !== null){
+    if(key.trim()){
+      localStorage.setItem('jsOcrKey', key.trim());
+      OCR_API_KEY = key.trim();
+      showToast('✓ OCR 키 저장됨');
+    } else {
+      localStorage.removeItem('jsOcrKey');
+      OCR_API_KEY = 'helloworld';
+      showToast('기본 데모키로 복원');
+    }
+  }
+}
+
+// OCR 텍스트에서 바코드+수량 줄 추출
+function extractBarcodeLines(text){
+  var out = [];
+  text.split('\n').forEach(function(line){
+    // 8~13자리 숫자(바코드) 찾기
+    var bcMatch = line.match(/\b(\d{8,13})\b/);
+    if(!bcMatch) return;
+    var bc = bcMatch[1];
+    // 수량 찾기: 끝부분의 (숫자) 또는 숫자+개/박스
+    var qty = '';
+    var qm = line.match(/(\d+)\s*(박스|개|EA|ea)/);
+    if(qm){ qty = qm[1] + qm[2]; }
+    else {
+      // 괄호 안 수량 (50) 같은 패턴 또는 줄 끝 숫자
+      var nums = line.match(/\d+/g) || [];
+      // 바코드 제외한 마지막 작은 숫자를 수량으로
+      var cand = nums.filter(function(n){ return n!==bc && n.length<=4; });
+      if(cand.length) qty = cand[cand.length-1] + '개';
+    }
+    out.push(bc + (qty ? '  ' + qty : ''));
+  });
+  return out.join('\n');
 }
 
 // ── 스캐너 ──
@@ -3464,16 +3675,22 @@ function parsePreview(){
   var okCnt = items.filter(function(it){return !it.unconfirmed;}).length;
   var failCnt = items.length - okCnt;
   var h = '<div style="font-size:11px;color:var(--ink2);padding:4px 4px 8px">✓ 매칭 '+okCnt+'개'+(failCnt?' · <span style="color:#DC2626">⚠ 확인필요 '+failCnt+'개</span>':'')+'</div>';
+  // 코드 / 품명 / 수량 3열 표
+  h += '<table class="bc-tbl"><colgroup><col style="width:24%"><col style="width:54%"><col style="width:22%"></colgroup>';
+  h += '<thead><tr><th>코드</th><th>품명</th><th>수량</th></tr></thead><tbody>';
   items.forEach(function(it){
     var pname = it.unconfirmed ? (it.rawText||it.ename) : ((it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct):''));
-    h += '<div class="pp-item '+(it.unconfirmed?'fail':'ok')+'">';
     if(it.unconfirmed){
-      h += '<div class="pp-name" style="color:#DC2626">⚠ '+pname+'</div><div class="pp-code" style="color:#DC2626">매칭 실패 - 왼쪽에서 품명 수정</div>';
+      h += '<tr class="bc-fail-row"><td class="bc-code" style="color:#DC2626">?</td>'
+        + '<td class="bc-name" style="color:#DC2626">⚠ '+pname+'</td>'
+        + '<td class="bc-qty" style="font-weight:700">'+it.qty+it.unit+'</td></tr>';
     } else {
-      h += '<div class="pp-name">'+pname+'</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px"><span class="pp-code">'+it.code+'</span><span class="pp-qty">'+it.qty+it.unit+'</span></div>';
+      h += '<tr><td class="bc-code">'+it.code+'</td>'
+        + '<td class="bc-name">'+pname+'</td>'
+        + '<td class="bc-qty" style="font-weight:700;color:var(--B,#2855A0)">'+it.qty+it.unit+'</td></tr>';
     }
-    h += '</div>';
   });
+  h += '</tbody></table>';
   box.innerHTML = h;
 }
 
@@ -3966,6 +4183,7 @@ function closeWelcome(){
 
 document.addEventListener('DOMContentLoaded', function(){
   applyFontScale(); // 저장된 글자 크기 적용
+  setupBcImgDropPaste(); // 드래그앤드롭/붙여넣기 설정
   // 첫 접속이면 환영 가이드, 아니면 바로 공지
   if(!localStorage.getItem('jsWelcomeHide')){
     setTimeout(showWelcome, 400);
