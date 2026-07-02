@@ -1156,20 +1156,6 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
   </div>
 </div>
 
-<!-- 사용설명서 모달 -->
-<div class="helpmod" id="helpMod">
-  <div class="helpbox">
-    <div class="helpbox-hd">
-      <span style="font-size:18px">📖</span>
-      <div class="helpbox-hd-t">사용설명서</div>
-      <button class="helpbox-x" onclick="closeHelp()">&#215;</button>
-    </div>
-    <div class="helpbox-body" id="helpContent">
-      <div style="padding:40px;text-align:center;color:var(--ink3)">불러오는 중...</div>
-    </div>
-  </div>
-</div>
-
 <!-- 관리자 FAB -->
 <button class="admin-fab" onclick="openAdmin()">⚙️</button>
 
@@ -2407,15 +2393,6 @@ function sendOrder(){
   }
   dOpen(cart, store);
 }
-function sendBcOrder(){
-  var items=bcResults.filter(function(r){return r.ok;}).map(function(r){return {ename:r.p.ename,code:r.p.code,qty:parseInt(r.qty)||1,unit:r.qty.replace(/\d+/,'')||'박스'};});
-  if(!items.length){showToast('매칭된 품목이 없습니다');return;}
-  showSendModal(buildMsg(items,document.getElementById('storeName').value.trim()));
-}
-function sendScanOrder(){
-  if(!scanList.length){showToast('스캔된 품목이 없습니다');return;}
-  showSendModal(buildMsg(scanList,document.getElementById('storeName').value.trim()));
-}
 
 // ── 바코드 변환 ──
 function convertBc(){
@@ -3318,7 +3295,7 @@ function openParseMod(){
 function closeParseMod(){
   document.getElementById('parseMod').classList.remove('open');
 }
-document.getElementById('parseMod').addEventListener('click',function(e){if(e.target===this)closeParseMod();});
+// parseMod는 X 버튼으로만 닫힘 (실수로 취소되는 것 방지)
 
 // 텍스트 정규화 (품명 매칭용)
 function poNorm(s){
@@ -3587,7 +3564,11 @@ function poIsGroupHeader(line){
   var hasWatt = /\d+\s*[wW]/.test(t);
   var hasQty = /\d+\s*(박스|개|ea|EA)/.test(t);
   var hasGroupWord = /슬림\s*샤인|평판\s*샤인|엣지평판|평판|샤인|엣지/.test(poApplySynonyms(t));
-  return hasGroupWord && !hasSize && !hasWatt && !hasQty;
+  // "8인치", "10인치" 등 인치 크기만 있는 짧은 줄도 헤더로 인식
+  var isInchOnly = /^\s*\d+\s*인치\s*$/.test(t);
+  // 세부 타입(직부/센서/원형/사각 등)이 있으면 구체 품목이므로 헤더 아님
+  var hasDetailType = /직부|센서|원형|사각|펜던트|다운|매입|투광|스탠드|실링|트랙|벌브|모듈|볼구|촛대|스틱/.test(t);
+  return (hasGroupWord || isInchOnly) && !hasSize && !hasWatt && !hasQty && !hasDetailType;
 }
 function poMergeBlocks(text){
   var rawLines = text.split('\n').map(function(l){return l.trim();}).filter(Boolean);
@@ -3610,8 +3591,15 @@ function poMergeBlocks(text){
     }
     if(poHasProduct(line)){
       if(cur) blocks.push(cur);
-      // 품목군 헤더가 있고 현재 줄에 사이즈가 있으면 헤더 결합
-      cur = (groupHeader && /\d{3,4}\s*[*xX×]/.test(line) && line.indexOf(groupHeader)<0) ? (groupHeader+' '+line) : line;
+      // 헤더 상속: (1) 인치 헤더인데 줄에 인치 없으면 붙임, (2) 품목군 헤더인데 줄에 사이즈 있으면 붙임(기존)
+      var lineHasSize = /\d{3,4}\s*[*xX×]/.test(line);
+      var lineHasInch = /\d+\s*인치/.test(line);
+      var headerIsInch = /^\s*\d+\s*인치\s*$/.test((groupHeader||'').trim());
+      var shouldInherit = groupHeader && line.indexOf(groupHeader) < 0 && (
+        (headerIsInch && !lineHasInch) ||
+        (!headerIsInch && lineHasSize)
+      );
+      cur = shouldInherit ? (groupHeader + ' ' + line) : line;
     } else {
       // 색온도/수량 등 보조정보 → 현재 블록에 합침
       if(cur) cur += ' '+line;
@@ -3678,7 +3666,11 @@ function parsePreview(){
   // 코드 / 품명 / 수량 3열 표
   h += '<table class="bc-tbl"><colgroup><col style="width:24%"><col style="width:54%"><col style="width:22%"></colgroup>';
   h += '<thead><tr><th>코드</th><th>품명</th><th>수량</th></tr></thead><tbody>';
-  items.forEach(function(it){
+  var LIMIT = 5;
+  var isCollapsed = window.__parsePreviewCollapsed !== false; // 기본: 접힘
+  var showAll = items.length <= LIMIT || !isCollapsed;
+  var displayCount = showAll ? items.length : LIMIT;
+  items.slice(0, displayCount).forEach(function(it){
     var pname = it.unconfirmed ? (it.rawText||it.ename) : ((it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct):''));
     if(it.unconfirmed){
       h += '<tr class="bc-fail-row"><td class="bc-code" style="color:#DC2626">?</td>'
@@ -3691,6 +3683,14 @@ function parsePreview(){
     }
   });
   h += '</tbody></table>';
+  // 더보기/접기 버튼
+  if(items.length > LIMIT){
+    if(!showAll){
+      h += '<button onclick="window.__parsePreviewCollapsed=false;parsePreview();" style="width:100%;padding:8px;margin-top:4px;background:rgba(40,85,160,.07);color:var(--B,#2855A0);border:1px dashed rgba(40,85,160,.3);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif">▼ 나머지 '+(items.length-LIMIT)+'개 더보기</button>';
+    } else {
+      h += '<button onclick="window.__parsePreviewCollapsed=true;parsePreview();" style="width:100%;padding:8px;margin-top:4px;background:rgba(40,85,160,.07);color:var(--B,#2855A0);border:1px dashed rgba(40,85,160,.3);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif">▲ 5개만 보기</button>';
+    }
+  }
   box.innerHTML = h;
 }
 
@@ -4374,24 +4374,7 @@ function showStorePrompt(callback){
   inp.addEventListener('keydown', function(e){ if(e.key==='Enter') confirm(); });
   el.addEventListener('click', function(e){ if(e.target===el) dismiss(); });
 }
-function sendBcOrder(){
-  var items=bcResults.filter(function(r){ return r.ok; }).map(function(r){
-    var unit=(r.qty+'').replace(/[0-9]/g,'')||'박스';
-    var qty=parseInt(r.qty)||1;
-    return {ename:r.p.ename, code:r.p.code, qty:qty, unit:unit};
-  });
-  if(!items.length){ showToast('매칭된 품목이 없습니다'); return; }
-  dOpen(items, document.getElementById('storeName').value.trim());
-}
-function sendScanOrder(){
-  if(!scanList.length){ showToast('스캔된 품목이 없습니다'); return; }
-  dOpen(scanList, document.getElementById('storeName').value.trim());
-}
 
-// ── 쇼핑몰 키워드 매핑 ──
-// SHOP_KW: 상단에서 정의됨
-
-// renderLeft 오버라이드 제거됨
 // ── 미니 장바구니 ──
 function renderMiniCart() {
   var mc = document.getElementById('miniCart');
@@ -4416,12 +4399,6 @@ function renderMiniCart() {
   });
   if (ml) ml.innerHTML = h;
 }
-
-// renderCart 에 미니장바구니 + 버튼 업데이트 훅
-// renderCart 오버라이드 제거됨
-
-// addToCart 훅 - 미니장바구니 즉시 업데이트
-// addToCart 오버라이드 제거됨
 
 // ── 재고 확인 모달 ──
 var spInput = '', spGroup = null;
@@ -4485,7 +4462,7 @@ function spCheck() {
       '<div class="stkdata-code">' + v.code + '</div></div>' +
       '<div style="text-align:right"><div class="stkdata-num">' + sn + '</div>' +
       '<div class="stkdata-rate" style="color:' + rc + '">재고율 ' + rs + '</div></div>' +
-      '</div>' + weekHtml + '</div>';
+      '</div>' + weekHtml + containerHtml(v.code) + '</div>';
   });
   if (!h) h = '<div style="padding:16px;text-align:center;color:var(--ink3)">재고 정보 없음</div>';
   document.getElementById('stkDataList').innerHTML = h;
@@ -4493,6 +4470,80 @@ function spCheck() {
 
 // ── 구글시트 재고 로드 ──
 var SHEET_CSV = 'https://script.google.com/macros/s/AKfycbzkHJKjnCtZv0XJ1vDPBnAFcBGEMCPbIZEOIDWb5NEZL6siD9ZAMgWCic8Bpip-Jbv3/exec';
+
+// ── 컨테이너 입고 일정 ──
+// CONTAINERS[code] = [{qty, arrival, ansan}, ...]
+var CONTAINERS = {};
+
+// 평일 기준 N일 전 날짜 계산 (오늘 포함 뒤로 평일 N개 세기)
+function businessDaysAgo(n){
+  var d = new Date();
+  d.setHours(0,0,0,0);
+  var count = 0;
+  while(count < n){
+    d.setDate(d.getDate() - 1);
+    var dow = d.getDay(); // 0=일, 6=토
+    if(dow !== 0 && dow !== 6) count++;
+  }
+  return d;
+}
+
+// 컨테이너 입고 일정 로드 (재고와 함께 호출)
+function loadContainers(){
+  fetch(SHEET_CSV + '?action=containers', {method:'GET', redirect:'follow'})
+    .then(function(r){ return r.text(); })
+    .then(function(txt){
+      var arr;
+      try { arr = JSON.parse(txt); } catch(e){ return; }
+      if(!Array.isArray(arr)) return;
+      // 안산입고일이 (오늘 - 평일 3일) 이후인 것만 표시
+      var cutoff = businessDaysAgo(3);
+      var map = {};
+      arr.forEach(function(it){
+        if(!it.code) return;
+        // 안산입고일 필터: 없으면 통과(입항 예정), 있으면 cutoff 이후만
+        if(it.ansan){
+          var ad = new Date(it.ansan + 'T00:00:00');
+          if(!isNaN(ad.getTime()) && ad < cutoff) return; // 오래된 건 제외
+        }
+        if(!map[it.code]) map[it.code] = [];
+        map[it.code].push({qty:it.qty, arrival:it.arrival, ansan:it.ansan, name:it.name});
+      });
+      // 안산입고일 순 정렬
+      Object.keys(map).forEach(function(k){
+        map[k].sort(function(a,b){
+          var da = a.ansan||a.arrival||'', db = b.ansan||b.arrival||'';
+          return da < db ? -1 : da > db ? 1 : 0;
+        });
+      });
+      Object.keys(CONTAINERS).forEach(function(k){ delete CONTAINERS[k]; });
+      Object.assign(CONTAINERS, map);
+      // 재고 상세가 열려 있으면 다시 렌더
+      var stkWrap = document.getElementById('stkDataWrap');
+      if(spGroup && stkWrap && stkWrap.style.display === 'block'){
+        try { spCheck(); } catch(e){}
+      }
+    })
+    .catch(function(e){ /* 컨테이너 로드 실패는 조용히 무시 */ });
+}
+
+// 컨테이너 입고 예정 HTML 생성 (재고 상세용)
+function containerHtml(code){
+  var list = CONTAINERS[code];
+  if(!list || !list.length) return '';
+  var h = '<div style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--bdr)">';
+  h += '<div style="font-size:9px;font-weight:700;color:var(--ink3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">🚢 컨테이너 입고 예정</div>';
+  list.forEach(function(c){
+    var when = c.ansan ? ('안산 ' + c.ansan) : (c.arrival ? ('입항 ' + c.arrival) : '미정');
+    var sub = (c.ansan && c.arrival) ? (' <span style="color:var(--ink3);font-size:9px">(입항 ' + c.arrival.slice(5) + ')</span>') : '';
+    h += '<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0">'
+      + '<span style="color:var(--ink2)">' + when + sub + '</span>'
+      + '<span style="font-weight:700;color:#0EA5E9">' + (c.qty ? c.qty.toLocaleString() + '개' : '') + '</span>'
+      + '</div>';
+  });
+  h += '</div>';
+  return h;
+}
 // 스프레드시트 R4(병합셀)에서 재고 기준 날짜 추출
 function extractStockDate(data){
   if(!data || !Array.isArray(data)) return '';
@@ -4574,6 +4625,7 @@ function loadStockFromSheet() {
         var q = document.getElementById('srchInp').value;
         if (q) onSearch(q); else renderLeft(null);
         showToast('재고 업데이트 완료 (' + cnt + '개)');
+        loadContainers(); // 컨테이너 입고 일정도 함께 갱신
       } else {
         if (el) el.textContent = '재고 데이터 없음';
         console.warn('파싱된 재고 0개. 데이터 구조 확인 필요');
@@ -4772,8 +4824,6 @@ function sendBcOrder() {
 }
 function sendScanOrder() { if (!scanList.length) { showToast('스캔된 품목이 없습니다'); return; } dOpen(scanList, document.getElementById('storeName').value.trim()); }
 
-// addMgr 오버라이드 제거 (원본에 통합)
-
 // ── 인쇄 ──
 function printOrder() {
   if (!cart.length) return;
@@ -4962,6 +5012,7 @@ function closeQrScanner() {
 
 // ── 초기화 (앱과 독립적으로 재고 로드) ──
 setTimeout(loadStockFromSheet, 500);
+setTimeout(loadContainers, 800);
 
 
 // ── 거래명세서 ──
@@ -5077,6 +5128,11 @@ function invRender(company) {
     String(today.getMonth()+1).padStart(2,'0') + '-' +
     String(today.getDate()).padStart(2,'0');
 
+  // 수량 표기: 박스면 "800개 (40박스)", 개면 "5개"
+  function fmtQty(it, qtyEach){
+    return it.unit === '박스' ? (qtyEach + '개 (' + it.qty + '박스)') : (qtyEach + '개');
+  }
+
   var rows = '', totalSupply = 0;
   cart.forEach(function(it, i) {
     // 단가 찾기
@@ -5092,8 +5148,8 @@ function invRender(company) {
 
     var priceStr = invUnlocked && unitPrice > 0 ? unitPrice.toLocaleString() : '-';
     var amtStr = invUnlocked && amount > 0 ? amount.toLocaleString() : '-';
-    // 수량: 박스면 개수로 변환해서 표시
-    var unitStr = String(qtyEach);
+    // 수량: 박스면 개수로 변환해서 표시 (뒤에 박스 개수 병기)
+    var unitStr = fmtQty(it, qtyEach);
 
     rows += '<tr>' +
       '<td>' + it.code + '</td>' +
@@ -5152,7 +5208,7 @@ function invRender(company) {
       var vatItemStr = itemVat > 0 ? itemVat.toLocaleString() : '-';
       var totItemStr = itemTotal > 0 ? itemTotal.toLocaleString() : '-';
       rows2 += '<tr>' +
-        '<td>' + String(qtyEach2) + '</td>' +
+        '<td style="white-space:nowrap">' + fmtQty(it, qtyEach2) + '</td>' +
         '<td style="text-align:right;white-space:nowrap">' + prStr + '</td>' +
         '<td style="text-align:right;white-space:nowrap">' + amStr + '</td>' +
         '<td style="text-align:right;white-space:nowrap">' + vatItemStr + '</td>' +
@@ -5167,7 +5223,7 @@ function invRender(company) {
           + '<td style="font-family:monospace;font-size:9px;color:#DC2626">⚠</td>'
           + '<td class="left" style="color:#DC2626;font-weight:600">' + (it.rawText||it.ename)
           + ' <button onclick="openItemFix(' + i + ')" style="background:#DC2626;color:#fff;border:none;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif">✏️수정</button></td>'
-          + '<td style="font-weight:700">' + String(qtyEach2) + '</td>'
+          + '<td style="font-weight:700;white-space:nowrap">' + fmtQty(it, qtyEach2) + '</td>'
           + '</tr>';
       } else {
         rows2 += '<tr>'
@@ -5175,13 +5231,13 @@ function invRender(company) {
           + '<td style="font-family:monospace;font-size:9px;color:#555;white-space:nowrap">' + it.code + '</td>'
           + '<td class="left" style="font-weight:600">' + pname
           + ' <button onclick="openItemFix(' + i + ')" style="background:none;border:none;color:#bbb;font-size:10px;cursor:pointer;padding:0 1px">✏️</button></td>'
-          + '<td style="font-weight:700">' + String(qtyEach2) + '</td>'
+          + '<td style="font-weight:700;white-space:nowrap">' + fmtQty(it, qtyEach2) + '</td>'
           + '</tr>';
       }
     }
   });
-  // 빈 행 (명세서 양식 길게 - 최소 15줄)
-  var emptyRows2 = Math.max(0, 15 - cart.length);
+  // 빈 행 (기본 5줄 유지, 데이터 많으면 자동 확장)
+  var emptyRows2 = Math.max(0, 5 - cart.length);
   for (var i = 0; i < emptyRows2; i++) {
     if(invUnlocked){
       rows2 += '<tr><td colspan="5" style="padding:9px;border:1px solid #ccc">&nbsp;</td></tr>';
