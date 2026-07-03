@@ -1088,6 +1088,32 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
   </div>
 </div>
 
+<!-- 키워드 등록 모달 (B안: 단어 선택 → 품명 매핑) -->
+<div id="kwMod" style="display:none;position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.5);align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:14px;max-width:440px;width:100%;max-height:88vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="padding:14px 16px;background:#7C3AED;color:#fff;display:flex;align-items:center;gap:8px">
+      <span style="font-size:16px">🧠</span>
+      <div style="font-weight:700;font-size:15px;flex:1">키워드 학습</div>
+      <button onclick="closeKwMod()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1">&times;</button>
+    </div>
+    <div style="padding:12px 16px;overflow-y:auto">
+      <div style="font-size:11px;color:#888;margin-bottom:8px">이 발주 줄에서 <b style="color:#7C3AED">핵심 단어</b>만 톡톡 눌러 선택하세요. 선택한 단어가 아래 품명의 별칭으로 저장됩니다.</div>
+      <div style="font-size:11px;color:#666;margin-bottom:4px">발주서 줄:</div>
+      <div id="kwTokens" style="display:flex;flex-wrap:wrap;gap:6px;padding:10px;background:#F5F3FF;border-radius:8px;margin-bottom:6px"></div>
+      <div style="font-size:11px;color:#666;margin-bottom:10px">선택됨: <span id="kwSelected" style="color:#7C3AED;font-weight:700">(없음)</span></div>
+
+      <div style="font-size:11px;color:#666;margin-bottom:4px">어느 품명으로 매핑할까요?</div>
+      <input id="kwSearch" type="text" oninput="kwRenderList()" placeholder="품명 검색 (예: 매장램프 30, LED 벌브 12W)" style="width:100%;padding:10px;font-size:13px;border:1.5px solid #ddd;border-radius:8px;outline:none;font-family:Noto Sans KR,sans-serif;margin-bottom:6px">
+      <div id="kwList" style="max-height:200px;overflow-y:auto"></div>
+      <div style="font-size:11px;color:#888;margin-top:8px">선택한 품명: <span id="kwPickedName" style="color:#2855A0;font-weight:700">(없음)</span></div>
+    </div>
+    <div style="padding:12px 16px;border-top:1px solid #eee;display:flex;gap:8px">
+      <button onclick="closeKwMod()" style="flex:1;padding:11px;background:#f0f0f0;color:#555;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:Noto Sans KR,sans-serif">취소</button>
+      <button onclick="kwSubmit()" style="flex:2;padding:11px;background:#7C3AED;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:Noto Sans KR,sans-serif">등록하고 다시 매칭</button>
+    </div>
+  </div>
+</div>
+
 <!-- 사용설명서 모달 -->
 <div class="helpmod" id="helpMod">
   <div class="helpbox">
@@ -3317,6 +3343,87 @@ var PO_SYNONYMS = [
   ['벌브','BULB'],['전구색벌브','BULB'],['led벌브','LED BULB'],['엘이디벌브','LED BULB'],
   ['슬림샤인','슬림 샤인'],['직하엣지','슬림 샤인'],['슬림엣지','슬림 샤인'],['슬림 엣지','슬림 샤인'],['직하 엣지','슬림 샤인']
 ];
+
+// ── 사용자 학습 키워드 (A+B 하이브리드: localStorage 즉시 + 구글시트 동기화) ──
+// USER_KW[품명(g.name)] = [키워드, ...]
+var USER_KW = {};
+
+// localStorage에서 즉시 로드 (앱 시작 시)
+function loadUserKwLocal(){
+  try {
+    var s = localStorage.getItem('jsUserKw');
+    if(s){ USER_KW = JSON.parse(s) || {}; }
+  } catch(e){ USER_KW = {}; }
+}
+function saveUserKwLocal(){
+  try { localStorage.setItem('jsUserKw', JSON.stringify(USER_KW)); } catch(e){}
+}
+
+// 구글시트에서 키워드 동기화 (백그라운드)
+function loadUserKwCloud(){
+  fetch(SHEET_CSV + '?action=keywords', {method:'GET', redirect:'follow'})
+    .then(function(r){ return r.text(); })
+    .then(function(txt){
+      var obj;
+      try { obj = JSON.parse(txt); } catch(e){ return; }
+      if(obj && typeof obj === 'object' && !Array.isArray(obj)){
+        // 클라우드 + 로컬 병합 (둘 다 살림)
+        Object.keys(obj).forEach(function(name){
+          var cloud = obj[name] || [];
+          var local = USER_KW[name] || [];
+          var merged = local.slice();
+          cloud.forEach(function(k){ if(merged.indexOf(k) < 0) merged.push(k); });
+          USER_KW[name] = merged;
+        });
+        saveUserKwLocal();
+      }
+    })
+    .catch(function(e){ /* 클라우드 실패는 조용히 무시, 로컬로 계속 */ });
+}
+
+// 키워드 추가 (로컬 즉시 + 클라우드 백그라운드)
+function addUserKw(gName, keywords){
+  if(!gName || !keywords || !keywords.length) return;
+  if(!USER_KW[gName]) USER_KW[gName] = [];
+  keywords.forEach(function(k){
+    k = (k||'').trim();
+    if(k && USER_KW[gName].indexOf(k) < 0) USER_KW[gName].push(k);
+  });
+  saveUserKwLocal();
+  // 클라우드에도 저장 (POST)
+  fetch(SHEET_CSV, {
+    method:'POST', redirect:'follow',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({action:'addKeywords', gName:gName, keywords:keywords})
+  }).catch(function(e){ /* 실패해도 로컬엔 저장됨 */ });
+}
+
+// 키워드 삭제
+function removeUserKw(gName, keyword){
+  if(USER_KW[gName]){
+    USER_KW[gName] = USER_KW[gName].filter(function(k){ return k !== keyword; });
+    if(!USER_KW[gName].length) delete USER_KW[gName];
+    saveUserKwLocal();
+  }
+  fetch(SHEET_CSV, {
+    method:'POST', redirect:'follow',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({action:'removeKeyword', gName:gName, keyword:keyword})
+  }).catch(function(e){});
+}
+
+// 발주 줄이 특정 품명의 사용자 키워드와 몇 개 매칭되는지
+function userKwScore(gName, line){
+  var kws = USER_KW[gName];
+  if(!kws || !kws.length) return 0;
+  var nLine = poNorm(line);
+  var hits = 0;
+  kws.forEach(function(k){
+    var nk = poNorm(k);
+    if(nk && nLine.indexOf(nk) >= 0) hits++;
+  });
+  return hits;
+}
 // 사이즈 표기 정규화 (1280→1285 등 자주 틀리는 치수)
 function poNormSize(s){
   return s.replace(/1280\s*[*xX×]\s*320/g,'1285*320')
@@ -3434,6 +3541,9 @@ function poFindByName(line){
       var inLine = nLine.indexOf(nMd)>=0;
       if(inName && !inLine) score -= 1.0;
     });
+    // 사용자 학습 키워드: 매칭될 때마다 강한 가산점
+    var ukScore = userKwScore(g.name, sLine);
+    if(ukScore > 0) score += ukScore * 3.0;
     if(score>bestScore){ bestScore=score; best=g; }
   }
   return bestScore>=0.8 ? best : null;
@@ -3466,6 +3576,9 @@ function poScoreOne(g, line){
   PO_KEY_TERMS.forEach(function(kt){ var nKt=poNorm(kt); var iN=nName.indexOf(nKt)>=0,iL=nLine.indexOf(nKt)>=0; if(iN&&iL)score+=0.5;else if(iN&&!iL)score-=0.3;else if(!iN&&iL)score-=0.5; });
   PO_DISTINCT.forEach(function(dt){ var nDt=poNorm(dt); var iN=nName.indexOf(nDt)>=0,iL=nLine.indexOf(nDt)>=0; if(iN&&iL)score+=1.2;else if(iN&&!iL)score-=0.5; });
   PO_MODIFIERS.forEach(function(md){ var nMd=poNorm(md); var iN=nName.indexOf(nMd)>=0,iL=nLine.indexOf(nMd)>=0; if(iN&&!iL)score-=1.0; });
+  // 사용자 학습 키워드: 매칭될 때마다 강한 가산점
+  var ukScore = userKwScore(g.name, sLine);
+  if(ukScore > 0) score += ukScore * 3.0;
   return score;
 }
 function poFindCandidates(line, topN){
@@ -3673,8 +3786,10 @@ function parsePreview(){
   items.slice(0, displayCount).forEach(function(it){
     var pname = it.unconfirmed ? (it.rawText||it.ename) : ((it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct):''));
     if(it.unconfirmed){
+      var rawEsc = (it.rawText||it.ename||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
       h += '<tr class="bc-fail-row"><td class="bc-code" style="color:#DC2626">?</td>'
-        + '<td class="bc-name" style="color:#DC2626">⚠ '+pname+'</td>'
+        + '<td class="bc-name" style="color:#DC2626">⚠ '+pname
+        + ' <button onclick="openKwMod(\''+rawEsc+'\')" style="background:#7C3AED;color:#fff;border:none;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif;white-space:nowrap">🧠 학습</button></td>'
         + '<td class="bc-qty" style="font-weight:700">'+it.qty+it.unit+'</td></tr>';
     } else {
       h += '<tr><td class="bc-code">'+it.code+'</td>'
@@ -3692,6 +3807,92 @@ function parsePreview(){
     }
   }
   box.innerHTML = h;
+}
+
+// ── 키워드 학습 모달 (B안) ──
+var kwState = { line:'', selected:[], pickedName:null };
+
+// 미매칭 줄에서 키워드 등록 모달 열기
+function openKwMod(rawLine){
+  kwState = { line: rawLine||'', selected:[], pickedName:null };
+  // 줄을 단어 토큰으로 분리 (수량/숫자만 있는 건 제외 안 함, 사용자가 고름)
+  var tokens = (rawLine||'').split(/[\s,·.]+/).filter(function(t){ return t && t.length >= 1; });
+  var th = '';
+  tokens.forEach(function(tok, i){
+    th += '<button onclick="kwToggleToken('+i+')" id="kwtok'+i+'" data-tok="'+tok.replace(/"/g,'&quot;')+'" '
+      + 'style="padding:6px 10px;background:#fff;border:1.5px solid #C4B5FD;border-radius:16px;font-size:12px;font-weight:600;color:#5B21B6;cursor:pointer;font-family:Noto Sans KR,sans-serif">'
+      + tok + '</button>';
+  });
+  document.getElementById('kwTokens').innerHTML = th || '<span style="color:#aaa;font-size:12px">단어 없음</span>';
+  document.getElementById('kwSelected').textContent = '(없음)';
+  document.getElementById('kwSearch').value = '';
+  document.getElementById('kwPickedName').textContent = '(없음)';
+  document.getElementById('kwList').innerHTML = '<div style="color:#aaa;font-size:12px;padding:10px;text-align:center">위에서 품명을 검색하세요</div>';
+  document.getElementById('kwMod').style.display = 'flex';
+}
+function closeKwMod(){ document.getElementById('kwMod').style.display = 'none'; }
+
+function kwToggleToken(i){
+  var btn = document.getElementById('kwtok'+i);
+  if(!btn) return;
+  var tok = btn.getAttribute('data-tok');
+  var idx = kwState.selected.indexOf(tok);
+  if(idx >= 0){
+    kwState.selected.splice(idx, 1);
+    btn.style.background = '#fff';
+    btn.style.color = '#5B21B6';
+    btn.style.borderColor = '#C4B5FD';
+  } else {
+    kwState.selected.push(tok);
+    btn.style.background = '#7C3AED';
+    btn.style.color = '#fff';
+    btn.style.borderColor = '#7C3AED';
+  }
+  document.getElementById('kwSelected').textContent = kwState.selected.length ? kwState.selected.join(', ') : '(없음)';
+}
+
+// 품명 검색 리스트 렌더
+function kwRenderList(){
+  var q = document.getElementById('kwSearch').value.trim();
+  var listEl = document.getElementById('kwList');
+  if(!q){ listEl.innerHTML = '<div style="color:#aaa;font-size:12px;padding:10px;text-align:center">위에서 품명을 검색하세요</div>'; return; }
+  var nq = poNorm(poApplySynonyms(q));
+  var matches = [];
+  for(var i=0;i<G.length;i++){
+    var g = G[i];
+    var score = poScoreOne(g, q);
+    if(score >= 0.3) matches.push({g:g, score:score});
+  }
+  matches.sort(function(a,b){ return b.score-a.score; });
+  matches = matches.slice(0, 12);
+  if(!matches.length){ listEl.innerHTML = '<div style="color:#aaa;font-size:12px;padding:10px;text-align:center">검색 결과 없음</div>'; return; }
+  var h = '';
+  matches.forEach(function(m){
+    var g = m.g;
+    var isSel = kwState.pickedName === g.name;
+    h += '<div onclick="kwPick(\''+g.name.replace(/'/g,"\\'")+'\')" '
+      + 'style="padding:9px 10px;border:1.5px solid '+(isSel?'#2855A0':'#eee')+';border-radius:8px;margin-bottom:5px;cursor:pointer;background:'+(isSel?'#EFF6FF':'#fff')+'">'
+      + '<div style="font-weight:600;font-size:12px;color:#1A1814">'+(isSel?'✅ ':'')+g.name+'</div>'
+      + '<div style="font-size:10px;color:#999">'+g.cat+' &gt; '+g.sub+'</div>'
+      + '</div>';
+  });
+  listEl.innerHTML = h;
+}
+function kwPick(name){
+  kwState.pickedName = name;
+  document.getElementById('kwPickedName').textContent = name;
+  kwRenderList();
+}
+
+// 등록 실행
+function kwSubmit(){
+  if(!kwState.selected.length){ showToast('키워드로 쓸 단어를 선택해주세요'); return; }
+  if(!kwState.pickedName){ showToast('매핑할 품명을 선택해주세요'); return; }
+  addUserKw(kwState.pickedName, kwState.selected);
+  showToast('✅ 키워드 등록됨: '+kwState.selected.join(', ')+' → '+kwState.pickedName);
+  closeKwMod();
+  // 다시 매칭
+  parsePreview();
 }
 
 function parseOrder(){
@@ -4433,36 +4634,14 @@ function spCheck() {
     var sn = sd ? sd.s.toLocaleString() + '개' : '정보없음';
     var rs = (sd && sd.r !== null && sd.r !== undefined) ? sd.r + '%' : '-';
     var rc = (sd && sd.r !== null) ? (sd.r > 120 ? '#0EA5E9' : sd.r >= 60 ? '#22C55E' : '#F97316') : 'var(--ink3)';
-    // 주차별 입고 + AA열 입고예정일
-    var weekHtml = '';
-    if ((sd && sd.w) || (sd && sd.eta)) {
-      weekHtml = '<div style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--bdr)">';
-      weekHtml += '<div style="font-size:9px;font-weight:700;color:var(--ink3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">입고 예정</div>';
-      // AA열 입고 예정일 (날짜)
-      if (sd && sd.eta) {
-        weekHtml += '<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;margin-bottom:2px">'
-          + '<span style="color:var(--ink2)">📅 입고예정일</span>'
-          + '<span style="font-weight:700;color:#0EA5E9">' + sd.eta + '</span>'
-          + '</div>';
-      }
-      // 주차별 입고 수량
-      if (sd && sd.w) {
-        Object.keys(sd.w).forEach(function(label) {
-          weekHtml += '<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0">'
-            + '<span style="color:var(--ink2)">' + label + '</span>'
-            + '<span style="font-weight:700;color:#8B5CF6">' + sd.w[label].toLocaleString() + '개</span>'
-            + '</div>';
-        });
-      }
-      weekHtml += '</div>';
-    }
+    // 기존 입고예정(주차별/AA열)은 컨테이너 입고 일정으로 대체됨
     h += '<div class="stkdata-item" style="flex-direction:column;align-items:stretch">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start">' +
       '<div><div class="stkdata-ct">' + (ctL[v.ct] || v.ct || '-') + '</div>' +
       '<div class="stkdata-code">' + v.code + '</div></div>' +
       '<div style="text-align:right"><div class="stkdata-num">' + sn + '</div>' +
       '<div class="stkdata-rate" style="color:' + rc + '">재고율 ' + rs + '</div></div>' +
-      '</div>' + weekHtml + containerHtml(v.code) + '</div>';
+      '</div>' + containerHtml(v.code) + '</div>';
   });
   if (!h) h = '<div style="padding:16px;text-align:center;color:var(--ink3)">재고 정보 없음</div>';
   document.getElementById('stkDataList').innerHTML = h;
@@ -4498,20 +4677,24 @@ function loadContainers(){
       if(!Array.isArray(arr)) return;
       // 안산입고일이 (오늘 - 평일 3일) 이후인 것만 표시
       var cutoff = businessDaysAgo(3);
+      var isDate = function(s){ return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}/.test(s); };
       var map = {};
       arr.forEach(function(it){
         if(!it.code) return;
-        // 안산입고일 필터: 없으면 통과(입항 예정), 있으면 cutoff 이후만
-        if(it.ansan){
+        // 안산입고일 필터: 날짜면 cutoff 이후만, 글자(1순위/미정 등)면 참고용으로 항상 표시
+        if(it.ansan && isDate(it.ansan)){
           var ad = new Date(it.ansan + 'T00:00:00');
           if(!isNaN(ad.getTime()) && ad < cutoff) return; // 오래된 건 제외
         }
         if(!map[it.code]) map[it.code] = [];
         map[it.code].push({qty:it.qty, arrival:it.arrival, ansan:it.ansan, name:it.name});
       });
-      // 안산입고일 순 정렬
+      // 정렬: 날짜인 것 먼저(날짜순), 글자값(1순위 등)은 뒤로
       Object.keys(map).forEach(function(k){
         map[k].sort(function(a,b){
+          var ad = isDate(a.ansan), bd = isDate(b.ansan);
+          if(ad && !bd) return -1;
+          if(!ad && bd) return 1;
           var da = a.ansan||a.arrival||'', db = b.ansan||b.arrival||'';
           return da < db ? -1 : da > db ? 1 : 0;
         });
@@ -4531,11 +4714,23 @@ function loadContainers(){
 function containerHtml(code){
   var list = CONTAINERS[code];
   if(!list || !list.length) return '';
+  var isDate = function(s){ return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}/.test(s); };
   var h = '<div style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--bdr)">';
   h += '<div style="font-size:9px;font-weight:700;color:var(--ink3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">🚢 컨테이너 입고 예정</div>';
   list.forEach(function(c){
-    var when = c.ansan ? ('안산 ' + c.ansan) : (c.arrival ? ('입항 ' + c.arrival) : '미정');
-    var sub = (c.ansan && c.arrival) ? (' <span style="color:var(--ink3);font-size:9px">(입항 ' + c.arrival.slice(5) + ')</span>') : '';
+    var when, sub = '';
+    if(c.ansan && isDate(c.ansan)){
+      when = '안산 ' + c.ansan;
+      if(c.arrival && isDate(c.arrival)) sub = ' <span style="color:var(--ink3);font-size:9px">(입항 ' + c.arrival.slice(5) + ')</span>';
+    } else if(c.ansan){
+      // 날짜가 아닌 글자값(1순위/2순위/미정 등) → 그대로, 참고용 회색 표시
+      when = '<span style="color:#9CA3AF">안산 ' + c.ansan + '</span>';
+      if(c.arrival && isDate(c.arrival)) sub = ' <span style="color:var(--ink3);font-size:9px">(입항 ' + c.arrival.slice(5) + ')</span>';
+    } else if(c.arrival && isDate(c.arrival)){
+      when = '입항 ' + c.arrival;
+    } else {
+      when = '<span style="color:#9CA3AF">' + (c.arrival || '미정') + '</span>';
+    }
     h += '<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0">'
       + '<span style="color:var(--ink2)">' + when + sub + '</span>'
       + '<span style="font-weight:700;color:#0EA5E9">' + (c.qty ? c.qty.toLocaleString() + '개' : '') + '</span>'
@@ -5011,8 +5206,10 @@ function closeQrScanner() {
 }
 
 // ── 초기화 (앱과 독립적으로 재고 로드) ──
+loadUserKwLocal();               // 사용자 키워드 즉시 로드 (localStorage)
 setTimeout(loadStockFromSheet, 500);
 setTimeout(loadContainers, 800);
+setTimeout(loadUserKwCloud, 1100); // 클라우드 키워드 동기화
 
 
 // ── 거래명세서 ──
