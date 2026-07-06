@@ -3626,6 +3626,9 @@ function poFindByName(line){
     if(lineInch && nameInch){
       if(lineInch===nameInch) score += 1.0;
       else score -= 1.5;
+    } else if(lineInch && !nameInch){
+      var isInchType2 = /다운라이트|d\/l|엣지|직부|센서/i.test(g.name) || g.sub==='D/L' || g.sub==='센서/직부';
+      if(!isInchType2) score -= 1.5;
     }
     // 사이즈(치수) 일치 - 평판류에 중요
     var lineSize = poExtractSize(sLine);
@@ -3670,6 +3673,11 @@ function poFindByName(line){
       if(nName.indexOf(poNorm('고효율'))>=0) score += 2.5;
       else if(nName.indexOf(poNorm('브라켓'))>=0) score -= 3.0;
     }
+    // 디밍 구분: 발주에 "디밍" 있으면 디밍 제품, 없으면 디밍 제품 배제
+    var lineHasDim2 = /디밍|dim/i.test(sLine);
+    var nameHasDim2 = nName.indexOf(poNorm('디밍'))>=0;
+    if(lineHasDim2 && nameHasDim2) score += 2.5;
+    else if(!lineHasDim2 && nameHasDim2) score -= 2.5; // 디밍 안 적었는데 디밍 제품이면 배제
     // 사용자 학습 키워드: 매칭될 때마다 강한 가산점
     var ukScore = userKwScore(g.name, sLine);
     if(ukScore > 0) score += ukScore * 3.0;
@@ -3700,6 +3708,12 @@ function poScoreOne(g, line){
   if(lineWatt&&nameWatt){ if(lineWatt===nameWatt)score+=1.0; else score-=1.5; }
   var nameInch=poExtractInch(g.name);
   if(lineInch&&nameInch){ if(lineInch===nameInch)score+=1.0; else score-=1.5; }
+  else if(lineInch && !nameInch){
+    // 발주에 "N인치"가 있는데 제품명에 인치가 없으면: 다운라이트/DL 계열이 아니면 감점
+    // (인치는 주로 다운라이트/등기구에 쓰임. 볼구/T5/벌브 등은 배제)
+    var isInchType = /다운라이트|d\/l|엣지|직부|센서/i.test(g.name) || g.sub==='D/L' || g.sub==='센서/직부';
+    if(!isInchType) score -= 1.5;
+  }
   var lineSize=poExtractSize(sLine), nameSize=poExtractSize(g.name);
   if(lineSize&&nameSize){ if(lineSize===nameSize)score+=1.5; else score-=1.5; }
   PO_KEY_TERMS.forEach(function(kt){ var nKt=poNorm(kt); var iN=nName.indexOf(nKt)>=0,iL=nLine.indexOf(nKt)>=0; if(iN&&iL)score+=0.5;else if(iN&&!iL)score-=0.3;else if(!iN&&iL)score-=0.5; });
@@ -3722,6 +3736,11 @@ function poScoreOne(g, line){
     if(nameHasHyeff) score += 2.5;
     else if(nameIsBracket) score -= 3.0; // 안 나가는 평판 브라켓 강하게 배제
   }
+  // 디밍 구분: 발주에 "디밍" 있으면 디밍 제품, 없으면 디밍 제품 배제
+  var lineHasDim = /디밍|dim/i.test(sLine);
+  var nameHasDim = nName.indexOf(poNorm('디밍'))>=0;
+  if(lineHasDim && nameHasDim) score += 2.5;
+  else if(!lineHasDim && nameHasDim) score -= 2.5;
   // 사용자 학습 키워드: 매칭될 때마다 강한 가산점
   var ukScore = userKwScore(g.name, sLine);
   if(ukScore > 0) score += ukScore * 3.0;
@@ -4113,10 +4132,12 @@ function openKwMod(rawLine){
   });
   document.getElementById('kwTokens').innerHTML = th || '<span style="color:#aaa;font-size:12px">단어 없음</span>';
   document.getElementById('kwSelected').textContent = '(없음)';
-  document.getElementById('kwSearch').value = '';
+  // 발주 줄을 검색창에 미리 넣고 후보 자동 표시 (수량/박스 제거)
+  var searchDefault = (rawLine||'').replace(/\/?\s*\d+\s*(박스|개|ea|EA)\s*$/,'').replace(/\.{2,}\s*\d+.*$/,'').trim();
+  document.getElementById('kwSearch').value = searchDefault;
   document.getElementById('kwPickedName').textContent = '(없음)';
-  document.getElementById('kwList').innerHTML = '<div style="color:#aaa;font-size:12px;padding:10px;text-align:center">위에서 품명을 검색하세요</div>';
   document.getElementById('kwMod').style.display = 'flex';
+  kwRenderList(); // 발주 줄 기준 후보 자동 표시
 }
 function closeKwMod(){ document.getElementById('kwMod').style.display = 'none'; }
 
