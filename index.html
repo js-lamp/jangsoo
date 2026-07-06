@@ -1071,7 +1071,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
       <div class="parse-left">
         <div class="parse-col-label">📝 발주 내용 (수정 가능)</div>
         <textarea class="parse-ta" id="parseTa" oninput="parsePreviewDebounced()" placeholder="붙여넣기 예시:&#10;&#10;슬림샤인 엣지&#10;1280*320 주광색 40개&#10;640*320 주광색 4개&#10;&#10;(품목군은 위에 한 번만 적어도 됩니다)"></textarea>
-        <button class="parse-preview-btn" onclick="parsePreview()">🔍 미리보기 (매칭 확인)</button>
+        <button class="parse-preview-btn" onclick="parsePreview(true)">🔍 미리보기 (매칭 확인)</button>
       </div>
       <!-- 오른쪽: 미리보기 -->
       <div class="parse-right">
@@ -1084,6 +1084,26 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
     <div class="parse-foot">
       <button class="parse-btn secondary" onclick="closeParseMod()">취소</button>
       <button class="parse-btn primary" onclick="parseOrder()">📋 명세서 만들기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 품목 선택 모달 (여러 후보 중 선택) -->
+<div id="ambigMod" style="display:none;position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.5);align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:14px;max-width:440px;width:100%;max-height:88vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="padding:14px 16px;background:#EA580C;color:#fff;display:flex;align-items:center;gap:8px">
+      <span style="font-size:16px">🔀</span>
+      <div style="font-weight:700;font-size:15px;flex:1">품목 선택</div>
+      <button onclick="closeAmbigMod()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1">&times;</button>
+    </div>
+    <div style="padding:12px 16px;overflow-y:auto">
+      <div style="font-size:11px;color:#888;margin-bottom:4px">발주 줄:</div>
+      <div id="ambigRaw" style="font-size:13px;font-weight:600;color:#C2410C;background:#FFF7ED;padding:8px 10px;border-radius:8px;margin-bottom:10px"></div>
+      <div style="font-size:11px;color:#666;margin-bottom:8px">여러 품목이 해당됩니다. 맞는 것을 선택하세요:</div>
+      <div id="ambigList"></div>
+    </div>
+    <div style="padding:12px 16px;border-top:1px solid #eee">
+      <button onclick="closeAmbigMod()" style="width:100%;padding:11px;background:#f0f0f0;color:#555;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:Noto Sans KR,sans-serif">취소</button>
     </div>
   </div>
 </div>
@@ -3855,7 +3875,45 @@ function parseOrderItems(text){
       var ct = poExtractCt(line);
       var v = ct ? g.variants.find(function(x){return x.ct===ct;}) : null;
       if(!v) v = g.variants[0];
-      items.push({code:v.code, ename:v.ename, gname:g.name, ct:v.ct, qty:qty, unit:unit});
+      // 애매한 매칭 감지: 상위 후보들의 점수가 비슷하거나, 같은 용도+와트 계열이면 선택 대기
+      var cands = poFindCandidates(line, 8);
+      var ambigList = [];
+      if(cands.length >= 2){
+        var topScore = cands[0].score;
+        var lineWatt = poExtractWatt(poApplySynonyms(line));
+        // 용도 키워드 (주방/거실/방 등) 추출
+        var useKws = ['주방','거실','방등','침실','센서','직부','원형','사각','펜던트','다운','투광','벌브','스틱','촛대','볼구'];
+        var lineUse = useKws.filter(function(k){ return line.indexOf(k)>=0; });
+        cands.forEach(function(c){
+          var include = false;
+          // 조건1: 최고점 대비 1.2점 이내
+          if(topScore - c.score <= 1.2) include = true;
+          // 조건2: 같은 용도 키워드 + 같은 와트면 (브랜드만 다른 경우) 후보 포함
+          if(!include && lineUse.length && topScore - c.score <= 3.0){
+            var cWatt = poExtractWatt(c.g.name);
+            var cHasUse = lineUse.some(function(k){ return c.g.name.indexOf(k)>=0; });
+            if(cHasUse && lineWatt && cWatt && lineWatt===cWatt) include = true;
+          }
+          if(include) ambigList.push(c.g);
+        });
+        // 중복 품목군 제거
+        var seen = {};
+        ambigList = ambigList.filter(function(cg){ if(seen[cg.name])return false; seen[cg.name]=1; return true; });
+      }
+      if(ambigList.length >= 2){
+        // 후보 여러 개 → 선택 대기 상태
+        items.push({
+          code:v.code, ename:v.ename, gname:g.name, ct:v.ct, qty:qty, unit:unit,
+          ambiguous:true, rawText:line,
+          candidates: ambigList.map(function(cg){
+            var cv = ct ? cg.variants.find(function(x){return x.ct===ct;}) : null;
+            if(!cv) cv = cg.variants[0];
+            return {code:cv.code, ename:cv.ename, gname:cg.name, ct:cv.ct};
+          })
+        });
+      } else {
+        items.push({code:v.code, ename:v.ename, gname:g.name, ct:v.ct, qty:qty, unit:unit});
+      }
     } else {
       items.push({code:'?', ename:line, gname:line, ct:'-', qty:qty, unit:unit, unconfirmed:true, rawText:line});
     }
@@ -3863,27 +3921,36 @@ function parseOrderItems(text){
   return items;
 }
 
-// 미리보기 (오른쪽 패널에 매칭 결과 표시)
+// ── 미리보기 (오른쪽 패널에 매칭 결과 표시) ──
 var parsePreviewTimer = null;
+var parsedItems = [];  // 현재 파싱된 품목 (선택 반영 상태 유지)
 function parsePreviewDebounced(){
   clearTimeout(parsePreviewTimer);
-  parsePreviewTimer = setTimeout(parsePreview, 600);
+  parsePreviewTimer = setTimeout(function(){ parsePreview(true); }, 600);
 }
-function parsePreview(){
+function parsePreview(reparse){
   var text = document.getElementById('parseTa').value.trim();
   var box = document.getElementById('parsePreviewList');
   if(!text){
+    parsedItems = [];
     box.innerHTML = '<div style="text-align:center;color:var(--ink3);font-size:12px;padding:30px 10px">왼쪽에 발주 내용을 입력하고<br><b>미리보기</b>를 누르면<br>매칭 결과가 여기 표시됩니다</div>';
     return;
   }
-  var items = parseOrderItems(text);
+  // reparse=true(텍스트 변경/최초)면 새로 파싱, 아니면 기존 선택상태 유지
+  if(reparse || !parsedItems.length){
+    parsedItems = parseOrderItems(text);
+  }
+  var items = parsedItems;
   if(!items.length){
     box.innerHTML = '<div style="text-align:center;color:var(--ink3);font-size:12px;padding:30px 10px">인식된 품목이 없습니다.<br>품명이나 코드를 확인해주세요.</div>';
     return;
   }
-  var okCnt = items.filter(function(it){return !it.unconfirmed;}).length;
-  var failCnt = items.length - okCnt;
-  var h = '<div style="font-size:11px;color:var(--ink2);padding:4px 4px 8px">✓ 매칭 '+okCnt+'개'+(failCnt?' · <span style="color:#DC2626">⚠ 확인필요 '+failCnt+'개</span>':'')+'</div>';
+  var okCnt = items.filter(function(it){return !it.unconfirmed && !it.ambiguous;}).length;
+  var ambigCnt = items.filter(function(it){return it.ambiguous;}).length;
+  var failCnt = items.filter(function(it){return it.unconfirmed;}).length;
+  var h = '<div style="font-size:11px;color:var(--ink2);padding:4px 4px 8px">✓ 매칭 '+okCnt+'개'
+    + (ambigCnt?' · <span style="color:#EA580C">🔀 선택필요 '+ambigCnt+'개</span>':'')
+    + (failCnt?' · <span style="color:#DC2626">⚠ 확인필요 '+failCnt+'개</span>':'')+'</div>';
   // 코드 / 품명 / 수량 3열 표
   h += '<table class="bc-tbl"><colgroup><col style="width:24%"><col style="width:54%"><col style="width:22%"></colgroup>';
   h += '<thead><tr><th>코드</th><th>품명</th><th>수량</th></tr></thead><tbody>';
@@ -3891,7 +3958,8 @@ function parsePreview(){
   var isCollapsed = window.__parsePreviewCollapsed !== false; // 기본: 접힘
   var showAll = items.length <= LIMIT || !isCollapsed;
   var displayCount = showAll ? items.length : LIMIT;
-  items.slice(0, displayCount).forEach(function(it){
+  items.slice(0, displayCount).forEach(function(it, idx){
+    var realIdx = idx; // items 내 인덱스 (선택 반영용)
     var pname = it.unconfirmed ? (it.rawText||it.ename) : ((it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct):''));
     if(it.unconfirmed){
       var rawEsc = (it.rawText||it.ename||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
@@ -3899,6 +3967,12 @@ function parsePreview(){
         + '<td class="bc-name" style="color:#DC2626">⚠ '+pname
         + ' <button onclick="openKwMod(\''+rawEsc+'\')" style="background:#7C3AED;color:#fff;border:none;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif;white-space:nowrap">🧠 학습</button></td>'
         + '<td class="bc-qty" style="font-weight:700">'+it.qty+it.unit+'</td></tr>';
+    } else if(it.ambiguous){
+      // 선택 필요: 주황색 + 🔀 선택 버튼
+      h += '<tr style="background:#FFF7ED"><td class="bc-code" style="color:#EA580C">'+it.code+'</td>'
+        + '<td class="bc-name" style="color:#C2410C">'+pname
+        + ' <button onclick="openAmbigMod('+realIdx+')" style="background:#EA580C;color:#fff;border:none;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif;white-space:nowrap">🔀 선택 ('+it.candidates.length+')</button></td>'
+        + '<td class="bc-qty" style="font-weight:700;color:#EA580C">'+it.qty+it.unit+'</td></tr>';
     } else {
       var rawEsc2 = (it.rawText||it.orig||it.ename||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
       h += '<tr><td class="bc-code">'+it.code+'</td>'
@@ -4002,16 +4076,57 @@ function kwSubmit(){
   addUserKw(kwState.pickedName, kwState.selected);
   showToast('✅ 키워드 등록됨: '+kwState.selected.join(', ')+' → '+kwState.pickedName);
   closeKwMod();
-  // 다시 매칭
-  parsePreview();
+  // 다시 매칭 (키워드 반영 위해 재파싱)
+  parsePreview(true);
+}
+
+// ── 품목 선택 모달 (여러 후보) ──
+var ambigIdx = -1;
+function openAmbigMod(idx){
+  ambigIdx = idx;
+  var it = parsedItems[idx];
+  if(!it || !it.candidates) return;
+  document.getElementById('ambigRaw').textContent = it.rawText || it.gname || '';
+  var h = '';
+  it.candidates.forEach(function(c){
+    var ctL = (c.ct && c.ct!=='-') ? ctText(c.ct) : '';
+    var isCur = c.code === it.code;
+    h += '<div onclick="pickAmbig(\''+c.code+'\')" style="padding:11px;border:1.5px solid '+(isCur?'#EA580C':'#eee')+';border-radius:8px;margin-bottom:6px;cursor:pointer;background:'+(isCur?'#FFF7ED':'#fff')+'">'
+      + '<div style="font-size:13px;font-weight:600;color:#1A1814">'+(isCur?'✅ ':'')+c.gname+(ctL?' <span style="color:#2855A0">'+ctL+'</span>':'')+'</div>'
+      + '<div style="font-size:10px;color:#999;font-family:monospace;margin-top:2px">'+c.code+'</div>'
+      + '</div>';
+  });
+  document.getElementById('ambigList').innerHTML = h;
+  document.getElementById('ambigMod').style.display = 'flex';
+}
+function closeAmbigMod(){ document.getElementById('ambigMod').style.display='none'; ambigIdx=-1; }
+function pickAmbig(code){
+  if(ambigIdx<0) return;
+  var it = parsedItems[ambigIdx];
+  var chosen = it.candidates.find(function(c){ return c.code===code; });
+  if(!chosen) return;
+  // 선택 확정: ambiguous 해제
+  parsedItems[ambigIdx] = {
+    code: chosen.code, ename: chosen.ename, gname: chosen.gname,
+    ct: chosen.ct, qty: it.qty, unit: it.unit
+  };
+  closeAmbigMod();
+  parsePreview(false); // 상태 유지하며 다시 그림
+  showToast('✓ '+chosen.gname+' 선택됨');
 }
 
 function parseOrder(){
   var text = document.getElementById('parseTa').value.trim();
   if(!text){ showToast('발주서 내용을 붙여넣어 주세요'); return; }
 
-  var parsed = parseOrderItems(text);
+  // 미리보기에서 선택 반영된 parsedItems가 있으면 그걸 사용, 없으면 새로 파싱
+  var parsed = (parsedItems && parsedItems.length) ? parsedItems : parseOrderItems(text);
   var unmatched = parsed.filter(function(p){return p.unconfirmed;}).map(function(p){return p.rawText||p.ename;});
+  // 아직 선택 안 한 ambiguous가 있으면 경고
+  var pendingAmbig = parsed.filter(function(p){return p.ambiguous;}).length;
+  if(pendingAmbig > 0){
+    if(!confirm('아직 선택하지 않은 품목이 '+pendingAmbig+'개 있습니다.\n현재 매칭 상태로 진행할까요?\n(취소 후 🔀 선택 버튼으로 품목을 지정할 수 있습니다)')) return;
+  }
 
   if(!parsed.length){
     showToast('인식된 품목이 없습니다. 코드나 품명을 확인해주세요');
