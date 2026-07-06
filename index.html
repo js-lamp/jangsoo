@@ -120,8 +120,10 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 .conv-btn{width:100%;padding:11px;background:var(--ink);color:#fff;font-size:13px;font-weight:700;font-family:'Noto Sans KR',sans-serif;border:none;border-radius:var(--r2);cursor:pointer;margin-top:10px}
 .ri{display:flex;align-items:flex-start;padding:9px 13px;border-bottom:1px solid var(--bdr);gap:8px}
 .bc-tbl{width:100%;border-collapse:collapse;font-size:12px}
-.bc-tbl th{background:var(--ink);color:#fff;font-size:11px;font-weight:700;padding:7px 6px;text-align:center}
-.bc-tbl td{border-bottom:1px solid var(--bdr);padding:7px 6px;vertical-align:middle}
+.bc-tbl th{background:var(--ink);color:#fff;font-size:11px;font-weight:700;padding:7px 6px;text-align:center;border-right:1px solid rgba(255,255,255,.15)}
+.bc-tbl th:last-child{border-right:none}
+.bc-tbl td{border-bottom:1px solid var(--bdr);border-right:1px solid var(--bdr);padding:7px 6px;vertical-align:middle}
+.bc-tbl td:last-child{border-right:none}
 .bc-tbl .bc-code{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--A2);text-align:center;white-space:nowrap}
 .bc-tbl .bc-name{font-size:12px;font-weight:600;color:var(--ink);line-height:1.3}
 .bc-tbl .bc-qty{text-align:center}
@@ -3951,47 +3953,58 @@ function parsePreview(reparse){
   var h = '<div style="font-size:11px;color:var(--ink2);padding:4px 4px 8px">✓ 매칭 '+okCnt+'개'
     + (ambigCnt?' · <span style="color:#EA580C">🔀 선택필요 '+ambigCnt+'개</span>':'')
     + (failCnt?' · <span style="color:#DC2626">⚠ 확인필요 '+failCnt+'개</span>':'')+'</div>';
-  // 코드 / 품명 / 수량 3열 표
-  h += '<table class="bc-tbl"><colgroup><col style="width:24%"><col style="width:54%"><col style="width:22%"></colgroup>';
+  // 미리보기 수량: 박스면 개수로 변환 (명세서와 동일)
+  function pvQty(it){
+    var boxQty = (typeof QTY_MAP !== 'undefined' && QTY_MAP[it.code]) ? QTY_MAP[it.code] : 1;
+    if(it.unit === '박스'){
+      var each = it.qty * boxQty;
+      return each + '개 <span style="color:#999;font-weight:400">(' + it.qty + '박스)</span>';
+    }
+    return it.qty + '개';
+  }
+  // 코드 / 품명 / 수량 3열 표 (셀 단위 드래그 선택 가능)
+  h += '<table class="bc-tbl" style="user-select:text"><colgroup><col style="width:24%"><col style="width:52%"><col style="width:24%"></colgroup>';
   h += '<thead><tr><th>코드</th><th>품명</th><th>수량</th></tr></thead><tbody>';
-  var LIMIT = 5;
-  var isCollapsed = window.__parsePreviewCollapsed !== false; // 기본: 접힘
-  var showAll = items.length <= LIMIT || !isCollapsed;
-  var displayCount = showAll ? items.length : LIMIT;
-  items.slice(0, displayCount).forEach(function(it, idx){
+  // 전체 표시 (더보기 제한 없음)
+  items.forEach(function(it, idx){
     var realIdx = idx; // items 내 인덱스 (선택 반영용)
     var pname = it.unconfirmed ? (it.rawText||it.ename) : ((it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct):''));
     if(it.unconfirmed){
       var rawEsc = (it.rawText||it.ename||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
-      h += '<tr class="bc-fail-row"><td class="bc-code" style="color:#DC2626">?</td>'
-        + '<td class="bc-name" style="color:#DC2626">⚠ '+pname
-        + ' <button onclick="openKwMod(\''+rawEsc+'\')" style="background:#7C3AED;color:#fff;border:none;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif;white-space:nowrap">🧠 학습</button></td>'
-        + '<td class="bc-qty" style="font-weight:700">'+it.qty+it.unit+'</td></tr>';
+      h += '<tr class="bc-fail-row"><td class="bc-code" style="color:#DC2626;user-select:text">?</td>'
+        + '<td class="bc-name" style="color:#DC2626;user-select:text">⚠ '+pname
+        + ' <button onclick="openKwMod(\''+rawEsc+'\')" style="background:#7C3AED;color:#fff;border:none;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif;white-space:nowrap;user-select:none">🧠 학습</button></td>'
+        + '<td class="bc-qty" style="font-weight:700;user-select:text">'+pvQty(it)+'</td></tr>';
     } else if(it.ambiguous){
       // 선택 필요: 주황색 + 🔀 선택 버튼
-      h += '<tr style="background:#FFF7ED"><td class="bc-code" style="color:#EA580C">'+it.code+'</td>'
-        + '<td class="bc-name" style="color:#C2410C">'+pname
-        + ' <button onclick="openAmbigMod('+realIdx+')" style="background:#EA580C;color:#fff;border:none;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif;white-space:nowrap">🔀 선택 ('+it.candidates.length+')</button></td>'
-        + '<td class="bc-qty" style="font-weight:700;color:#EA580C">'+it.qty+it.unit+'</td></tr>';
+      h += '<tr style="background:#FFF7ED"><td class="bc-code" style="color:#EA580C;user-select:text">'+it.code+'</td>'
+        + '<td class="bc-name" style="color:#C2410C;user-select:text">'+pname
+        + ' <button onclick="openAmbigMod('+realIdx+')" style="background:#EA580C;color:#fff;border:none;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif;white-space:nowrap;user-select:none">🔀 선택 ('+it.candidates.length+')</button></td>'
+        + '<td class="bc-qty" style="font-weight:700;color:#EA580C;user-select:text">'+pvQty(it)+'</td></tr>';
     } else {
       var rawEsc2 = (it.rawText||it.orig||it.ename||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
-      h += '<tr><td class="bc-code">'+it.code+'</td>'
-        + '<td class="bc-name">'+pname
-        + (rawEsc2 ? ' <button onclick="openKwMod(\''+rawEsc2+'\')" style="background:none;border:none;color:#C4B5FD;font-size:11px;cursor:pointer;padding:0 1px" title="다른 품명으로 학습">🧠</button>' : '')
+      h += '<tr><td class="bc-code" style="user-select:text">'+it.code+'</td>'
+        + '<td class="bc-name" style="user-select:text">'+pname
+        + (rawEsc2 ? ' <button onclick="openKwMod(\''+rawEsc2+'\')" style="background:none;border:none;color:#C4B5FD;font-size:11px;cursor:pointer;padding:0 1px;user-select:none" title="다른 품명으로 학습">🧠</button>' : '')
         + '</td>'
-        + '<td class="bc-qty" style="font-weight:700;color:var(--B,#2855A0)">'+it.qty+it.unit+'</td></tr>';
+        + '<td class="bc-qty" style="font-weight:700;color:var(--B,#2855A0);user-select:text">'+pvQty(it)+'</td></tr>';
     }
   });
   h += '</tbody></table>';
-  // 더보기/접기 버튼
-  if(items.length > LIMIT){
-    if(!showAll){
-      h += '<button onclick="window.__parsePreviewCollapsed=false;parsePreview();" style="width:100%;padding:8px;margin-top:4px;background:rgba(40,85,160,.07);color:var(--B,#2855A0);border:1px dashed rgba(40,85,160,.3);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif">▼ 나머지 '+(items.length-LIMIT)+'개 더보기</button>';
-    } else {
-      h += '<button onclick="window.__parsePreviewCollapsed=true;parsePreview();" style="width:100%;padding:8px;margin-top:4px;background:rgba(40,85,160,.07);color:var(--B,#2855A0);border:1px dashed rgba(40,85,160,.3);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif">▲ 5개만 보기</button>';
-    }
-  }
+  h += '<div style="font-size:10px;color:var(--ink3);padding:6px 4px 2px;text-align:center">💡 셀을 더블클릭하면 그 칸만 선택·복사됩니다</div>';
   box.innerHTML = h;
+  // 셀 더블클릭 → 그 셀 내용만 선택 (열별 복사 편의)
+  var cells = box.querySelectorAll('td');
+  cells.forEach(function(td){
+    td.addEventListener('dblclick', function(){
+      var sel = window.getSelection();
+      var range = document.createRange();
+      // 버튼/이모지 제외하고 텍스트만 선택되도록 셀 전체 range
+      range.selectNodeContents(td);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    });
+  });
 }
 
 // ── 키워드 학습 모달 (B안) ──
