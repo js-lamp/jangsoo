@@ -3978,42 +3978,48 @@ function parsePreview(reparse){
     }
     return it.qty + '개';
   }
-  // 코드 / 품명 / 수량 3열 표 (열 헤더에 복사 버튼)
-  h += '<table class="bc-tbl"><colgroup><col style="width:26%"><col style="width:50%"><col style="width:24%"></colgroup>';
-  h += '<thead><tr>'
-    + '<th style="cursor:pointer" onclick="copyColumn(\'code\')" title="코드 열 전체 복사">코드 📋</th>'
-    + '<th style="cursor:pointer" onclick="copyColumn(\'name\')" title="품명 열 전체 복사">품명 📋</th>'
-    + '<th style="cursor:pointer" onclick="copyColumn(\'qty\')" title="수량 열 전체 복사">수량 📋</th>'
-    + '</tr></thead><tbody>';
-  // 전체 표시 (더보기 제한 없음)
+  // 열별 값 미리 계산
+  var colMeta = [];
   items.forEach(function(it, idx){
-    var realIdx = idx; // items 내 인덱스 (선택 반영용)
     var pname = it.unconfirmed ? (it.rawText||it.ename) : ((it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct):''));
+    colMeta.push({idx:idx, it:it, pname:pname, code:(it.unconfirmed?'?':it.code), qty:pvQty(it)});
+  });
+
+  // CSS Grid 3열 (행 높이 자동 정렬 + 각 셀 독립 → 열 안에서만 드래그)
+  h += '<div style="display:grid;grid-template-columns:26% 50% 24%;border:1px solid var(--bdr);border-radius:8px;overflow:hidden;font-size:12px">';
+  // 헤더 (복사 버튼)
+  h += '<div onclick="copyColumn(\'code\')" style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 4px;text-align:center;cursor:pointer;white-space:nowrap;user-select:none">코드 📋</div>';
+  h += '<div onclick="copyColumn(\'name\')" style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 4px;text-align:center;cursor:pointer;border-left:1px solid rgba(255,255,255,.15);user-select:none">품명 📋</div>';
+  h += '<div onclick="copyColumn(\'qty\')" style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 4px;text-align:center;cursor:pointer;white-space:nowrap;border-left:1px solid rgba(255,255,255,.15);user-select:none">수량 📋</div>';
+  // 데이터 행 (각 셀이 grid item)
+  colMeta.forEach(function(m){
+    var it=m.it;
+    var bg = it.unconfirmed?'#FEF2F2':(it.ambiguous?'#FFF7ED':'#fff');
+    var codeCl = it.unconfirmed?'#DC2626':(it.ambiguous?'#EA580C':'var(--A2)');
+    var nameCl = it.unconfirmed?'#DC2626':(it.ambiguous?'#C2410C':'var(--ink)');
+    var qtyCl = it.unconfirmed?'#1A1814':(it.ambiguous?'#EA580C':'var(--B,#2855A0)');
+    // 코드 셀
+    h += '<div style="padding:8px 4px;border-top:1px solid var(--bdr);background:'+bg+';color:'+codeCl+';font-family:monospace;font-size:10px;text-align:center;white-space:nowrap;display:flex;align-items:center;justify-content:center;user-select:text;-webkit-user-select:text">'+m.code+'</div>';
+    // 품명 셀 (버튼 포함)
+    var pre = it.unconfirmed?'⚠ ':'';
+    var btn = '';
     if(it.unconfirmed){
       var rawEsc = (it.rawText||it.ename||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
-      h += '<tr class="bc-fail-row"><td class="bc-code" style="color:#DC2626;user-select:text">?</td>'
-        + '<td class="bc-name" style="color:#DC2626;user-select:text">⚠ '+pname
-        + ' <button onclick="openKwMod(\''+rawEsc+'\')" style="background:#7C3AED;color:#fff;border:none;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif;white-space:nowrap;user-select:none">🧠 학습</button></td>'
-        + '<td class="bc-qty" style="font-weight:700;user-select:text">'+pvQty(it)+'</td></tr>';
+      btn = ' <button onclick="openKwMod(\''+rawEsc+'\')" style="background:#7C3AED;color:#fff;border:none;border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif;white-space:nowrap;user-select:none">🧠</button>';
     } else if(it.ambiguous){
-      // 선택 필요: 주황색 + 🔀 선택 버튼
-      h += '<tr style="background:#FFF7ED"><td class="bc-code" style="color:#EA580C;user-select:text">'+it.code+'</td>'
-        + '<td class="bc-name" style="color:#C2410C;user-select:text">'+pname
-        + ' <button onclick="openAmbigMod('+realIdx+')" style="background:#EA580C;color:#fff;border:none;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif;white-space:nowrap;user-select:none">🔀 선택 ('+it.candidates.length+')</button></td>'
-        + '<td class="bc-qty" style="font-weight:700;color:#EA580C;user-select:text">'+pvQty(it)+'</td></tr>';
+      btn = ' <button onclick="openAmbigMod('+m.idx+')" style="background:#EA580C;color:#fff;border:none;border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif;white-space:nowrap;user-select:none">🔀'+it.candidates.length+'</button>';
     } else {
       var rawEsc2 = (it.rawText||it.orig||it.ename||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
-      h += '<tr><td class="bc-code" style="user-select:text">'+it.code+'</td>'
-        + '<td class="bc-name" style="user-select:text">'+pname
-        + (rawEsc2 ? ' <button onclick="openKwMod(\''+rawEsc2+'\')" style="background:none;border:none;color:#C4B5FD;font-size:11px;cursor:pointer;padding:0 1px;user-select:none" title="다른 품명으로 학습">🧠</button>' : '')
-        + '</td>'
-        + '<td class="bc-qty" style="font-weight:700;color:var(--B,#2855A0);user-select:text">'+pvQty(it)+'</td></tr>';
+      if(rawEsc2) btn = ' <button onclick="openKwMod(\''+rawEsc2+'\')" style="background:none;border:none;color:#C4B5FD;font-size:11px;cursor:pointer;padding:0 1px;user-select:none" title="학습">🧠</button>';
     }
+    h += '<div style="padding:8px 6px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:'+nameCl+';font-size:12px;font-weight:600;line-height:1.3;display:flex;align-items:center;user-select:text;-webkit-user-select:text"><span>'+pre+m.pname+btn+'</span></div>';
+    // 수량 셀
+    h += '<div style="padding:8px 4px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:'+qtyCl+';font-size:11px;font-weight:700;text-align:center;white-space:nowrap;display:flex;align-items:center;justify-content:center;user-select:text;-webkit-user-select:text">'+m.qty+'</div>';
   });
-  h += '</tbody></table>';
-  h += '<div style="font-size:10px;color:var(--ink3);padding:6px 4px 2px;text-align:center">💡 열 제목(코드📋/품명📋/수량📋)을 누르면 그 열 전체가 복사됩니다</div>';
+  h += '</div>'; // grid 끝
+  h += '<div style="font-size:10px;color:var(--ink3);padding:6px 4px 2px;text-align:center;line-height:1.5">💡 열 제목의 📋을 누르면 그 열 전체가 복사됩니다<br>(엑셀 한 열에 그대로 붙여넣기 가능)</div>';
   box.innerHTML = h;
-  // 열별 복사용 데이터 저장 (확정된 품목만, 미매칭/선택대기 제외)
+  // 열별 복사용 데이터 저장
   window.__pvColumns = {
     code: items.map(function(it){ return it.unconfirmed ? '' : it.code; }),
     name: items.map(function(it){
@@ -4023,7 +4029,7 @@ function parsePreview(reparse){
     qty: items.map(function(it){
       var boxQty = (typeof QTY_MAP !== 'undefined' && QTY_MAP[it.code]) ? QTY_MAP[it.code] : 1;
       var each = it.unit === '박스' ? it.qty*boxQty : it.qty;
-      return each; // 개수(숫자만)
+      return each;
     })
   };
 }
