@@ -1208,10 +1208,63 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
         </div>
       </div>
       <div id="adminPanel" style="display:none">
+        <button onclick="openNewItemMod()" style="width:100%;padding:12px;margin-bottom:10px;background:#059669;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;font-family:Noto Sans KR,sans-serif">➕ 신규 품목 추가</button>
         <input class="admin-srch" type="text" placeholder="품목명 검색..." oninput="filterAdmin(this.value)"/>
         <div id="adminList"></div>
         <button class="save-all" onclick="saveAllAdmin()">&#128190; 전체 변경사항 저장</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- 신규 품목 추가 모달 -->
+<div id="newItemMod" style="display:none;position:fixed;inset:0;z-index:10002;background:rgba(0,0,0,.5);align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:14px;max-width:420px;width:100%;max-height:88vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="padding:14px 16px;background:#059669;color:#fff;display:flex;align-items:center;gap:8px">
+      <span style="font-size:16px">➕</span>
+      <div style="font-weight:700;font-size:15px;flex:1">신규 품목 추가</div>
+      <button onclick="closeNewItemMod()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1">&times;</button>
+    </div>
+    <div style="padding:16px;overflow-y:auto">
+      <div style="font-size:11px;color:#888;margin-bottom:12px">ERP 기준으로 입력하세요. 코드/품목명/박스수량은 필수입니다.</div>
+
+      <label style="font-size:12px;font-weight:700;color:#444;display:block;margin-bottom:4px">ERP 코드 <span style="color:#DC2626">*</span></label>
+      <input id="niCode" type="text" placeholder="예: 6873-1234" style="width:100%;padding:10px;font-size:13px;border:1.5px solid #ddd;border-radius:8px;outline:none;font-family:Noto Sans KR,sans-serif;margin-bottom:10px">
+
+      <label style="font-size:12px;font-weight:700;color:#444;display:block;margin-bottom:4px">품목명 <span style="color:#DC2626">*</span></label>
+      <input id="niName" type="text" placeholder="예: LED 신형 방등 50W" style="width:100%;padding:10px;font-size:13px;border:1.5px solid #ddd;border-radius:8px;outline:none;font-family:Noto Sans KR,sans-serif;margin-bottom:10px">
+
+      <label style="font-size:12px;font-weight:700;color:#444;display:block;margin-bottom:4px">박스당 수량 <span style="color:#DC2626">*</span></label>
+      <input id="niBox" type="number" inputmode="numeric" placeholder="예: 20" style="width:100%;padding:10px;font-size:13px;border:1.5px solid #ddd;border-radius:8px;outline:none;font-family:Noto Sans KR,sans-serif;margin-bottom:10px">
+
+      <label style="font-size:12px;font-weight:700;color:#444;display:block;margin-bottom:4px">색온도</label>
+      <select id="niCt" style="width:100%;padding:10px;font-size:13px;border:1.5px solid #ddd;border-radius:8px;outline:none;font-family:Noto Sans KR,sans-serif;margin-bottom:10px">
+        <option value="-">해당없음 (-)</option>
+        <option value="주광">주광</option>
+        <option value="주백">주백</option>
+        <option value="전구">전구</option>
+        <option value="색변환">색변환</option>
+      </select>
+
+      <div style="display:flex;gap:8px">
+        <div style="flex:1">
+          <label style="font-size:12px;font-weight:700;color:#444;display:block;margin-bottom:4px">대분류</label>
+          <input id="niCat" type="text" placeholder="예: LED" value="LED" style="width:100%;padding:10px;font-size:13px;border:1.5px solid #ddd;border-radius:8px;outline:none;font-family:Noto Sans KR,sans-serif;margin-bottom:10px">
+        </div>
+        <div style="flex:1">
+          <label style="font-size:12px;font-weight:700;color:#444;display:block;margin-bottom:4px">중분류</label>
+          <input id="niSub" type="text" placeholder="예: 주거등" style="width:100%;padding:10px;font-size:13px;border:1.5px solid #ddd;border-radius:8px;outline:none;font-family:Noto Sans KR,sans-serif;margin-bottom:10px">
+        </div>
+      </div>
+
+      <label style="font-size:12px;font-weight:700;color:#444;display:block;margin-bottom:4px">바코드 (선택)</label>
+      <input id="niBc" type="text" placeholder="예: 8809207556097 (없으면 비워두기)" style="width:100%;padding:10px;font-size:13px;border:1.5px solid #ddd;border-radius:8px;outline:none;font-family:Noto Sans KR,sans-serif;margin-bottom:6px">
+
+      <div id="niMsg" style="font-size:12px;min-height:18px;margin-top:4px"></div>
+    </div>
+    <div style="padding:12px 16px;border-top:1px solid #eee;display:flex;gap:8px">
+      <button onclick="closeNewItemMod()" style="flex:1;padding:11px;background:#f0f0f0;color:#555;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:Noto Sans KR,sans-serif">취소</button>
+      <button id="niSubmitBtn" onclick="niSubmit()" style="flex:2;padding:11px;background:#059669;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:Noto Sans KR,sans-serif">서버에 등록</button>
     </div>
   </div>
 </div>
@@ -2797,9 +2850,10 @@ function bdScanLoop(){
         var bc=codes[0].rawValue;
         var dbg=document.getElementById('bdDebug');
         if(dbg) dbg.textContent='읽음: '+bc;
-        // 연속 2회 검증 (오인식 방지)
+        // 연속 3회 + 체크섬 검증 (오인식 방지)
         if(bc===bdLastCode){ bdSameCount++; } else { bdLastCode=bc; bdSameCount=1; }
-        if(bdSameCount>=2){ onBarcodeFound(bc); return; }
+        if(bdSameCount>=3 && isValidBarcode(bc)){ onBarcodeFound(bc); return; }
+        // 검증 안 되면 계속 스캔
       }
       bdRAF=requestAnimationFrame(bdScanLoop);
     }).catch(function(e){
@@ -2825,15 +2879,41 @@ function startQuagga(){
     var bc=r.codeResult.code;
     var dbg=document.getElementById('bdDebug');
     if(dbg) dbg.textContent='읽음: '+bc;
-    // 연속 2회 검증 (Quagga는 오인식 많아 2회 유지)
+    // 연속 3회 + 체크섬 검증 (Quagga는 오인식 많아 강하게)
     if(bc===bdLastCode){ bdSameCount++; } else { bdLastCode=bc; bdSameCount=1; }
-    if(bdSameCount>=2){ Quagga.offDetected(); onBarcodeFound(bc); }
+    if(bdSameCount>=3 && isValidBarcode(bc)){ Quagga.offDetected(); onBarcodeFound(bc); }
+    // 검증 안 되면 계속 스캔 (offDetected 안 함)
   });
+}
+
+// EAN-13 체크섬 검증 (잘못 읽은 바코드 걸러냄)
+function isValidBarcode(bc){
+  if(!bc) return false;
+  var s = (''+bc).trim();
+  // 13자리 EAN-13만 허용
+  if(!/^\d{13}$/.test(s)) return false;
+  // 체크섬 검증
+  var sum = 0;
+  for(var i=0;i<12;i++){
+    var d = parseInt(s[i],10);
+    sum += (i%2===0) ? d : d*3;
+  }
+  var check = (10 - (sum%10)) % 10;
+  return check === parseInt(s[12],10);
 }
 
 var bdProcessing = false;
 function onBarcodeFound(bc){
   if(bdProcessing) return;
+  // 체크섬 검증 실패 시: 무시하고 계속 스캔 (오인식 방지)
+  if(!isValidBarcode(bc)){
+    var dbgX = document.getElementById('bdDebug');
+    if(dbgX) dbgX.innerHTML = '<span style="color:#F59E0B;font-size:13px">다시 읽는 중...</span>';
+    bdLastCode = null; bdSameCount = 0;
+    // Quagga면 다시 붙임
+    try{ if(typeof Quagga!=='undefined' && Quagga.onDetected){ } }catch(e){}
+    return;
+  }
   bdProcessing = true;
   // 스캔 루프 멈춤 (카메라는 잠깐 유지)
   scanning = false;
@@ -3541,6 +3621,15 @@ function poFindByName(line){
       var inLine = nLine.indexOf(nMd)>=0;
       if(inName && !inLine) score -= 1.0;
     });
+    // base(소켓) 구분: 26B/E26 → 소모갈, 39B/E39 → 대모갈
+    var lineHas26b = /26\s*b|e\s*-?\s*26|소모/i.test(sLine);
+    var lineHas39b = /39\s*b|e\s*-?\s*39|대모/i.test(sLine);
+    var nameSo2 = nName.indexOf(poNorm('소모갈'))>=0;
+    var nameDae2 = nName.indexOf(poNorm('대모갈'))>=0;
+    if(lineHas39b && nameDae2) score += 2.0;
+    else if(lineHas39b && nameSo2) score -= 2.5;
+    if(lineHas26b && nameSo2) score += 2.0;
+    else if(lineHas26b && nameDae2) score -= 2.5;
     // 사용자 학습 키워드: 매칭될 때마다 강한 가산점
     var ukScore = userKwScore(g.name, sLine);
     if(ukScore > 0) score += ukScore * 3.0;
@@ -3576,6 +3665,15 @@ function poScoreOne(g, line){
   PO_KEY_TERMS.forEach(function(kt){ var nKt=poNorm(kt); var iN=nName.indexOf(nKt)>=0,iL=nLine.indexOf(nKt)>=0; if(iN&&iL)score+=0.5;else if(iN&&!iL)score-=0.3;else if(!iN&&iL)score-=0.5; });
   PO_DISTINCT.forEach(function(dt){ var nDt=poNorm(dt); var iN=nName.indexOf(nDt)>=0,iL=nLine.indexOf(nDt)>=0; if(iN&&iL)score+=1.2;else if(iN&&!iL)score-=0.5; });
   PO_MODIFIERS.forEach(function(md){ var nMd=poNorm(md); var iN=nName.indexOf(nMd)>=0,iL=nLine.indexOf(nMd)>=0; if(iN&&!iL)score-=1.0; });
+  // base(소켓) 구분: 발주에 26B/E26 → 소모갈, 39B/E39 → 대모갈
+  var lineHas26 = /26\s*b|e\s*-?\s*26|소모/i.test(sLine);
+  var lineHas39 = /39\s*b|e\s*-?\s*39|대모/i.test(sLine);
+  var nameSo = nName.indexOf(poNorm('소모갈'))>=0;
+  var nameDae = nName.indexOf(poNorm('대모갈'))>=0;
+  if(lineHas39 && nameDae) score += 2.0;
+  else if(lineHas39 && nameSo) score -= 2.5;
+  if(lineHas26 && nameSo) score += 2.0;
+  else if(lineHas26 && nameDae) score -= 2.5;
   // 사용자 학습 키워드: 매칭될 때마다 강한 가산점
   var ukScore = userKwScore(g.name, sLine);
   if(ukScore > 0) score += ukScore * 3.0;
@@ -3792,8 +3890,11 @@ function parsePreview(){
         + ' <button onclick="openKwMod(\''+rawEsc+'\')" style="background:#7C3AED;color:#fff;border:none;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif;white-space:nowrap">🧠 학습</button></td>'
         + '<td class="bc-qty" style="font-weight:700">'+it.qty+it.unit+'</td></tr>';
     } else {
+      var rawEsc2 = (it.rawText||it.orig||it.ename||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
       h += '<tr><td class="bc-code">'+it.code+'</td>'
-        + '<td class="bc-name">'+pname+'</td>'
+        + '<td class="bc-name">'+pname
+        + (rawEsc2 ? ' <button onclick="openKwMod(\''+rawEsc2+'\')" style="background:none;border:none;color:#C4B5FD;font-size:11px;cursor:pointer;padding:0 1px" title="다른 품명으로 학습">🧠</button>' : '')
+        + '</td>'
         + '<td class="bc-qty" style="font-weight:700;color:var(--B,#2855A0)">'+it.qty+it.unit+'</td></tr>';
     }
   });
@@ -3944,11 +4045,15 @@ function openItemFix(idx){
   var it = cart[idx];
   document.getElementById('itemFixRaw').textContent = it.rawText || it.ename || '';
   var inp = document.getElementById('itemFixSearch');
-  // 미확정이면 원본을, 아니면 품명을 검색어로
-  inp.value = it.unconfirmed ? (it.rawText||'') : (it.gname||'');
+  // 검색어 기본값: 원본 발주 텍스트가 있으면 그걸로 (base/색상 등 사용자 표현 유지),
+  // 없으면 품목명. 원본이 있으면 사용자가 의도한 표현으로 검색되어 소모갈/대모갈 등 구분 쉬움
+  var defQ = it.rawText || it.gname || '';
+  // 수량/박스/개 표현은 제거 (검색 방해)
+  defQ = defQ.replace(/\/?\s*\d+\s*(박스|개|ea|EA)\s*$/,'').replace(/\.{2,}\s*\d+.*$/,'').trim();
+  inp.value = defQ;
   document.getElementById('itemFixMod').style.display = 'flex';
   itemFixRender();
-  setTimeout(function(){ inp.focus(); }, 100);
+  setTimeout(function(){ inp.focus(); inp.select(); }, 100);
 }
 function closeItemFix(){
   document.getElementById('itemFixMod').style.display = 'none';
@@ -3957,14 +4062,18 @@ function closeItemFix(){
 function itemFixRender(){
   var q = document.getElementById('itemFixSearch').value.trim();
   var box = document.getElementById('itemFixList');
-  var nq = poNorm(poApplySynonyms(q));
+  // base(소켓) 표현 정규화: 39B/E39 → 대모갈, 26B/E26 → 소모갈
+  var qx = q;
+  if(/39\s*B|E\s*-?\s*39|대모/i.test(qx)) qx = qx.replace(/39\s*B|E\s*-?\s*39/ig,' 대모갈');
+  if(/26\s*B|E\s*-?\s*26|소모/i.test(qx)) qx = qx.replace(/26\s*B|E\s*-?\s*26/ig,' 소모갈');
+  var nq = poNorm(poApplySynonyms(qx));
   var results = [];
   if(nq.length>=1){
     G.forEach(function(g){
       var nName = poNorm(g.name);
       var nAlias = poNorm(g.alias||'');
       // 검색어 토큰이 모두 포함되는지
-      var tokens = poApplySynonyms(q).split(/\s+/).filter(Boolean);
+      var tokens = poApplySynonyms(qx).split(/\s+/).filter(Boolean);
       var allHit = tokens.every(function(t){ var nt=poNorm(t); return nt==='' || nName.indexOf(nt)>=0 || nAlias.indexOf(nt)>=0; });
       // 부분 점수
       var score = 0;
@@ -4650,6 +4759,116 @@ function spCheck() {
 // ── 구글시트 재고 로드 ──
 var SHEET_CSV = 'https://script.google.com/macros/s/AKfycbzkHJKjnCtZv0XJ1vDPBnAFcBGEMCPbIZEOIDWb5NEZL6siD9ZAMgWCic8Bpip-Jbv3/exec';
 
+// ── 신규 품목 (서버 등록) ──
+var NEW_ITEMS = [];
+
+function loadNewItems(){
+  fetch(SHEET_CSV + '?action=items', {method:'GET', redirect:'follow'})
+    .then(function(r){ return r.text(); })
+    .then(function(txt){
+      var arr;
+      try { arr = JSON.parse(txt); } catch(e){ return; }
+      if(!Array.isArray(arr)) return;
+      NEW_ITEMS = arr;
+      mergeNewItems();
+      try { renderCats(); renderSubs(); renderLeft(null); } catch(e){}
+    })
+    .catch(function(e){ /* 실패 시 조용히 무시 */ });
+}
+
+// NEW_ITEMS를 G/QTY_MAP에 병합 (같은 코드 있으면 스킵)
+function mergeNewItems(){
+  NEW_ITEMS.forEach(function(it){
+    var code = (it.code||'').trim();
+    var name = (it.name||'').trim();
+    if(!code || !name) return;
+    var exists = G.some(function(g){ return g.variants.some(function(v){ return v.code===code; }); });
+    if(exists) return;
+    var box = parseInt(it.box) || 1;
+    var ct = (it.ct||'-').trim() || '-';
+    var cat = (it.cat||'신규').trim() || '신규';
+    var sub = (it.sub||'신규품목').trim() || '신규품목';
+    QTY_MAP[code] = box;
+    var grp = G.find(function(g){ return g.name===name && g.cat===cat && g.sub===sub; });
+    if(grp){
+      if(!grp.variants.some(function(v){ return v.code===code; })){
+        grp.variants.push({ct:ct, code:code, ename:name, bc:(it.bc||'')});
+      }
+    } else {
+      G.push({cat:cat, sub:sub, name:name, alias:'', variants:[{ct:ct, code:code, ename:name, bc:(it.bc||'')}]});
+    }
+  });
+}
+
+// 신규 품목 서버 등록
+function submitNewItem(item, cb){
+  fetch(SHEET_CSV, {
+    method:'POST', redirect:'follow',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({action:'addItem', code:item.code, name:item.name, box:item.box, ct:item.ct, cat:item.cat, sub:item.sub, bc:item.bc||''})
+  }).then(function(r){ return r.text(); })
+    .then(function(txt){ if(cb) cb(true, txt); })
+    .catch(function(e){ if(cb) cb(false, String(e)); });
+}
+
+// ── 신규 품목 모달 제어 ──
+function openNewItemMod(){
+  document.getElementById('niCode').value='';
+  document.getElementById('niName').value='';
+  document.getElementById('niBox').value='';
+  document.getElementById('niCt').value='-';
+  document.getElementById('niCat').value='LED';
+  document.getElementById('niSub').value='';
+  document.getElementById('niBc').value='';
+  document.getElementById('niMsg').textContent='';
+  document.getElementById('niMsg').style.color='';
+  document.getElementById('newItemMod').style.display='flex';
+}
+function closeNewItemMod(){ document.getElementById('newItemMod').style.display='none'; }
+
+function niSubmit(){
+  var msg = document.getElementById('niMsg');
+  var code = document.getElementById('niCode').value.trim();
+  var name = document.getElementById('niName').value.trim();
+  var boxStr = document.getElementById('niBox').value.trim();
+  var ct = document.getElementById('niCt').value;
+  var cat = document.getElementById('niCat').value.trim() || 'LED';
+  var sub = document.getElementById('niSub').value.trim() || '신규품목';
+  var bc = document.getElementById('niBc').value.trim();
+
+  // 필수값 검증
+  if(!code){ msg.style.color='#DC2626'; msg.textContent='⚠ ERP 코드를 입력하세요'; return; }
+  if(!name){ msg.style.color='#DC2626'; msg.textContent='⚠ 품목명을 입력하세요'; return; }
+  var box = parseInt(boxStr);
+  if(!box || box < 1){ msg.style.color='#DC2626'; msg.textContent='⚠ 박스당 수량을 올바르게 입력하세요'; return; }
+
+  // 이미 있는 코드인지 확인
+  var exists = G.some(function(g){ return g.variants.some(function(v){ return v.code===code; }); });
+  if(exists){ msg.style.color='#DC2626'; msg.textContent='⚠ 이미 등록된 코드입니다: '+code; return; }
+
+  var item = {code:code, name:name, box:box, ct:ct, cat:cat, sub:sub, bc:bc};
+
+  msg.style.color='#059669';
+  msg.textContent='서버에 등록 중...';
+  var btn = document.getElementById('niSubmitBtn');
+  btn.disabled = true; btn.style.opacity='0.6';
+
+  submitNewItem(item, function(ok, resp){
+    btn.disabled = false; btn.style.opacity='1';
+    if(ok){
+      // 로컬에도 즉시 병합
+      NEW_ITEMS.push(item);
+      mergeNewItems();
+      try { renderCats(); renderSubs(); renderLeft(null); } catch(e){}
+      showToast('✅ 신규 품목 등록 완료: '+name);
+      closeNewItemMod();
+    } else {
+      msg.style.color='#DC2626';
+      msg.textContent='⚠ 등록 실패. 인터넷 연결을 확인하세요.';
+    }
+  });
+}
+
 // ── 컨테이너 입고 일정 ──
 // CONTAINERS[code] = [{qty, arrival, ansan}, ...]
 var CONTAINERS = {};
@@ -5210,6 +5429,7 @@ loadUserKwLocal();               // 사용자 키워드 즉시 로드 (localStor
 setTimeout(loadStockFromSheet, 500);
 setTimeout(loadContainers, 800);
 setTimeout(loadUserKwCloud, 1100); // 클라우드 키워드 동기화
+setTimeout(loadNewItems, 1400);    // 신규 품목 로드
 
 
 // ── 거래명세서 ──
