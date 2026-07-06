@@ -1072,7 +1072,8 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
       <!-- 왼쪽: 입력/수정 -->
       <div class="parse-left">
         <div class="parse-col-label">📝 발주 내용 (수정 가능)</div>
-        <textarea class="parse-ta" id="parseTa" oninput="parsePreviewDebounced()" placeholder="붙여넣기 예시:&#10;&#10;슬림샤인 엣지&#10;1280*320 주광색 40개&#10;640*320 주광색 4개&#10;&#10;(품목군은 위에 한 번만 적어도 됩니다)"></textarea>
+        <textarea class="parse-ta" id="parseTa" oninput="parsePreviewDebounced()" onselect="onParseTaSelect()" onmouseup="onParseTaSelect()" onkeyup="onParseTaSelect()" placeholder="붙여넣기 예시:&#10;&#10;슬림샤인 엣지&#10;1280*320 주광색 40개&#10;640*320 주광색 4개&#10;&#10;(품목군은 위에 한 번만 적어도 됩니다)"></textarea>
+        <button id="kwFromSelBtn" onclick="openKwFromSelection()" style="display:none;flex-shrink:0;margin:0 8px 0;padding:9px;background:#7C3AED;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer">🧠 선택한 "<span id="kwSelPreview"></span>" 키워드로 학습</button>
         <button class="parse-preview-btn" onclick="parsePreview(true)">🔍 미리보기 (매칭 확인)</button>
       </div>
       <!-- 오른쪽: 미리보기 -->
@@ -3443,7 +3444,8 @@ var PO_SYNONYMS = [
   ['엣지원형','엣지 원형'],['엣지사각','엣지 사각'],
   ['모듈','리폼모듈'],['cfl','EL'],['CFL','EL'],['삼파장','EL'],['삼파장전구','EL'],
   ['벌브','BULB'],['전구색벌브','BULB'],['led벌브','LED BULB'],['엘이디벌브','LED BULB'],
-  ['슬림샤인','슬림 샤인'],['직하엣지','슬림 샤인'],['슬림엣지','슬림 샤인'],['슬림 엣지','슬림 샤인'],['직하 엣지','슬림 샤인']
+  ['슬림샤인','슬림 샤인'],['직하엣지','슬림 샤인'],['슬림엣지','슬림 샤인'],['슬림 엣지','슬림 샤인'],['직하 엣지','슬림 샤인'],
+  ['리모컨','스마트'],['리모콘','스마트']
 ];
 
 // ── 사용자 학습 키워드 (A+B 하이브리드: localStorage 즉시 + 구글시트 동기화) ──
@@ -3662,6 +3664,12 @@ function poFindByName(line){
     else if(lineHas39b && nameSo2) score -= 2.5;
     if(lineHas26b && nameSo2) score += 2.0;
     else if(lineHas26b && nameDae2) score -= 2.5;
+    // 고효율 구분: 고효율 발주 시 고효율 제품 우대, 브라켓 감점
+    var lineHasHyeff2 = /고효율/.test(sLine);
+    if(lineHasHyeff2){
+      if(nName.indexOf(poNorm('고효율'))>=0) score += 2.5;
+      else if(nName.indexOf(poNorm('브라켓'))>=0) score -= 3.0;
+    }
     // 사용자 학습 키워드: 매칭될 때마다 강한 가산점
     var ukScore = userKwScore(g.name, sLine);
     if(ukScore > 0) score += ukScore * 3.0;
@@ -3706,6 +3714,14 @@ function poScoreOne(g, line){
   else if(lineHas39 && nameSo) score -= 2.5;
   if(lineHas26 && nameSo) score += 2.0;
   else if(lineHas26 && nameDae) score -= 2.5;
+  // 고효율 구분: 발주에 "고효율" 있으면 고효율 제품 우대, 일반 브라켓 감점
+  var lineHasHyeff = /고효율/.test(sLine);
+  var nameHasHyeff = nName.indexOf(poNorm('고효율'))>=0;
+  var nameIsBracket = nName.indexOf(poNorm('브라켓'))>=0;
+  if(lineHasHyeff){
+    if(nameHasHyeff) score += 2.5;
+    else if(nameIsBracket) score -= 3.0; // 안 나가는 평판 브라켓 강하게 배제
+  }
   // 사용자 학습 키워드: 매칭될 때마다 강한 가산점
   var ukScore = userKwScore(g.name, sLine);
   if(ukScore > 0) score += ukScore * 3.0;
@@ -3962,9 +3978,13 @@ function parsePreview(reparse){
     }
     return it.qty + '개';
   }
-  // 코드 / 품명 / 수량 3열 표 (셀 단위 드래그 선택 가능)
-  h += '<table class="bc-tbl" style="user-select:text"><colgroup><col style="width:24%"><col style="width:52%"><col style="width:24%"></colgroup>';
-  h += '<thead><tr><th>코드</th><th>품명</th><th>수량</th></tr></thead><tbody>';
+  // 코드 / 품명 / 수량 3열 표 (열 헤더에 복사 버튼)
+  h += '<table class="bc-tbl"><colgroup><col style="width:26%"><col style="width:50%"><col style="width:24%"></colgroup>';
+  h += '<thead><tr>'
+    + '<th style="cursor:pointer" onclick="copyColumn(\'code\')" title="코드 열 전체 복사">코드 📋</th>'
+    + '<th style="cursor:pointer" onclick="copyColumn(\'name\')" title="품명 열 전체 복사">품명 📋</th>'
+    + '<th style="cursor:pointer" onclick="copyColumn(\'qty\')" title="수량 열 전체 복사">수량 📋</th>'
+    + '</tr></thead><tbody>';
   // 전체 표시 (더보기 제한 없음)
   items.forEach(function(it, idx){
     var realIdx = idx; // items 내 인덱스 (선택 반영용)
@@ -3991,24 +4011,88 @@ function parsePreview(reparse){
     }
   });
   h += '</tbody></table>';
-  h += '<div style="font-size:10px;color:var(--ink3);padding:6px 4px 2px;text-align:center">💡 셀을 더블클릭하면 그 칸만 선택·복사됩니다</div>';
+  h += '<div style="font-size:10px;color:var(--ink3);padding:6px 4px 2px;text-align:center">💡 열 제목(코드📋/품명📋/수량📋)을 누르면 그 열 전체가 복사됩니다</div>';
   box.innerHTML = h;
-  // 셀 더블클릭 → 그 셀 내용만 선택 (열별 복사 편의)
-  var cells = box.querySelectorAll('td');
-  cells.forEach(function(td){
-    td.addEventListener('dblclick', function(){
-      var sel = window.getSelection();
-      var range = document.createRange();
-      // 버튼/이모지 제외하고 텍스트만 선택되도록 셀 전체 range
-      range.selectNodeContents(td);
-      sel.removeAllRanges();
-      sel.addRange(range);
-    });
-  });
+  // 열별 복사용 데이터 저장 (확정된 품목만, 미매칭/선택대기 제외)
+  window.__pvColumns = {
+    code: items.map(function(it){ return it.unconfirmed ? '' : it.code; }),
+    name: items.map(function(it){
+      if(it.unconfirmed) return (it.rawText||it.ename||'');
+      return (it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct):'');
+    }),
+    qty: items.map(function(it){
+      var boxQty = (typeof QTY_MAP !== 'undefined' && QTY_MAP[it.code]) ? QTY_MAP[it.code] : 1;
+      var each = it.unit === '박스' ? it.qty*boxQty : it.qty;
+      return each; // 개수(숫자만)
+    })
+  };
+}
+
+// 미리보기 열 전체를 클립보드로 복사 (엑셀 붙여넣기용)
+function copyColumn(col){
+  var cols = window.__pvColumns;
+  if(!cols || !cols[col]) return;
+  var text = cols[col].join('\n'); // 세로로 (엑셀 한 열에 붙여넣기)
+  var label = col==='code'?'코드':col==='name'?'품명':'수량';
+  function done(){ showToast('✓ '+label+' 열 '+cols[col].length+'개 복사됨 (엑셀에 붙여넣기)'); }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done).catch(function(){ fallbackCopy(text, done); });
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+function fallbackCopy(text, cb){
+  var ta = document.createElement('textarea');
+  ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); if(cb)cb(); } catch(e){}
+  document.body.removeChild(ta);
 }
 
 // ── 키워드 학습 모달 (B안) ──
 var kwState = { line:'', selected:[], pickedName:null };
+
+// 왼쪽 발주 textarea에서 텍스트 선택 감지 → 학습 버튼 표시
+function onParseTaSelect(){
+  var ta = document.getElementById('parseTa');
+  var btn = document.getElementById('kwFromSelBtn');
+  if(!ta || !btn) return;
+  var sel = ta.value.substring(ta.selectionStart, ta.selectionEnd).trim();
+  // 1~20자 사이의 의미있는 선택만 (숫자/수량만은 제외)
+  if(sel && sel.length >= 1 && sel.length <= 20 && !/^[\d\s박스개,\/]+$/.test(sel)){
+    document.getElementById('kwSelPreview').textContent = sel.length > 8 ? sel.slice(0,8)+'…' : sel;
+    btn.style.display = 'block';
+    btn.setAttribute('data-sel', sel);
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+// 선택한 단어로 키워드 학습 모달 열기 (해당 단어가 선택된 상태로)
+function openKwFromSelection(){
+  var btn = document.getElementById('kwFromSelBtn');
+  var sel = btn ? btn.getAttribute('data-sel') : '';
+  if(!sel) return;
+  // 선택 단어가 포함된 발주 줄을 찾아 모달 열기
+  var ta = document.getElementById('parseTa');
+  var lines = ta.value.split(/\n/);
+  var targetLine = sel;
+  for(var i=0;i<lines.length;i++){
+    if(lines[i].indexOf(sel) >= 0){ targetLine = lines[i].trim(); break; }
+  }
+  openKwMod(targetLine);
+  // 선택한 단어를 자동으로 키워드로 미리 선택
+  setTimeout(function(){
+    var toks = document.querySelectorAll('#kwTokens button');
+    toks.forEach(function(b){
+      if(b.getAttribute('data-tok') === sel){
+        var mid = b.id.replace('kwtok','');
+        var idx = parseInt(mid, 10);
+        if(!isNaN(idx)) kwToggleToken(idx);
+      }
+    });
+  }, 60);
+}
 
 // 미매칭 줄에서 키워드 등록 모달 열기
 function openKwMod(rawLine){
