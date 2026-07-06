@@ -1231,11 +1231,39 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
         </div>
       </div>
       <div id="adminPanel" style="display:none">
-        <button onclick="openNewItemMod()" style="width:100%;padding:12px;margin-bottom:10px;background:#059669;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;font-family:Noto Sans KR,sans-serif">➕ 신규 품목 추가</button>
+        <button onclick="openNewItemMod()" style="width:100%;padding:12px;margin-bottom:8px;background:#059669;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;font-family:Noto Sans KR,sans-serif">➕ 신규 품목 추가</button>
+        <button onclick="openKwManage()" style="width:100%;padding:12px;margin-bottom:10px;background:#7C3AED;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;font-family:Noto Sans KR,sans-serif">🧠 키워드 관리 (등록/검토/삭제)</button>
         <input class="admin-srch" type="text" placeholder="품목명 검색..." oninput="filterAdmin(this.value)"/>
         <div id="adminList"></div>
         <button class="save-all" onclick="saveAllAdmin()">&#128190; 전체 변경사항 저장</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- 키워드 관리 모달 (관리자) -->
+<div id="kwManageMod" style="display:none;position:fixed;inset:0;z-index:10002;background:rgba(0,0,0,.5);align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:14px;max-width:460px;width:100%;max-height:90vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="padding:14px 16px;background:#7C3AED;color:#fff;display:flex;align-items:center;gap:8px">
+      <span style="font-size:16px">🧠</span>
+      <div style="font-weight:700;font-size:15px;flex:1">키워드 관리</div>
+      <button onclick="closeKwManage()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1">&times;</button>
+    </div>
+    <div style="padding:12px 16px;overflow-y:auto;flex:1">
+      <!-- 테스트 영역 -->
+      <div style="background:#F5F3FF;border-radius:8px;padding:10px;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:700;color:#5B21B6;margin-bottom:6px">🧪 발주 테스트 (등록 전 확인)</div>
+        <div style="font-size:10px;color:#888;margin-bottom:6px">발주 문구를 넣으면 현재 키워드로 어떻게 매칭되는지 미리 볼 수 있습니다</div>
+        <input id="kwTestInput" type="text" oninput="kwTestRun()" placeholder="예: 슬림샤인 1285*320 24개" style="width:100%;padding:9px;font-size:13px;border:1.5px solid #C4B5FD;border-radius:6px;outline:none;font-family:Noto Sans KR,sans-serif;margin-bottom:6px">
+        <div id="kwTestResult" style="font-size:12px;min-height:20px"></div>
+      </div>
+
+      <!-- 등록된 키워드 목록 -->
+      <div style="font-size:12px;font-weight:700;color:#444;margin-bottom:8px">📋 등록된 키워드 <span id="kwCount" style="color:#7C3AED"></span></div>
+      <div id="kwManageList"></div>
+    </div>
+    <div style="padding:12px 16px;border-top:1px solid #eee">
+      <button onclick="closeKwManage()" style="width:100%;padding:11px;background:#f0f0f0;color:#555;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:Noto Sans KR,sans-serif">닫기</button>
     </div>
   </div>
 </div>
@@ -3445,7 +3473,9 @@ var PO_SYNONYMS = [
   ['모듈','리폼모듈'],['cfl','EL'],['CFL','EL'],['삼파장','EL'],['삼파장전구','EL'],
   ['벌브','BULB'],['전구색벌브','BULB'],['led벌브','LED BULB'],['엘이디벌브','LED BULB'],
   ['슬림샤인','슬림 샤인'],['직하엣지','슬림 샤인'],['슬림엣지','슬림 샤인'],['슬림 엣지','슬림 샤인'],['직하 엣지','슬림 샤인'],
-  ['리모컨','스마트'],['리모콘','스마트']
+  ['리모컨','스마트'],['리모콘','스마트'],
+  ['연결대','연결선'],
+  ['2+2+2','6등용'],['2+2','4등용']
 ];
 
 // ── 사용자 학습 키워드 (A+B 하이브리드: localStorage 즉시 + 구글시트 동기화) ──
@@ -3601,6 +3631,15 @@ function poFindByName(line){
   for(var i=0;i<G.length;i++){
     var g=G[i];
     var nName = poNorm(g.name);
+    // ERP 품목명(ename)도 검토: variant들의 ename에서 고유 단어가 발주에 있으면 가산
+    var enameBonus = 0;
+    if(g.variants && g.variants.length){
+      var enameJoined = poNorm(g.variants.map(function(v){return v.ename||'';}).join(' '));
+      ['4등용','6등용','e26','e39','디밍','리모컨','소모','대모'].forEach(function(kw){
+        var nkw = poNorm(kw);
+        if(nkw && enameJoined.indexOf(nkw)>=0 && nLine.indexOf(nkw)>=0) enameBonus += 1.5;
+      });
+    }
     var nameTokens = g.name.replace(/[()]/g,' ').split(/\s+/).filter(Boolean);
     var hit=0, total=0;
     nameTokens.forEach(function(tok){
@@ -3681,6 +3720,8 @@ function poFindByName(line){
     // 사용자 학습 키워드: 매칭될 때마다 강한 가산점
     var ukScore = userKwScore(g.name, sLine);
     if(ukScore > 0) score += ukScore * 3.0;
+    // ERP 품목명(ename) 보조 매칭 가산
+    score += enameBonus;
     if(score>bestScore){ bestScore=score; best=g; }
   }
   return bestScore>=0.8 ? best : null;
@@ -3703,6 +3744,14 @@ function poScoreOne(g, line){
   });
   var score = total>0 ? hit/total : 0;
   if(nName && nLine.indexOf(nName)>=0) score += 1.5;
+  // ERP 품목명(ename) 보조 매칭
+  if(g.variants && g.variants.length){
+    var enameJoinedS = poNorm(g.variants.map(function(v){return v.ename||'';}).join(' '));
+    ['4등용','6등용','e26','e39','디밍','리모컨','소모','대모'].forEach(function(kw){
+      var nkw = poNorm(kw);
+      if(nkw && enameJoinedS.indexOf(nkw)>=0 && nLine.indexOf(nkw)>=0) score += 1.5;
+    });
+  }
   PO_BRANDS.forEach(function(bd){ var nBd=poNorm(bd); var iN=nName.indexOf(nBd)>=0,iL=nLine.indexOf(nBd)>=0; if(iN&&iL)score+=1.5;else if(iN&&!iL)score-=0.8; });
   var nameWatt=poExtractWatt(g.name);
   if(lineWatt&&nameWatt){ if(lineWatt===nameWatt)score+=1.0; else score-=1.5; }
@@ -4126,9 +4175,17 @@ function openKwMod(rawLine){
   var tokens = (rawLine||'').split(/[\s,·.]+/).filter(function(t){ return t && t.length >= 1; });
   var th = '';
   tokens.forEach(function(tok, i){
-    th += '<button onclick="kwToggleToken('+i+')" id="kwtok'+i+'" data-tok="'+tok.replace(/"/g,'&quot;')+'" '
-      + 'style="padding:6px 10px;background:#fff;border:1.5px solid #C4B5FD;border-radius:16px;font-size:12px;font-weight:600;color:#5B21B6;cursor:pointer;font-family:Noto Sans KR,sans-serif">'
-      + tok + '</button>';
+    // 이 단어가 몇 개 품목명에 나오는지 세기 (흔한 단어 경고용)
+    var cnt = kwWordFreq(tok);
+    var isCommon = cnt >= 5; // 5개 이상 품목에 있으면 흔한 단어
+    var isNum = /^\d+$/.test(tok) || /^\d+(w|W|번)$/.test(tok) || /^\d{3,4}[*xX×]\d{3,4}$/.test(tok);
+    var borderCol = isCommon ? '#F59E0B' : (isNum ? '#D1D5DB' : '#C4B5FD');
+    var textCol = isCommon ? '#B45309' : (isNum ? '#9CA3AF' : '#5B21B6');
+    var warnMark = isCommon ? ' ⚠' : '';
+    var title = isCommon ? '흔한 단어 ('+cnt+'개 품목에 있음) - 피하세요' : (isNum ? '숫자/크기' : '고유 단어 - 추천');
+    th += '<button onclick="kwToggleToken('+i+')" id="kwtok'+i+'" data-tok="'+tok.replace(/"/g,'&quot;')+'" data-common="'+(isCommon?'1':'0')+'" title="'+title+'" '
+      + 'style="padding:6px 10px;background:#fff;border:1.5px solid '+borderCol+';border-radius:16px;font-size:12px;font-weight:600;color:'+textCol+';cursor:pointer;font-family:Noto Sans KR,sans-serif">'
+      + tok + warnMark + '</button>';
   });
   document.getElementById('kwTokens').innerHTML = th || '<span style="color:#aaa;font-size:12px">단어 없음</span>';
   document.getElementById('kwSelected').textContent = '(없음)';
@@ -4138,6 +4195,17 @@ function openKwMod(rawLine){
   document.getElementById('kwPickedName').textContent = '(없음)';
   document.getElementById('kwMod').style.display = 'flex';
   kwRenderList(); // 발주 줄 기준 후보 자동 표시
+}
+// 단어가 몇 개 품목명(g.name)에 등장하는지
+function kwWordFreq(word){
+  if(!word) return 0;
+  var nw = poNorm(word);
+  if(!nw || nw.length < 1) return 0;
+  var cnt = 0;
+  for(var i=0;i<G.length;i++){
+    if(poNorm(G[i].name).indexOf(nw) >= 0) cnt++;
+  }
+  return cnt;
 }
 function closeKwMod(){ document.getElementById('kwMod').style.display = 'none'; }
 
@@ -4197,11 +4265,90 @@ function kwPick(name){
 function kwSubmit(){
   if(!kwState.selected.length){ showToast('키워드로 쓸 단어를 선택해주세요'); return; }
   if(!kwState.pickedName){ showToast('매핑할 품명을 선택해주세요'); return; }
+  // 흔한 단어 경고: 선택한 키워드 중 5개 이상 품목에 나오는 게 있으면 확인
+  var commonWords = kwState.selected.filter(function(w){ return kwWordFreq(w) >= 5; });
+  if(commonWords.length){
+    var warn = '⚠ 주의: 아래 단어는 여러 품목에 들어있어 잘못 매칭될 수 있습니다.\n\n';
+    commonWords.forEach(function(w){ warn += '  • "'+w+'" → '+kwWordFreq(w)+'개 품목에 있음\n'; });
+    warn += '\n그래도 등록하시겠습니까?\n(권장: 그 제품에만 있는 고유한 단어 1개만 선택)';
+    if(!confirm(warn)) return;
+  }
   addUserKw(kwState.pickedName, kwState.selected);
   showToast('✅ 키워드 등록됨: '+kwState.selected.join(', ')+' → '+kwState.pickedName);
   closeKwMod();
   // 다시 매칭 (키워드 반영 위해 재파싱)
   parsePreview(true);
+}
+
+// ── 키워드 관리 (관리자) ──
+function openKwManage(){
+  document.getElementById('kwTestInput').value = '';
+  document.getElementById('kwTestResult').innerHTML = '';
+  document.getElementById('kwManageMod').style.display = 'flex';
+  kwManageRender();
+}
+function closeKwManage(){ document.getElementById('kwManageMod').style.display = 'none'; }
+
+// 등록된 키워드 목록 렌더
+function kwManageRender(){
+  var names = Object.keys(USER_KW);
+  document.getElementById('kwCount').textContent = '(' + names.length + '개 품명)';
+  if(!names.length){
+    document.getElementById('kwManageList').innerHTML = '<div style="color:#aaa;font-size:12px;padding:20px;text-align:center">아직 등록된 키워드가 없습니다</div>';
+    return;
+  }
+  var h = '';
+  names.sort().forEach(function(name){
+    var kws = USER_KW[name] || [];
+    h += '<div style="border:1px solid #eee;border-radius:8px;padding:10px;margin-bottom:8px">';
+    h += '<div style="font-size:12px;font-weight:700;color:#1A1814;margin-bottom:6px">'+name+'</div>';
+    h += '<div style="display:flex;flex-wrap:wrap;gap:5px">';
+    kws.forEach(function(kw){
+      var freq = kwWordFreq(kw);
+      var danger = freq >= 5;
+      var col = danger ? '#B45309' : '#5B21B6';
+      var bg = danger ? '#FEF3C7' : '#F5F3FF';
+      var bd = danger ? '#F59E0B' : '#C4B5FD';
+      h += '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:'+bg+';border:1px solid '+bd+';border-radius:14px;font-size:11px;color:'+col+';font-weight:600">'
+        + (danger?'⚠ ':'') + kw + (danger?' <span style="font-size:9px">('+freq+'품목)</span>':'')
+        + ' <button onclick="kwManageDelete(\''+name.replace(/'/g,"\\'")+'\',\''+kw.replace(/'/g,"\\'")+'\')" style="background:none;border:none;color:#DC2626;cursor:pointer;font-size:13px;font-weight:700;padding:0;line-height:1" title="삭제">×</button>'
+        + '</span>';
+    });
+    h += '</div></div>';
+  });
+  document.getElementById('kwManageList').innerHTML = h;
+}
+
+// 키워드 삭제
+function kwManageDelete(name, kw){
+  if(!confirm('키워드 삭제:\n"'+kw+'" → '+name+'\n\n삭제하시겠습니까?')) return;
+  removeUserKw(name, kw);
+  kwManageRender();
+  showToast('🗑 키워드 삭제됨: '+kw);
+}
+
+// 발주 테스트 (현재 키워드로 어떻게 매칭되는지 미리보기)
+var kwTestTimer = null;
+function kwTestRun(){
+  clearTimeout(kwTestTimer);
+  kwTestTimer = setTimeout(function(){
+    var text = document.getElementById('kwTestInput').value.trim();
+    var box = document.getElementById('kwTestResult');
+    if(!text){ box.innerHTML = ''; return; }
+    var items = parseOrderItems(text);
+    if(!items.length){ box.innerHTML = '<span style="color:#999">매칭 결과 없음</span>'; return; }
+    var h = '';
+    items.forEach(function(it){
+      if(it.ambiguous){
+        h += '<div style="padding:4px 0;color:#EA580C">🔀 선택필요: '+it.candidates.map(function(c){return c.gname;}).join(' / ')+'</div>';
+      } else if(it.unconfirmed){
+        h += '<div style="padding:4px 0;color:#DC2626">⚠ 미매칭: '+(it.rawText||it.ename)+'</div>';
+      } else {
+        h += '<div style="padding:4px 0;color:#059669">✓ '+it.code+' '+it.gname+(it.ct&&it.ct!=='-'?' '+ctText(it.ct):'')+'</div>';
+      }
+    });
+    box.innerHTML = h;
+  }, 400);
 }
 
 // ── 품목 선택 모달 (여러 후보) ──
