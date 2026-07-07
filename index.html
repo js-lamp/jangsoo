@@ -371,12 +371,17 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 .parsemod{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:970;align-items:flex-end;justify-content:center}
 .parsemod.open{display:flex}
 .parsebox{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:640px;height:90vh;display:flex;flex-direction:column;overflow:hidden}
+@media(min-width:900px){
+  .parsemod{align-items:center}
+  .parsebox{max-width:1150px;height:88vh;border-radius:16px}
+}
 .parsehd{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:13px 16px;border-bottom:1px solid var(--bdr)}
 .parsehd-t{font-size:15px;font-weight:700;flex:1}
 .parse-split{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
 @media(min-width:560px){.parse-split{flex-direction:row}}
 .parse-left{flex:1;display:flex;flex-direction:column;min-height:0;border-bottom:2px solid var(--bdr)}
 @media(min-width:560px){.parse-left{border-bottom:none;border-right:2px solid var(--bdr)}}
+@media(min-width:900px){.parse-left{flex:0 0 320px}.parse-right{flex:1}}
 .parse-right{flex:1;display:flex;flex-direction:column;min-height:0;background:var(--sur2)}
 .parse-col-label{flex-shrink:0;padding:8px 12px;font-size:11px;font-weight:700;color:var(--ink2);background:var(--A3);border-bottom:1px solid var(--bdr)}
 .parse-ta{width:100%;flex:1;padding:12px;font-size:13px;font-family:monospace;border:none;outline:none;resize:none;color:var(--ink);background:#fff;min-height:120px}
@@ -1071,8 +1076,13 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
     <div class="parse-split">
       <!-- 왼쪽: 입력/수정 -->
       <div class="parse-left">
-        <div class="parse-col-label">📝 발주 내용 (수정 가능)</div>
-        <textarea class="parse-ta" id="parseTa" oninput="parsePreviewDebounced()" onselect="onParseTaSelect()" onmouseup="onParseTaSelect()" onkeyup="onParseTaSelect()" placeholder="붙여넣기 예시:&#10;&#10;슬림샤인 엣지&#10;1280*320 주광색 40개&#10;640*320 주광색 4개&#10;&#10;(품목군은 위에 한 번만 적어도 됩니다)"></textarea>
+        <div class="parse-col-label" style="display:flex;align-items:center;justify-content:space-between">
+          <span>📝 발주 내용 (수정 가능)</span>
+          <button onclick="document.getElementById('ocrFile').click()" style="padding:5px 10px;background:#0D9488;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer;white-space:nowrap">📷 사진에서 읽기</button>
+          <input type="file" id="ocrFile" accept="image/*" style="display:none" onchange="ocrFromImage(this.files[0])">
+        </div>
+        <div id="ocrStatus" style="display:none;padding:8px 10px;margin:0 0 6px;background:#E0F2F1;border-radius:6px;font-size:11px;color:#0D6E56"></div>
+        <textarea class="parse-ta" id="parseTa" oninput="parsePreviewDebounced()" onselect="onParseTaSelect()" onmouseup="onParseTaSelect()" onkeyup="onParseTaSelect()" placeholder="붙여넣기 예시:&#10;&#10;슬림샤인 엣지&#10;1280*320 주광색 40개&#10;640*320 주광색 4개&#10;&#10;(품목군은 위에 한 번만 적어도 됩니다)&#10;&#10;또는 📷 사진에서 읽기 (인쇄된 발주서)"></textarea>
         <button id="kwFromSelBtn" onclick="openKwFromSelection()" style="display:none;flex-shrink:0;margin:0 8px 0;padding:9px;background:#7C3AED;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer">🧠 선택한 "<span id="kwSelPreview"></span>" 키워드로 학습</button>
         <button class="parse-preview-btn" onclick="parsePreview(true)">🔍 미리보기 (매칭 확인)</button>
       </div>
@@ -3454,6 +3464,90 @@ function closeParseMod(){
 }
 // parseMod는 X 버튼으로만 닫힘 (실수로 취소되는 것 방지)
 
+// ── 사진에서 발주 읽기 (OCR, 인쇄/워드 발주서용) ──
+var __tesseractLoading = false;
+function loadTesseract(cb){
+  if(window.Tesseract){ cb(); return; }
+  if(__tesseractLoading){ setTimeout(function(){ loadTesseract(cb); }, 300); return; }
+  __tesseractLoading = true;
+  var s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+  s.onload = function(){ cb(); };
+  s.onerror = function(){ __tesseractLoading=false; ocrStatus('⚠ OCR 로딩 실패. 인터넷 연결을 확인하세요.', true); };
+  document.head.appendChild(s);
+}
+function ocrStatus(msg, isErr){
+  var el = document.getElementById('ocrStatus');
+  if(!el) return;
+  el.style.display = msg ? 'block' : 'none';
+  el.textContent = msg || '';
+  el.style.background = isErr ? '#FEF2F2' : '#E0F2F1';
+  el.style.color = isErr ? '#DC2626' : '#0D6E56';
+}
+function ocrFromImage(file){
+  if(!file) return;
+  ocrStatus('📷 사진 준비 중... (인쇄체는 잘 읽히지만 손글씨는 어렵습니다)');
+  loadTesseract(function(){
+    ocrStatus('🔍 글자 인식 중... 잠시만요 (10~30초)');
+    var reader = new FileReader();
+    reader.onload = function(e){
+      Tesseract.recognize(e.target.result, 'kor+eng', {
+        logger: function(m){
+          if(m.status === 'recognizing text'){
+            ocrStatus('🔍 글자 인식 중... ' + Math.round(m.progress*100) + '%');
+          }
+        }
+      }).then(function(result){
+        var text = result.data.text || '';
+        var cleaned = ocrCleanText(text);
+        var ta = document.getElementById('parseTa');
+        // 기존 내용에 추가 (여러 장 가능)
+        ta.value = (ta.value.trim() ? ta.value.trim() + '\n' : '') + cleaned;
+        ocrStatus('✅ 읽기 완료! 내용을 확인·수정 후 미리보기를 누르세요. (인식 오류가 있을 수 있어요)');
+        setTimeout(function(){ ocrStatus(''); }, 6000);
+        parsePreview(true);
+      }).catch(function(err){
+        ocrStatus('⚠ 인식 실패. 더 밝고 선명한 사진으로 다시 시도해보세요.', true);
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+  // 같은 파일 다시 선택 가능하게 초기화
+  document.getElementById('ocrFile').value = '';
+}
+// OCR 결과 정리: 상품코드(바코드) 줄 처리 + 잡음 제거
+function ocrCleanText(text){
+  var lines = text.split(/\n/);
+  var out = [];
+  lines.forEach(function(raw){
+    var line = raw.replace(/\s+/g,' ').trim();
+    if(!line) return;
+    // 너무 짧거나 의미없는 줄 제외
+    if(line.length < 2) return;
+    // 표 헤더/합계 등 제외
+    if(/^(no|품\s*명|규\s*격|단위|수량|발주량|상품코드|상품명|합계|공급금액|부가세|이하여백|화폐단위|발주번호|발주일자|입고일자|사업자|대표자|전화|팩스|아래와)/i.test(line.replace(/\s/g,''))) return;
+    // 흔한 OCR 오인식 보정
+    line = line
+      .replace(/(\d)[xX×](\d)/g, '$1*$2')       // 1285x180 → 1285*180
+      .replace(/(\d)\s*[wW]\b/g, '$1W')          // 50 w → 50W
+      .replace(/주광섹|주팡색|주광생/g, '주광색')
+      .replace(/전구섹|전구생/g, '전구색')
+      .replace(/주백섹|주백생/g, '주백색');
+    // 13자리 상품코드(바코드)가 줄에 있으면 → 바코드로 변환 시도
+    var bcMatch = line.match(/\b(\d{13})\b/);
+    if(bcMatch && typeof bcMap !== 'undefined' && bcMap[bcMatch[1]]){
+      var info = bcMap[bcMatch[1]];
+      // 수량 추출 (줄 끝의 숫자 = 발주 수량)
+      var qtyMatch = line.match(/(\d+)\s*$/);
+      var qty = qtyMatch ? qtyMatch[1] : '1';
+      out.push((info.gName||info.ename||'') + ' ' + qty + '개');
+      return;
+    }
+    out.push(line);
+  });
+  return out.join('\n');
+}
+
 // 텍스트 정규화 (품명 매칭용)
 function poNorm(s){
   return String(s||'').replace(/["”″]/g,'인치').replace(/\(|\)/g,'').replace(/\s+/g,'').replace(/[·\.\-_\/]/g,'').toLowerCase();
@@ -3631,13 +3725,22 @@ function poFindByName(line){
   for(var i=0;i<G.length;i++){
     var g=G[i];
     var nName = poNorm(g.name);
-    // ERP 품목명(ename)도 검토: variant들의 ename에서 고유 단어가 발주에 있으면 가산
+    // ERP 품목명(ename)도 검토: variant들의 ename 단어가 발주에 있으면 가산
     var enameBonus = 0;
     if(g.variants && g.variants.length){
       var enameJoined = poNorm(g.variants.map(function(v){return v.ename||'';}).join(' '));
-      ['4등용','6등용','e26','e39','디밍','리모컨','소모','대모'].forEach(function(kw){
+      // 특정 구분 키워드 (name엔 없을 수 있는 결정적 단어)
+      ['4등용','6등용','e26','e39','디밍','리모컨','소모','대모','스마트','원터치'].forEach(function(kw){
         var nkw = poNorm(kw);
         if(nkw && enameJoined.indexOf(nkw)>=0 && nLine.indexOf(nkw)>=0) enameBonus += 1.5;
+      });
+      // ename 주요 단어(2글자 이상 한글/영문)가 발주에 있으면 소폭 가산
+      var enameWords = g.variants.map(function(v){return v.ename||'';}).join(' ')
+        .replace(/[()\/\-]/g,' ').split(/\s+/).filter(function(t){ return t && t.length>=2 && !/^\d/.test(t) && !/^(cy|cw|kc|ks|cal|ktt|cwsx|kle?|r\d)$/i.test(t); });
+      var seenW = {};
+      enameWords.forEach(function(w){
+        var nw = poNorm(w);
+        if(nw && nw.length>=2 && !seenW[nw]){ seenW[nw]=1; if(nLine.indexOf(nw)>=0) enameBonus += 0.4; }
       });
     }
     var nameTokens = g.name.replace(/[()]/g,' ').split(/\s+/).filter(Boolean);
@@ -3717,6 +3820,14 @@ function poFindByName(line){
     var nameHasDim2 = nName.indexOf(poNorm('디밍'))>=0;
     if(lineHasDim2 && nameHasDim2) score += 2.5;
     else if(!lineHasDim2 && nameHasDim2) score -= 2.5; // 디밍 안 적었는데 디밍 제품이면 배제
+    // 스마트 구분: 발주에 "스마트/리모컨" 있으면 스마트 제품 우대, 없으면 스마트 제품 배제
+    // (스마트는 name 또는 ename에 "스마트"/"리모컨"으로 존재)
+    var lineHasSmart2 = /스마트|리모컨|리모콘/i.test(sLine);
+    var enameJoined2 = (g.variants||[]).map(function(v){return v.ename||'';}).join(' ');
+    var prodIsSmart2 = /스마트|리모컨/i.test(g.name) || /스마트|리모컨/i.test(enameJoined2);
+    if(lineHasSmart2 && prodIsSmart2) score += 3.0;
+    else if(!lineHasSmart2 && prodIsSmart2) score -= 3.0; // 스마트 안 적었는데 스마트(리모컨) 제품이면 배제
+    else if(lineHasSmart2 && !prodIsSmart2) score -= 2.0; // 스마트 적었는데 일반 제품이면 감점
     // 사용자 학습 키워드: 매칭될 때마다 강한 가산점
     var ukScore = userKwScore(g.name, sLine);
     if(ukScore > 0) score += ukScore * 3.0;
@@ -3747,9 +3858,16 @@ function poScoreOne(g, line){
   // ERP 품목명(ename) 보조 매칭
   if(g.variants && g.variants.length){
     var enameJoinedS = poNorm(g.variants.map(function(v){return v.ename||'';}).join(' '));
-    ['4등용','6등용','e26','e39','디밍','리모컨','소모','대모'].forEach(function(kw){
+    ['4등용','6등용','e26','e39','디밍','리모컨','소모','대모','스마트','원터치'].forEach(function(kw){
       var nkw = poNorm(kw);
       if(nkw && enameJoinedS.indexOf(nkw)>=0 && nLine.indexOf(nkw)>=0) score += 1.5;
+    });
+    var enameWordsS = g.variants.map(function(v){return v.ename||'';}).join(' ')
+      .replace(/[()\/\-]/g,' ').split(/\s+/).filter(function(t){ return t && t.length>=2 && !/^\d/.test(t) && !/^(cy|cw|kc|ks|cal|ktt|cwsx|kle?|r\d)$/i.test(t); });
+    var seenWS = {};
+    enameWordsS.forEach(function(w){
+      var nw = poNorm(w);
+      if(nw && nw.length>=2 && !seenWS[nw]){ seenWS[nw]=1; if(nLine.indexOf(nw)>=0) score += 0.4; }
     });
   }
   PO_BRANDS.forEach(function(bd){ var nBd=poNorm(bd); var iN=nName.indexOf(nBd)>=0,iL=nLine.indexOf(nBd)>=0; if(iN&&iL)score+=1.5;else if(iN&&!iL)score-=0.8; });
@@ -3790,6 +3908,13 @@ function poScoreOne(g, line){
   var nameHasDim = nName.indexOf(poNorm('디밍'))>=0;
   if(lineHasDim && nameHasDim) score += 2.5;
   else if(!lineHasDim && nameHasDim) score -= 2.5;
+  // 스마트 구분: 발주에 "스마트/리모컨" → 스마트 제품 우대, 없으면 배제 (name+ename 검사)
+  var lineHasSmart = /스마트|리모컨|리모콘/i.test(sLine);
+  var enameJoinedSc = (g.variants||[]).map(function(v){return v.ename||'';}).join(' ');
+  var prodIsSmart = /스마트|리모컨/i.test(g.name) || /스마트|리모컨/i.test(enameJoinedSc);
+  if(lineHasSmart && prodIsSmart) score += 3.0;
+  else if(!lineHasSmart && prodIsSmart) score -= 3.0;
+  else if(lineHasSmart && !prodIsSmart) score -= 2.0;
   // 사용자 학습 키워드: 매칭될 때마다 강한 가산점
   var ukScore = userKwScore(g.name, sLine);
   if(ukScore > 0) score += ukScore * 3.0;
@@ -3998,7 +4123,7 @@ function parseOrderItems(text){
           })
         });
       } else {
-        items.push({code:v.code, ename:v.ename, gname:g.name, ct:v.ct, qty:qty, unit:unit});
+        items.push({code:v.code, ename:v.ename, gname:g.name, ct:v.ct, qty:qty, unit:unit, rawText:line});
       }
     } else {
       items.push({code:'?', ename:line, gname:line, ct:'-', qty:qty, unit:unit, unconfirmed:true, rawText:line});
@@ -4017,6 +4142,18 @@ function parsePreviewDebounced(){
 function parsePreview(reparse){
   var text = document.getElementById('parseTa').value.trim();
   var box = document.getElementById('parsePreviewList');
+  // 화면 크기 변경 시 레이아웃 다시 그리기 (한 번만 등록)
+  if(!window.__pvResizeBound){
+    window.__pvResizeBound = true;
+    var pvrt = null;
+    window.addEventListener('resize', function(){
+      clearTimeout(pvrt);
+      pvrt = setTimeout(function(){
+        var pm = document.getElementById('parseMod');
+        if(pm && pm.classList.contains('open') && parsedItems && parsedItems.length){ parsePreview(false); }
+      }, 200);
+    });
+  }
   if(!text){
     parsedItems = [];
     box.innerHTML = '<div style="text-align:center;color:var(--ink3);font-size:12px;padding:30px 10px">왼쪽에 발주 내용을 입력하고<br><b>미리보기</b>를 누르면<br>매칭 결과가 여기 표시됩니다</div>';
@@ -4046,28 +4183,52 @@ function parsePreview(reparse){
     }
     return it.qty + '개';
   }
+  // 개수/박스 분리 계산
+  function pvCounts(it){
+    var boxQty = (typeof QTY_MAP !== 'undefined' && QTY_MAP[it.code]) ? QTY_MAP[it.code] : 1;
+    if(it.unit === '박스'){
+      return { each: it.qty * boxQty, box: it.qty };
+    }
+    // 개 단위 발주: 박스 환산(딱 나누어떨어지면 박스 수, 아니면 공백)
+    var box = (boxQty > 1 && it.qty % boxQty === 0) ? (it.qty / boxQty) : '';
+    return { each: it.qty, box: box };
+  }
   // 열별 값 미리 계산
   var colMeta = [];
   items.forEach(function(it, idx){
     var pname = it.unconfirmed ? (it.rawText||it.ename) : ((it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct):''));
-    colMeta.push({idx:idx, it:it, pname:pname, code:(it.unconfirmed?'?':it.code), qty:pvQty(it)});
+    var cnt = pvCounts(it);
+    colMeta.push({idx:idx, it:it, pname:pname, code:(it.unconfirmed?'?':it.code), each:cnt.each, box:cnt.box, raw:(it.rawText||it.ename||'')});
   });
 
-  // CSS Grid 3열 (행 높이 자동 정렬 + 각 셀 독립 → 열 안에서만 드래그)
-  h += '<div style="display:grid;grid-template-columns:26% 50% 24%;border:1px solid var(--bdr);border-radius:8px;overflow:hidden;font-size:12px">';
-  // 헤더 (복사 버튼)
-  h += '<div onclick="copyColumn(\'code\')" style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 4px;text-align:center;cursor:pointer;white-space:nowrap;user-select:none">코드 📋</div>';
+  // 화면 폭 감지: 넓으면(PC) 발주원문 열 포함, 좁으면 생략. 수량은 개수/박스 2열
+  var wide = window.innerWidth >= 900;
+  var gridCols = wide ? '20% 12% 1fr 11% 11%' : '23% 39% 19% 19%';
+
+  // CSS Grid (행 높이 자동 정렬 + 각 셀 독립 → 열 안에서만 드래그)
+  h += '<div style="display:grid;grid-template-columns:'+gridCols+';border:1px solid var(--bdr);border-radius:8px;overflow:hidden;font-size:12px">';
+  // 헤더
+  if(wide){
+    h += '<div style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 6px;text-align:center;user-select:none">📝 발주 원문</div>';
+  }
+  h += '<div onclick="copyColumn(\'code\')" style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 4px;text-align:center;cursor:pointer;white-space:nowrap;border-left:1px solid rgba(255,255,255,.15);user-select:none">코드 📋</div>';
   h += '<div onclick="copyColumn(\'name\')" style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 4px;text-align:center;cursor:pointer;border-left:1px solid rgba(255,255,255,.15);user-select:none">품명 📋</div>';
-  h += '<div onclick="copyColumn(\'qty\')" style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 4px;text-align:center;cursor:pointer;white-space:nowrap;border-left:1px solid rgba(255,255,255,.15);user-select:none">수량 📋</div>';
-  // 데이터 행 (각 셀이 grid item)
-  colMeta.forEach(function(m){
+  h += '<div onclick="copyColumn(\'each\')" style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 4px;text-align:center;cursor:pointer;white-space:nowrap;border-left:1px solid rgba(255,255,255,.15);user-select:none">개수 📋</div>';
+  h += '<div onclick="copyColumn(\'box\')" style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 4px;text-align:center;cursor:pointer;white-space:nowrap;border-left:1px solid rgba(255,255,255,.15);user-select:none">박스 📋</div>';
+  // 데이터 행
+  colMeta.forEach(function(m, ri){
     var it=m.it;
-    var bg = it.unconfirmed?'#FEF2F2':(it.ambiguous?'#FFF7ED':'#fff');
+    var stripe = (ri % 2 === 1) ? '#FAFAFA' : '#fff';
+    var bg = it.unconfirmed?'#FEF2F2':(it.ambiguous?'#FFF7ED':stripe);
     var codeCl = it.unconfirmed?'#DC2626':(it.ambiguous?'#EA580C':'var(--A2)');
     var nameCl = it.unconfirmed?'#DC2626':(it.ambiguous?'#C2410C':'var(--ink)');
     var qtyCl = it.unconfirmed?'#1A1814':(it.ambiguous?'#EA580C':'var(--B,#2855A0)');
+    // 발주 원문 셀 (PC만)
+    if(wide){
+      h += '<div style="padding:8px 6px;border-top:1px solid var(--bdr);background:'+bg+';color:#666;font-size:11px;line-height:1.35;display:flex;align-items:center;user-select:text;-webkit-user-select:text">'+m.raw+'</div>';
+    }
     // 코드 셀
-    h += '<div style="padding:8px 4px;border-top:1px solid var(--bdr);background:'+bg+';color:'+codeCl+';font-family:monospace;font-size:10px;text-align:center;white-space:nowrap;display:flex;align-items:center;justify-content:center;user-select:text;-webkit-user-select:text">'+m.code+'</div>';
+    h += '<div style="padding:8px 4px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:'+codeCl+';font-family:monospace;font-size:10px;text-align:center;white-space:nowrap;display:flex;align-items:center;justify-content:center;user-select:text;-webkit-user-select:text">'+m.code+'</div>';
     // 품명 셀 (버튼 포함)
     var pre = it.unconfirmed?'⚠ ':'';
     var btn = '';
@@ -4080,12 +4241,16 @@ function parsePreview(reparse){
       var rawEsc2 = (it.rawText||it.orig||it.ename||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
       if(rawEsc2) btn = ' <button onclick="openKwMod(\''+rawEsc2+'\')" style="background:none;border:none;color:#C4B5FD;font-size:11px;cursor:pointer;padding:0 1px;user-select:none" title="학습">🧠</button>';
     }
-    h += '<div style="padding:8px 6px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:'+nameCl+';font-size:12px;font-weight:600;line-height:1.3;display:flex;align-items:center;user-select:text;-webkit-user-select:text"><span>'+pre+m.pname+btn+'</span></div>';
-    // 수량 셀
-    h += '<div style="padding:8px 4px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:'+qtyCl+';font-size:11px;font-weight:700;text-align:center;white-space:nowrap;display:flex;align-items:center;justify-content:center;user-select:text;-webkit-user-select:text">'+m.qty+'</div>';
+    // PC에서는 품명 한 줄 유지(안 잘리게 nowrap), 모바일은 줄바꿈 허용
+    var nameWrap = wide ? 'white-space:nowrap;overflow:visible' : 'line-height:1.3';
+    h += '<div style="padding:8px 6px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:'+nameCl+';font-size:12px;font-weight:600;display:flex;align-items:center;'+nameWrap+';user-select:text;-webkit-user-select:text"><span>'+pre+m.pname+btn+'</span></div>';
+    // 개수 셀
+    h += '<div style="padding:8px 4px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:'+qtyCl+';font-size:11px;font-weight:700;text-align:center;white-space:nowrap;display:flex;align-items:center;justify-content:center;user-select:text;-webkit-user-select:text">'+(m.each!==''?m.each+'개':'')+'</div>';
+    // 박스 셀
+    h += '<div style="padding:8px 4px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:#888;font-size:11px;font-weight:600;text-align:center;white-space:nowrap;display:flex;align-items:center;justify-content:center;user-select:text;-webkit-user-select:text">'+(m.box!==''?m.box+'박스':'')+'</div>';
   });
   h += '</div>'; // grid 끝
-  h += '<div style="font-size:10px;color:var(--ink3);padding:6px 4px 2px;text-align:center;line-height:1.5">💡 열 제목의 📋을 누르면 그 열 전체가 복사됩니다<br>(엑셀 한 열에 그대로 붙여넣기 가능)</div>';
+  h += '<div style="font-size:10px;color:var(--ink3);padding:6px 4px 2px;text-align:center;line-height:1.5">💡 열 제목의 📋을 누르면 그 열 전체가 복사됩니다'+(wide?' · 발주 원문과 매칭 결과가 같은 줄에 표시됩니다':'')+'</div>';
   box.innerHTML = h;
   // 열별 복사용 데이터 저장
   window.__pvColumns = {
@@ -4094,10 +4259,14 @@ function parsePreview(reparse){
       if(it.unconfirmed) return (it.rawText||it.ename||'');
       return (it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct):'');
     }),
-    qty: items.map(function(it){
+    each: items.map(function(it){
       var boxQty = (typeof QTY_MAP !== 'undefined' && QTY_MAP[it.code]) ? QTY_MAP[it.code] : 1;
-      var each = it.unit === '박스' ? it.qty*boxQty : it.qty;
-      return each;
+      return it.unit === '박스' ? it.qty*boxQty : it.qty;
+    }),
+    box: items.map(function(it){
+      var boxQty = (typeof QTY_MAP !== 'undefined' && QTY_MAP[it.code]) ? QTY_MAP[it.code] : 1;
+      if(it.unit === '박스') return it.qty;
+      return (boxQty > 1 && it.qty % boxQty === 0) ? (it.qty / boxQty) : '';
     })
   };
 }
@@ -4107,7 +4276,7 @@ function copyColumn(col){
   var cols = window.__pvColumns;
   if(!cols || !cols[col]) return;
   var text = cols[col].join('\n'); // 세로로 (엑셀 한 열에 붙여넣기)
-  var label = col==='code'?'코드':col==='name'?'품명':'수량';
+  var label = col==='code'?'코드':col==='name'?'품명':col==='each'?'개수':col==='box'?'박스':'수량';
   function done(){ showToast('✓ '+label+' 열 '+cols[col].length+'개 복사됨 (엑셀에 붙여넣기)'); }
   if(navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(text).then(done).catch(function(){ fallbackCopy(text, done); });
@@ -5852,17 +6021,49 @@ function openInvMod() {
   invPinInput = '';
   document.getElementById('invGradeInfo').innerHTML = '<span style="color:var(--ink3);font-size:11px">품명·수량 명세서입니다. 단가를 넣으려면 위 버튼을 누르세요.</span>';
   document.getElementById('invMod').classList.add('open');
+  // 뒤로가기 시 앱이 닫히지 않고 모달만 닫히도록 히스토리 항목 추가
+  try { history.pushState({invMod:true}, '', location.href); } catch(e){}
   // 비번 없이 바로 품명·수량 명세서 표시
   invRender(storeVal);
   document.getElementById('invDlBtn').style.display = '';
   document.getElementById('invCopyBtn').style.display = '';
   document.getElementById('invXlsBtn').style.display = '';
 }
-function closeInvMod() { document.getElementById('invMod').classList.remove('open'); poDetectedDealer=''; }
+function closeInvMod() {
+  document.getElementById('invMod').classList.remove('open');
+  poDetectedDealer='';
+  // X버튼으로 닫을 때: pushState로 추가한 히스토리 항목을 되돌림
+  if(history.state && history.state.invMod){
+    invModClosingByBtn = true;
+    try { history.back(); } catch(e){}
+  }
+}
+var invModClosingByBtn = false;
+// 뒤로가기(popstate) 시 명세서 모달이 열려 있으면 모달만 닫기
+window.addEventListener('popstate', function(e){
+  if(invModClosingByBtn){ invModClosingByBtn = false; return; } // X버튼발 back은 무시
+  var im = document.getElementById('invMod');
+  if(im && im.classList.contains('open')){
+    im.classList.remove('open');
+    poDetectedDealer='';
+  }
+});
 
 // 단가 표시 비번 (영업사원용)
 var invPinInput = '';
 function openInvPricePin(){
+  // 대리점명(상호명)을 먼저 입력해야 단가 표시 가능
+  var company = document.getElementById('invCompany').value.trim();
+  if(!company){
+    showToast('⚠ 대리점명(상호명)을 먼저 입력하세요');
+    var inp = document.getElementById('invCompany');
+    inp.focus();
+    // 입력칸 강조 (잠깐 빨간 테두리)
+    inp.style.borderColor = '#DC2626';
+    inp.style.boxShadow = '0 0 0 2px rgba(220,38,38,.15)';
+    setTimeout(function(){ inp.style.borderColor=''; inp.style.boxShadow=''; }, 1500);
+    return;
+  }
   document.getElementById('invPriceToggle').style.display = 'none';
   document.getElementById('invPinWrap').style.display = 'block';
   document.getElementById('invPinErr').textContent = '';
