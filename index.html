@@ -1078,11 +1078,12 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
       <div class="parse-left">
         <div class="parse-col-label" style="display:flex;align-items:center;justify-content:space-between">
           <span>📝 발주 내용 (수정 가능)</span>
-          <button onclick="document.getElementById('ocrFile').click()" style="padding:5px 10px;background:#0D9488;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer;white-space:nowrap">📷 사진에서 읽기</button>
+          <button onclick="document.getElementById('ocrFile').click()" title="사진 파일 선택 · 또는 입력란에 Ctrl+V로 붙여넣기/드래그도 가능" style="padding:5px 10px;background:#0D9488;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer;white-space:nowrap">📷 사진에서 읽기</button>
           <input type="file" id="ocrFile" accept="image/*" style="display:none" onchange="ocrFromImage(this.files[0])">
         </div>
         <div id="ocrStatus" style="display:none;padding:8px 10px;margin:0 0 6px;background:#E0F2F1;border-radius:6px;font-size:11px;color:#0D6E56"></div>
-        <textarea class="parse-ta" id="parseTa" oninput="parsePreviewDebounced()" onselect="onParseTaSelect()" onmouseup="onParseTaSelect()" onkeyup="onParseTaSelect()" placeholder="붙여넣기 예시:&#10;&#10;슬림샤인 엣지&#10;1280*320 주광색 40개&#10;640*320 주광색 4개&#10;&#10;(품목군은 위에 한 번만 적어도 됩니다)&#10;&#10;또는 📷 사진에서 읽기 (인쇄된 발주서)"></textarea>
+        <textarea class="parse-ta" id="parseTa" oninput="parsePreviewDebounced()" onselect="onParseTaSelect()" onmouseup="onParseTaSelect()" onkeyup="onParseTaSelect()" placeholder="발주 내용을 붙여넣거나 입력하세요.&#10;&#10;📷 사진(캡처)도 여기에 바로 붙여넣기(Ctrl+V) 하거나&#10;   드래그해서 놓으면 자동으로 글자를 읽습니다.&#10;&#10;예시:&#10;슬림샤인 엣지&#10;1280*320 주광색 40개&#10;640*320 주광색 4개"></textarea>
+        <div id="parseLeftAligned" style="display:none;flex:1;overflow-y:auto"></div>
         <button id="kwFromSelBtn" onclick="openKwFromSelection()" style="display:none;flex-shrink:0;margin:0 8px 0;padding:9px;background:#7C3AED;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer">🧠 선택한 "<span id="kwSelPreview"></span>" 키워드로 학습</button>
         <button class="parse-preview-btn" onclick="parsePreview(true)">🔍 미리보기 (매칭 확인)</button>
       </div>
@@ -3458,11 +3459,66 @@ function toggleSubFav(){
 function openParseMod(){
   document.getElementById('parseTa').value='';
   document.getElementById('parseMod').classList.add('open');
+  bindParsePasteDrop();
 }
 function closeParseMod(){
   document.getElementById('parseMod').classList.remove('open');
 }
 // parseMod는 X 버튼으로만 닫힘 (실수로 취소되는 것 방지)
+
+// 발주 입력란에 이미지 붙여넣기(Ctrl+V)·드래그앤드롭 → OCR (한 번만 등록)
+function bindParsePasteDrop(){
+  if(window.__parsePasteBound) return;
+  window.__parsePasteBound = true;
+  var ta = document.getElementById('parseTa');
+  var left = document.querySelector('.parse-left');
+  if(!ta) return;
+
+  // 붙여넣기: 클립보드에 이미지가 있으면 OCR, 아니면 기본 텍스트 붙여넣기
+  ta.addEventListener('paste', function(e){
+    var items = (e.clipboardData || window.clipboardData) && (e.clipboardData||window.clipboardData).items;
+    if(!items) return;
+    for(var i=0;i<items.length;i++){
+      if(items[i].type && items[i].type.indexOf('image') === 0){
+        var file = items[i].getAsFile();
+        if(file){
+          e.preventDefault(); // 텍스트 붙여넣기 막고 OCR
+          ocrFromImage(file);
+          return;
+        }
+      }
+    }
+    // 이미지 없으면 그냥 텍스트 붙여넣기 (기본 동작) → 잠시 후 미리보기
+    setTimeout(function(){ parsePreviewDebounced(); }, 50);
+  });
+
+  // 드래그앤드롭: 이미지 파일 떨구면 OCR
+  var dropZone = left || ta;
+  ['dragenter','dragover'].forEach(function(ev){
+    dropZone.addEventListener(ev, function(e){
+      e.preventDefault(); e.stopPropagation();
+      ta.style.outline = '2px dashed #0D9488';
+      ta.style.outlineOffset = '-2px';
+    });
+  });
+  ['dragleave','drop'].forEach(function(ev){
+    dropZone.addEventListener(ev, function(e){
+      e.preventDefault(); e.stopPropagation();
+      ta.style.outline = '';
+    });
+  });
+  dropZone.addEventListener('drop', function(e){
+    var files = e.dataTransfer && e.dataTransfer.files;
+    if(files && files.length){
+      for(var i=0;i<files.length;i++){
+        if(files[i].type && files[i].type.indexOf('image') === 0){
+          ocrFromImage(files[i]);
+          return;
+        }
+      }
+    }
+  });
+}
 
 // ── 사진에서 발주 읽기 (OCR, 인쇄/워드 발주서용) ──
 var __tesseractLoading = false;
@@ -4157,6 +4213,7 @@ function parsePreview(reparse){
   if(!text){
     parsedItems = [];
     box.innerHTML = '<div style="text-align:center;color:var(--ink3);font-size:12px;padding:30px 10px">왼쪽에 발주 내용을 입력하고<br><b>미리보기</b>를 누르면<br>매칭 결과가 여기 표시됩니다</div>';
+    renderLeftAligned(null);
     return;
   }
   // reparse=true(텍스트 변경/최초)면 새로 파싱, 아니면 기존 선택상태 유지
@@ -4166,6 +4223,7 @@ function parsePreview(reparse){
   var items = parsedItems;
   if(!items.length){
     box.innerHTML = '<div style="text-align:center;color:var(--ink3);font-size:12px;padding:30px 10px">인식된 품목이 없습니다.<br>품명이나 코드를 확인해주세요.</div>';
+    renderLeftAligned(null);
     return;
   }
   var okCnt = items.filter(function(it){return !it.unconfirmed && !it.ambiguous;}).length;
@@ -4201,17 +4259,13 @@ function parsePreview(reparse){
     colMeta.push({idx:idx, it:it, pname:pname, code:(it.unconfirmed?'?':it.code), each:cnt.each, box:cnt.box, raw:(it.rawText||it.ename||'')});
   });
 
-  // 화면 폭 감지: 넓으면(PC) 발주원문 열 포함, 좁으면 생략. 수량은 개수/박스 2열
-  var wide = window.innerWidth >= 900;
-  var gridCols = wide ? '20% 12% 1fr 11% 11%' : '23% 39% 19% 19%';
+  // 발주원문 열은 제거 (왼쪽 발주내용과 줄 맞춤으로 대체). 코드/품명/개수/박스 4열
+  var gridCols = '15% 1fr 14% 14%';
 
-  // CSS Grid (행 높이 자동 정렬 + 각 셀 독립 → 열 안에서만 드래그)
-  h += '<div style="display:grid;grid-template-columns:'+gridCols+';border:1px solid var(--bdr);border-radius:8px;overflow:hidden;font-size:12px">';
+  // CSS Grid (행 높이 자동 정렬)
+  h += '<div id="pvGrid" style="display:grid;grid-template-columns:'+gridCols+';border:1px solid var(--bdr);border-radius:8px;overflow:hidden;font-size:12px">';
   // 헤더
-  if(wide){
-    h += '<div style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 6px;text-align:center;user-select:none">📝 발주 원문</div>';
-  }
-  h += '<div onclick="copyColumn(\'code\')" style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 4px;text-align:center;cursor:pointer;white-space:nowrap;border-left:1px solid rgba(255,255,255,.15);user-select:none">코드 📋</div>';
+  h += '<div onclick="copyColumn(\'code\')" style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 4px;text-align:center;cursor:pointer;white-space:nowrap;user-select:none">코드 📋</div>';
   h += '<div onclick="copyColumn(\'name\')" style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 4px;text-align:center;cursor:pointer;border-left:1px solid rgba(255,255,255,.15);user-select:none">품명 📋</div>';
   h += '<div onclick="copyColumn(\'each\')" style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 4px;text-align:center;cursor:pointer;white-space:nowrap;border-left:1px solid rgba(255,255,255,.15);user-select:none">개수 📋</div>';
   h += '<div onclick="copyColumn(\'box\')" style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 4px;text-align:center;cursor:pointer;white-space:nowrap;border-left:1px solid rgba(255,255,255,.15);user-select:none">박스 📋</div>';
@@ -4223,12 +4277,8 @@ function parsePreview(reparse){
     var codeCl = it.unconfirmed?'#DC2626':(it.ambiguous?'#EA580C':'var(--A2)');
     var nameCl = it.unconfirmed?'#DC2626':(it.ambiguous?'#C2410C':'var(--ink)');
     var qtyCl = it.unconfirmed?'#1A1814':(it.ambiguous?'#EA580C':'var(--B,#2855A0)');
-    // 발주 원문 셀 (PC만)
-    if(wide){
-      h += '<div style="padding:8px 6px;border-top:1px solid var(--bdr);background:'+bg+';color:#666;font-size:11px;line-height:1.35;display:flex;align-items:center;user-select:text;-webkit-user-select:text">'+m.raw+'</div>';
-    }
-    // 코드 셀
-    h += '<div style="padding:8px 4px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:'+codeCl+';font-family:monospace;font-size:10px;text-align:center;white-space:nowrap;display:flex;align-items:center;justify-content:center;user-select:text;-webkit-user-select:text">'+m.code+'</div>';
+    // 코드 셀 (행 식별용 data-pvrow)
+    h += '<div class="pvrow" data-pvrow="'+ri+'" style="padding:8px 4px;border-top:1px solid var(--bdr);background:'+bg+';color:'+codeCl+';font-family:monospace;font-size:10px;text-align:center;white-space:nowrap;display:flex;align-items:center;justify-content:center;user-select:text;-webkit-user-select:text">'+m.code+'</div>';
     // 품명 셀 (버튼 포함)
     var pre = it.unconfirmed?'⚠ ':'';
     var btn = '';
@@ -4241,17 +4291,18 @@ function parsePreview(reparse){
       var rawEsc2 = (it.rawText||it.orig||it.ename||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
       if(rawEsc2) btn = ' <button onclick="openKwMod(\''+rawEsc2+'\')" style="background:none;border:none;color:#C4B5FD;font-size:11px;cursor:pointer;padding:0 1px;user-select:none" title="학습">🧠</button>';
     }
-    // PC에서는 품명 한 줄 유지(안 잘리게 nowrap), 모바일은 줄바꿈 허용
-    var nameWrap = wide ? 'white-space:nowrap;overflow:visible' : 'line-height:1.3';
-    h += '<div style="padding:8px 6px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:'+nameCl+';font-size:12px;font-weight:600;display:flex;align-items:center;'+nameWrap+';user-select:text;-webkit-user-select:text"><span>'+pre+m.pname+btn+'</span></div>';
+    // 품명 줄바꿈 허용 (길면 2줄, 왼쪽도 같이 높이 맞춰짐)
+    h += '<div class="pvrow" data-pvrow="'+ri+'" style="padding:8px 6px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:'+nameCl+';font-size:12px;font-weight:600;display:flex;align-items:center;line-height:1.3;user-select:text;-webkit-user-select:text"><span>'+pre+m.pname+btn+'</span></div>';
     // 개수 셀
-    h += '<div style="padding:8px 4px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:'+qtyCl+';font-size:11px;font-weight:700;text-align:center;white-space:nowrap;display:flex;align-items:center;justify-content:center;user-select:text;-webkit-user-select:text">'+(m.each!==''?m.each+'개':'')+'</div>';
+    h += '<div class="pvrow" data-pvrow="'+ri+'" style="padding:8px 4px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:'+qtyCl+';font-size:11px;font-weight:700;text-align:center;white-space:nowrap;display:flex;align-items:center;justify-content:center;user-select:text;-webkit-user-select:text">'+(m.each!==''?m.each+'개':'')+'</div>';
     // 박스 셀
-    h += '<div style="padding:8px 4px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:#888;font-size:11px;font-weight:600;text-align:center;white-space:nowrap;display:flex;align-items:center;justify-content:center;user-select:text;-webkit-user-select:text">'+(m.box!==''?m.box+'박스':'')+'</div>';
+    h += '<div class="pvrow" data-pvrow="'+ri+'" style="padding:8px 4px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:#888;font-size:11px;font-weight:600;text-align:center;white-space:nowrap;display:flex;align-items:center;justify-content:center;user-select:text;-webkit-user-select:text">'+(m.box!==''?m.box+'박스':'')+'</div>';
   });
   h += '</div>'; // grid 끝
-  h += '<div style="font-size:10px;color:var(--ink3);padding:6px 4px 2px;text-align:center;line-height:1.5">💡 열 제목의 📋을 누르면 그 열 전체가 복사됩니다'+(wide?' · 발주 원문과 매칭 결과가 같은 줄에 표시됩니다':'')+'</div>';
+  h += '<div style="font-size:10px;color:var(--ink3);padding:6px 4px 2px;text-align:center;line-height:1.5">💡 열 제목의 📋을 누르면 그 열 전체가 복사됩니다 · 왼쪽 발주 줄을 탭하면 수정할 수 있어요</div>';
   box.innerHTML = h;
+  // 왼쪽 발주 내용을 오른쪽 행과 같은 높이로 줄 맞춤
+  renderLeftAligned(colMeta);
   // 열별 복사용 데이터 저장
   window.__pvColumns = {
     code: items.map(function(it){ return it.unconfirmed ? '' : it.code; }),
@@ -4269,6 +4320,92 @@ function parsePreview(reparse){
       return (boxQty > 1 && it.qty % boxQty === 0) ? (it.qty / boxQty) : '';
     })
   };
+}
+
+// 왼쪽 발주 내용을 오른쪽 매칭 행과 같은 높이로 줄 맞춤 표시 (탭하면 수정)
+function renderLeftAligned(colMeta){
+  var leftBox = document.getElementById('parseLeftAligned');
+  var ta = document.getElementById('parseTa');
+  if(!leftBox) return;
+  if(!colMeta || !colMeta.length){
+    // 매칭 결과 없으면 textarea 다시 보이기
+    leftBox.style.display = 'none';
+    if(ta) ta.style.display = '';
+    return;
+  }
+  // textarea 숨기고 줄맞춤 영역 표시
+  if(ta) ta.style.display = 'none';
+  leftBox.style.display = 'block';
+  var h = '<div style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 6px;text-align:center;border-radius:6px 6px 0 0">📝 발주 내용 (탭하여 수정)</div>';
+  h += '<div id="pvLeftRows" style="border:1px solid var(--bdr);border-top:none;border-radius:0 0 6px 6px;overflow:hidden">';
+  colMeta.forEach(function(m, ri){
+    var it = m.it;
+    var stripe = (ri % 2 === 1) ? '#FAFAFA' : '#fff';
+    var bg = it.unconfirmed?'#FEF2F2':(it.ambiguous?'#FFF7ED':stripe);
+    var cl = it.unconfirmed?'#DC2626':(it.ambiguous?'#C2410C':'var(--ink)');
+    var rawEsc = (m.raw||'').replace(/"/g,'&quot;');
+    h += '<div class="pvleftrow" data-pvrow="'+ri+'" onclick="editLeftRow('+ri+')" '
+      + 'style="padding:8px 8px;border-top:'+(ri>0?'1px solid var(--bdr)':'none')+';background:'+bg+';color:'+cl+';font-size:13px;line-height:1.3;cursor:pointer;display:flex;align-items:center;min-height:20px" '
+      + 'title="탭하여 수정">'+ (m.raw||'') +'</div>';
+  });
+  h += '</div>';
+  h += '<div style="font-size:10px;color:var(--ink3);padding:6px 2px;text-align:center">✏️ 줄을 탭하면 그 줄만 수정 · <button onclick="backToTextarea()" style="background:none;border:none;color:var(--B,#2855A0);font-size:10px;font-weight:700;cursor:pointer;text-decoration:underline;padding:0">전체 텍스트로 편집</button></div>';
+  leftBox.innerHTML = h;
+  // 좌우 행 높이 동기화
+  setTimeout(function(){ syncRowHeights(); }, 20);
+}
+
+// 좌우 같은 인덱스 행끼리 높이 맞추기
+function syncRowHeights(){
+  var leftRows = document.querySelectorAll('#pvLeftRows .pvleftrow');
+  var grid = document.getElementById('pvGrid');
+  if(!grid || !leftRows.length) return;
+  // 오른쪽은 grid라 각 행의 실제 높이를 코드셀 기준으로 측정
+  var rightCells = {};
+  grid.querySelectorAll('.pvrow').forEach(function(el){
+    var idx = el.getAttribute('data-pvrow');
+    var hgt = el.offsetHeight;
+    if(!rightCells[idx] || hgt > rightCells[idx]) rightCells[idx] = hgt;
+  });
+  leftRows.forEach(function(lr){
+    var idx = lr.getAttribute('data-pvrow');
+    lr.style.height = 'auto';
+    var need = Math.max(lr.offsetHeight, rightCells[idx]||0);
+    lr.style.height = need + 'px';
+  });
+}
+
+// 왼쪽 줄 하나만 수정 (인라인 입력)
+function editLeftRow(ri){
+  var row = document.querySelector('#pvLeftRows .pvleftrow[data-pvrow="'+ri+'"]');
+  if(!row) return;
+  var cur = parsedItems[ri] ? (parsedItems[ri].rawText||'') : row.textContent;
+  var inp = prompt('이 줄을 수정하세요:', cur);
+  if(inp === null) return; // 취소
+  // 해당 줄의 원문을 바꾸고 재파싱
+  // 전체 텍스트에서 해당 줄 교체
+  var lines = document.getElementById('parseTa').value.split(/\n/).map(function(l){return l.trim();}).filter(Boolean);
+  // parsedItems와 lines 인덱스가 다를 수 있어, rawText 기준으로 교체
+  var oldRaw = parsedItems[ri] ? parsedItems[ri].rawText : null;
+  if(oldRaw){
+    var replaced = false;
+    for(var i=0;i<lines.length;i++){
+      if(lines[i] === oldRaw && !replaced){ lines[i] = inp.trim(); replaced = true; }
+    }
+    if(!replaced) lines[ri] = inp.trim();
+  } else {
+    lines[ri] = inp.trim();
+  }
+  document.getElementById('parseTa').value = lines.join('\n');
+  parsePreview(true);
+}
+
+// 전체 텍스트 편집으로 돌아가기 (textarea 다시 표시)
+function backToTextarea(){
+  var leftBox = document.getElementById('parseLeftAligned');
+  var ta = document.getElementById('parseTa');
+  if(leftBox) leftBox.style.display = 'none';
+  if(ta){ ta.style.display = ''; ta.focus(); }
 }
 
 // 미리보기 열 전체를 클립보드로 복사 (엑셀 붙여넣기용)
