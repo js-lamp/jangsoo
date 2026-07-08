@@ -1076,8 +1076,9 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
     <div class="parse-split">
       <!-- 왼쪽: 입력/수정 -->
       <div class="parse-left">
-        <div class="parse-col-label" style="display:flex;align-items:center;justify-content:space-between">
-          <span>📝 발주 내용 (수정 가능)</span>
+        <div class="parse-col-label" style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+          <span style="flex:1">📝 발주 내용 (수정 가능)</span>
+          <button onclick="resetParse()" title="발주 내용 전체 지우기 (처음부터)" style="padding:5px 9px;background:#fff;color:#DC2626;border:1.5px solid #FCA5A5;border-radius:6px;font-size:11px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer;white-space:nowrap">🔄 새로고침</button>
           <button onclick="document.getElementById('ocrFile').click()" title="사진 파일 선택 · 또는 입력란에 Ctrl+V로 붙여넣기/드래그도 가능" style="padding:5px 10px;background:#0D9488;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer;white-space:nowrap">📷 사진에서 읽기</button>
           <input type="file" id="ocrFile" accept="image/*" style="display:none" onchange="ocrFromImage(this.files[0])">
         </div>
@@ -3464,6 +3465,27 @@ function openParseMod(){
 function closeParseMod(){
   document.getElementById('parseMod').classList.remove('open');
 }
+// 발주 변환 초기화 (새로고침): 입력·미리보기·상태 모두 비움
+function resetParse(){
+  var ta = document.getElementById('parseTa');
+  if(ta && ta.value.trim()){
+    if(!confirm('발주 내용을 모두 지우고 처음부터 시작할까요?')) return;
+  }
+  if(ta){ ta.value = ''; ta.style.display = ''; ta.style.outline = ''; }
+  parsedItems = [];
+  // 왼쪽 줄맞춤 영역 숨기고 textarea 복원
+  var leftBox = document.getElementById('parseLeftAligned');
+  if(leftBox){ leftBox.style.display = 'none'; leftBox.innerHTML = ''; }
+  // 오른쪽 미리보기 초기 안내로
+  var box = document.getElementById('parsePreviewList');
+  if(box){ box.innerHTML = '<div style="text-align:center;color:var(--ink3);font-size:12px;padding:30px 10px">왼쪽에 발주 내용을 입력하고<br><b>미리보기</b>를 누르면<br>매칭 결과가 여기 표시됩니다</div>'; }
+  // OCR 상태·학습 버튼 정리
+  var ocrEl = document.getElementById('ocrStatus');
+  if(ocrEl){ ocrEl.style.display = 'none'; ocrEl.textContent = ''; }
+  var kwBtn = document.getElementById('kwFromSelBtn');
+  if(kwBtn) kwBtn.style.display = 'none';
+  if(ta) ta.focus();
+}
 // parseMod는 X 버튼으로만 닫힘 (실수로 취소되는 것 방지)
 
 // 발주 입력란에 이미지 붙여넣기(Ctrl+V)·드래그앤드롭 → OCR (한 번만 등록)
@@ -4336,7 +4358,7 @@ function renderLeftAligned(colMeta){
   // textarea 숨기고 줄맞춤 영역 표시
   if(ta) ta.style.display = 'none';
   leftBox.style.display = 'block';
-  var h = '<div style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 6px;text-align:center;border-radius:6px 6px 0 0">📝 발주 내용 (탭하여 수정)</div>';
+  var h = '<div style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 6px;text-align:center;border-radius:6px 6px 0 0">📝 발주 내용 (줄을 탭하면 바로 수정)</div>';
   h += '<div id="pvLeftRows" style="border:1px solid var(--bdr);border-top:none;border-radius:0 0 6px 6px;overflow:hidden">';
   colMeta.forEach(function(m, ri){
     var it = m.it;
@@ -4375,27 +4397,55 @@ function syncRowHeights(){
   });
 }
 
-// 왼쪽 줄 하나만 수정 (인라인 입력)
+// 왼쪽 줄 하나만 그 자리에서 바로 수정 (인라인 input)
 function editLeftRow(ri){
   var row = document.querySelector('#pvLeftRows .pvleftrow[data-pvrow="'+ri+'"]');
   if(!row) return;
-  var cur = parsedItems[ri] ? (parsedItems[ri].rawText||'') : row.textContent;
-  var inp = prompt('이 줄을 수정하세요:', cur);
-  if(inp === null) return; // 취소
-  // 해당 줄의 원문을 바꾸고 재파싱
-  // 전체 텍스트에서 해당 줄 교체
+  if(row.querySelector('input')) return; // 이미 편집 중
+  var cur = parsedItems[ri] ? (parsedItems[ri].rawText||'') : row.textContent.trim();
+  // 줄 내용을 input으로 교체
+  row.innerHTML = '';
+  row.style.cursor = 'text';
+  var inp = document.createElement('input');
+  inp.type = 'text';
+  inp.value = cur;
+  inp.setAttribute('data-ri', ri);
+  inp.style.cssText = 'width:100%;border:1.5px solid #2855A0;border-radius:4px;padding:5px 6px;font-size:13px;font-family:Noto Sans KR,sans-serif;outline:none;box-sizing:border-box';
+  row.appendChild(inp);
+  inp.focus();
+  inp.setSelectionRange(inp.value.length, inp.value.length);
+  var done = false;
+  function commit(save){
+    if(done) return; done = true;
+    if(save){
+      var newVal = inp.value.trim();
+      applyLeftRowEdit(ri, newVal);
+    } else {
+      parsePreview(false); // 취소: 원래대로 다시 그림
+    }
+  }
+  inp.addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){ e.preventDefault(); commit(true); }
+    else if(e.key === 'Escape'){ e.preventDefault(); commit(false); }
+  });
+  inp.addEventListener('blur', function(){ commit(true); });
+}
+
+// 수정한 줄을 전체 텍스트에 반영하고 재매칭
+function applyLeftRowEdit(ri, newVal){
   var lines = document.getElementById('parseTa').value.split(/\n/).map(function(l){return l.trim();}).filter(Boolean);
-  // parsedItems와 lines 인덱스가 다를 수 있어, rawText 기준으로 교체
   var oldRaw = parsedItems[ri] ? parsedItems[ri].rawText : null;
   if(oldRaw){
     var replaced = false;
     for(var i=0;i<lines.length;i++){
-      if(lines[i] === oldRaw && !replaced){ lines[i] = inp.trim(); replaced = true; }
+      if(lines[i] === oldRaw && !replaced){ lines[i] = newVal; replaced = true; }
     }
-    if(!replaced) lines[ri] = inp.trim();
-  } else {
-    lines[ri] = inp.trim();
+    if(!replaced && lines[ri] !== undefined) lines[ri] = newVal;
+  } else if(lines[ri] !== undefined){
+    lines[ri] = newVal;
   }
+  // 빈 값이면 그 줄 삭제
+  lines = lines.filter(function(l){ return l !== ''; });
   document.getElementById('parseTa').value = lines.join('\n');
   parsePreview(true);
 }
