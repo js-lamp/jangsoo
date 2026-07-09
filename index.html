@@ -1086,7 +1086,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
         <textarea class="parse-ta" id="parseTa" oninput="parsePreviewDebounced()" onselect="onParseTaSelect()" onmouseup="onParseTaSelect()" onkeyup="onParseTaSelect()" placeholder="발주 내용을 붙여넣거나 입력하세요.&#10;&#10;📷 사진(캡처)도 여기에 바로 붙여넣기(Ctrl+V) 하거나&#10;   드래그해서 놓으면 자동으로 글자를 읽습니다.&#10;&#10;예시:&#10;슬림샤인 엣지&#10;1280*320 주광색 40개&#10;640*320 주광색 4개"></textarea>
         <div id="parseLeftAligned" style="display:none;flex:1;overflow-y:auto"></div>
         <button id="kwFromSelBtn" onclick="openKwFromSelection()" style="display:none;flex-shrink:0;margin:0 8px 0;padding:9px;background:#7C3AED;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer">🧠 선택한 "<span id="kwSelPreview"></span>" 키워드로 학습</button>
-        <button class="parse-preview-btn" onclick="parsePreview(true)">🔍 미리보기 (매칭 확인)</button>
+        <button class="parse-preview-btn" onclick="window.__parseTextMode=false; parsePreview(true)">🔍 미리보기 (매칭 확인)</button>
       </div>
       <!-- 오른쪽: 미리보기 -->
       <div class="parse-right">
@@ -1125,14 +1125,14 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 
 <!-- 키워드 등록 모달 (B안: 단어 선택 → 품명 매핑) -->
 <div id="kwMod" style="display:none;position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.5);align-items:center;justify-content:center;padding:16px">
-  <div style="background:#fff;border-radius:14px;max-width:440px;width:100%;max-height:88vh;display:flex;flex-direction:column;overflow:hidden">
-    <div style="padding:14px 16px;background:#7C3AED;color:#fff;display:flex;align-items:center;gap:8px">
+  <div id="kwModBox" style="background:#fff;border-radius:14px;max-width:440px;width:100%;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;position:relative">
+    <div id="kwModHead" style="padding:14px 16px;background:#7C3AED;color:#fff;display:flex;align-items:center;gap:8px;cursor:move;user-select:none;touch-action:none">
       <span style="font-size:16px">🧠</span>
-      <div style="font-weight:700;font-size:15px;flex:1">키워드 학습</div>
+      <div style="font-weight:700;font-size:15px;flex:1">키워드 학습 <span style="font-size:10px;opacity:.7;font-weight:400">⠿ 여기를 잡고 이동</span></div>
       <button onclick="closeKwMod()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1">&times;</button>
     </div>
     <div style="padding:12px 16px;overflow-y:auto">
-      <div style="font-size:11px;color:#888;margin-bottom:8px">이 발주 줄에서 <b style="color:#7C3AED">핵심 단어</b>만 톡톡 눌러 선택하세요. 선택한 단어가 아래 품명의 별칭으로 저장됩니다.</div>
+      <div style="font-size:11px;color:#888;margin-bottom:8px">이 발주 줄에서 <b style="color:#7C3AED">핵심 단어</b>를 톡톡 눌러 선택하세요. <b>2개 이상 선택</b>하면 그 단어들이 <u>모두 있는</u> 발주에만 매칭돼 정확합니다. (예: 리폼모듈 + 25W)</div>
       <div style="font-size:11px;color:#666;margin-bottom:4px">발주서 줄:</div>
       <div id="kwTokens" style="display:flex;flex-wrap:wrap;gap:6px;padding:10px;background:#F5F3FF;border-radius:8px;margin-bottom:6px"></div>
       <div style="font-size:11px;color:#666;margin-bottom:10px">선택됨: <span id="kwSelected" style="color:#7C3AED;font-weight:700">(없음)</span></div>
@@ -3459,6 +3459,7 @@ function toggleSubFav(){
 // ── 발주서 변환 ──
 function openParseMod(){
   document.getElementById('parseTa').value='';
+  window.__parseTextMode = false;
   document.getElementById('parseMod').classList.add('open');
   bindParsePasteDrop();
 }
@@ -3471,6 +3472,7 @@ function resetParse(){
   if(ta && ta.value.trim()){
     if(!confirm('발주 내용을 모두 지우고 처음부터 시작할까요?')) return;
   }
+  window.__parseTextMode = false;
   if(ta){ ta.value = ''; ta.style.display = ''; ta.style.outline = ''; }
   parsedItems = [];
   // 왼쪽 줄맞춤 영역 숨기고 textarea 복원
@@ -3728,7 +3730,14 @@ function userKwScore(gName, line){
     var nk = poNorm(k);
     if(nk && nLine.indexOf(nk) >= 0) hits++;
   });
-  return hits;
+  if(hits === 0) return 0;
+  // AND 조합: 등록된 키워드가 여러 개면 "모두" 있을 때 강한 점수, 일부만이면 약하게
+  // (예: "리폼모듈"+"25W" 둘 다 등록 → 둘 다 있어야 확실. 하나만 맞으면 흔한 단어라 약하게)
+  if(kws.length >= 2){
+    if(hits === kws.length) return hits + 1; // 모두 만족: 보너스
+    return hits * 0.4; // 일부만 만족: 약하게 (흔한 단어 오매칭 방지)
+  }
+  return hits; // 단일 키워드는 기존대로
 }
 // 사이즈 표기 정규화 (1280→1285 등 자주 틀리는 치수)
 function poNormSize(s){
@@ -3738,8 +3747,62 @@ function poNormSize(s){
           .replace(/960\s*[*xX×]\s*180/g,'960*180')
           .replace(/(\d+)\s*[*xX×]\s*(\d+)/g,'$1*$2'); // 공백 제거 통일
 }
+// 데이터(품명+ERP품명)의 괄호 안에 등장하는 단어 집합 (한 번만 생성해 캐싱)
+var __parenWordSet = null;
+function poBuildParenSet(){
+  if(__parenWordSet) return __parenWordSet;
+  var set = {};
+  if(typeof G !== 'undefined'){
+    G.forEach(function(g){
+      var texts = [g.name].concat((g.variants||[]).map(function(v){return v.ename||'';}));
+      texts.forEach(function(t){
+        var mm = (t||'').match(/\(([^)]*)\)/g);
+        if(mm) mm.forEach(function(x){
+          var inner = x.slice(1,-1).trim();
+          if(!inner) return;
+          // 괄호 안을 단어로 쪼개서 각각 등록 (정규화)
+          inner.split(/[\s,]+/).forEach(function(w){
+            var nw = poNorm(w);
+            if(nw && nw.length >= 1) set[nw] = 1;
+          });
+          // 통째로도 등록
+          var nInner = poNorm(inner);
+          if(nInner) set[nInner] = 1;
+        });
+      });
+    });
+  }
+  __parenWordSet = set;
+  return set;
+}
+// 발주서 괄호 안 내용이 데이터의 괄호 단어에 하나라도 해당되는지
+function poParenInData(inner){
+  var set = poBuildParenSet();
+  var words = inner.split(/[\s,]+/).filter(Boolean);
+  for(var i=0;i<words.length;i++){
+    var nw = poNorm(words[i]);
+    if(nw && set[nw]) return true; // 하나라도 데이터에 있으면 유지
+  }
+  // 통째로도 확인
+  var nAll = poNorm(inner);
+  if(nAll && set[nAll]) return true;
+  return false;
+}
+
 function poApplySynonyms(s){
   var r=s;
+  // ── 발주서 괄호 처리: 괄호 안 내용이 데이터(ERP품명 등)에 있으면 유지, 없으면 참고용이라 제거 ──
+  // 예: "8인치 엣지 (원형) 센서등" → (원형)은 데이터에 있음 → 유지
+  //     "리폼모듈 25W (FPL 36W 대체)" → 데이터에 없음 → 제거
+  r = r.replace(/\(([^)]*)\)/g, function(m, inner){
+    var innerTrim = (inner||'').trim();
+    if(!innerTrim) return ' ';
+    // "대체/호환/기존/구형" 등 명백한 참고 문구는 무조건 제거
+    if(/대체|호환|기존|구형|참고|용도|→|->|替/.test(innerTrim)) return ' ';
+    // 괄호 안 단어들이 데이터(품명/ERP품명)에 하나라도 나오면 유지
+    if(poParenInData(innerTrim)) return m; // 유지
+    return ' '; // 데이터에 없으면 참고용 → 제거
+  });
   // ── 특수 규칙: 엣지 계열 + 직부/직하 = 슬림 샤인 (엣지평판 자체와 구분) ──
   // "엣지평판직부", "엣지평판 직부", "엣지직부", "엣지직하", "엣지평판직하" 등을 슬림 샤인으로
   // (직부/직하가 붙은 경우만! 순수 "엣지평판"은 그대로 둠)
@@ -4355,6 +4418,12 @@ function renderLeftAligned(colMeta){
     if(ta) ta.style.display = '';
     return;
   }
+  // 전체 텍스트 편집 모드면 왼쪽은 textarea 유지 (오른쪽 미리보기만 갱신)
+  if(window.__parseTextMode){
+    leftBox.style.display = 'none';
+    if(ta) ta.style.display = '';
+    return;
+  }
   // textarea 숨기고 줄맞춤 영역 표시
   if(ta) ta.style.display = 'none';
   leftBox.style.display = 'block';
@@ -4454,6 +4523,7 @@ function applyLeftRowEdit(ri, newVal){
 function backToTextarea(){
   var leftBox = document.getElementById('parseLeftAligned');
   var ta = document.getElementById('parseTa');
+  window.__parseTextMode = true; // 전체 텍스트 편집 모드 ON
   if(leftBox) leftBox.style.display = 'none';
   if(ta){ ta.style.display = ''; ta.focus(); }
 }
@@ -4527,6 +4597,10 @@ function openKwFromSelection(){
 // 미매칭 줄에서 키워드 등록 모달 열기
 function openKwMod(rawLine){
   kwState = { line: rawLine||'', selected:[], pickedName:null };
+  bindKwDrag(); // 모달 드래그 이동 기능
+  // 위치 초기화 (이전에 옮긴 위치 리셋)
+  var box = document.getElementById('kwModBox');
+  if(box){ box.style.left=''; box.style.top=''; box.style.transform=''; box.style.margin=''; box.style.position='relative'; }
   // 줄을 단어 토큰으로 분리 (수량/숫자만 있는 건 제외 안 함, 사용자가 고름)
   var tokens = (rawLine||'').split(/[\s,·.]+/).filter(function(t){ return t && t.length >= 1; });
   var th = '';
@@ -4565,6 +4639,56 @@ function kwWordFreq(word){
 }
 function closeKwMod(){ document.getElementById('kwMod').style.display = 'none'; }
 
+// 키워드 모달 드래그 이동 (헤더 잡고 이동, 마우스+터치)
+function bindKwDrag(){
+  if(window.__kwDragBound) return;
+  window.__kwDragBound = true;
+  var head = document.getElementById('kwModHead');
+  var box = document.getElementById('kwModBox');
+  if(!head || !box) return;
+  var dragging=false, sx=0, sy=0, ox=0, oy=0;
+  function getXY(e){
+    if(e.touches && e.touches.length) return {x:e.touches[0].clientX, y:e.touches[0].clientY};
+    return {x:e.clientX, y:e.clientY};
+  }
+  function start(e){
+    // X 버튼 등 눌렀을 땐 드래그 안 함
+    if(e.target.tagName === 'BUTTON') return;
+    dragging = true;
+    var p = getXY(e);
+    var rect = box.getBoundingClientRect();
+    // 절대 위치로 전환
+    box.style.position = 'fixed';
+    box.style.margin = '0';
+    box.style.left = rect.left + 'px';
+    box.style.top = rect.top + 'px';
+    box.style.transform = 'none';
+    ox = rect.left; oy = rect.top;
+    sx = p.x; sy = p.y;
+    e.preventDefault();
+  }
+  function move(e){
+    if(!dragging) return;
+    var p = getXY(e);
+    var nx = ox + (p.x - sx);
+    var ny = oy + (p.y - sy);
+    // 화면 밖으로 너무 나가지 않게 제한
+    var maxX = window.innerWidth - 80, maxY = window.innerHeight - 60;
+    nx = Math.max(-box.offsetWidth+120, Math.min(nx, maxX));
+    ny = Math.max(0, Math.min(ny, maxY));
+    box.style.left = nx + 'px';
+    box.style.top = ny + 'px';
+    e.preventDefault();
+  }
+  function end(){ dragging = false; }
+  head.addEventListener('mousedown', start);
+  document.addEventListener('mousemove', move);
+  document.addEventListener('mouseup', end);
+  head.addEventListener('touchstart', start, {passive:false});
+  document.addEventListener('touchmove', move, {passive:false});
+  document.addEventListener('touchend', end);
+}
+
 function kwToggleToken(i){
   var btn = document.getElementById('kwtok'+i);
   if(!btn) return;
@@ -4588,12 +4712,15 @@ function kwToggleToken(i){
 function kwRenderList(){
   var q = document.getElementById('kwSearch').value.trim();
   var listEl = document.getElementById('kwList');
-  if(!q){ listEl.innerHTML = '<div style="color:#aaa;font-size:12px;padding:10px;text-align:center">위에서 품명을 검색하세요</div>'; return; }
+  if(!q){ listEl.innerHTML = '<div style="color:#aaa;font-size:12px;padding:10px;text-align:center">위에서 품명(또는 ERP 품명)을 검색하세요</div>'; return; }
   var nq = poNorm(poApplySynonyms(q));
   var matches = [];
   for(var i=0;i<G.length;i++){
     var g = G[i];
     var score = poScoreOne(g, q);
+    // ERP 품명(ename)에도 검색어가 있으면 가산
+    var enameJoined = poNorm((g.variants||[]).map(function(v){return v.ename||'';}).join(' '));
+    if(nq && enameJoined.indexOf(nq) >= 0) score += 1.5;
     if(score >= 0.3) matches.push({g:g, score:score});
   }
   matches.sort(function(a,b){ return b.score-a.score; });
@@ -4603,17 +4730,33 @@ function kwRenderList(){
   matches.forEach(function(m){
     var g = m.g;
     var isSel = kwState.pickedName === g.name;
+    // ERP 품명 목록 (색온도별 ename 전부)
+    var erpNames = (g.variants||[]).map(function(v){ return v.ename||''; }).filter(Boolean);
+    // 중복 제거
+    var seen = {}; erpNames = erpNames.filter(function(n){ if(seen[n])return false; seen[n]=1; return true; });
+    var erpMain = erpNames.length ? erpNames[0] : g.name;
+    var erpMore = erpNames.length > 1 ? erpNames.slice(1) : [];
     h += '<div onclick="kwPick(\''+g.name.replace(/'/g,"\\'")+'\')" '
       + 'style="padding:9px 10px;border:1.5px solid '+(isSel?'#2855A0':'#eee')+';border-radius:8px;margin-bottom:5px;cursor:pointer;background:'+(isSel?'#EFF6FF':'#fff')+'">'
-      + '<div style="font-weight:600;font-size:12px;color:#1A1814">'+(isSel?'✅ ':'')+g.name+'</div>'
-      + '<div style="font-size:10px;color:#999">'+g.cat+' &gt; '+g.sub+'</div>'
+      + '<div style="font-weight:600;font-size:12px;color:#1A1814">'+(isSel?'✅ ':'')+erpMain+'</div>'
+      + (erpMore.length ? '<div style="font-size:10px;color:#888;margin-top:1px">'+erpMore.join(' / ')+'</div>' : '')
+      + '<div style="font-size:10px;color:#bbb;margin-top:1px">'+g.name+'</div>'
       + '</div>';
   });
   listEl.innerHTML = h;
 }
 function kwPick(name){
   kwState.pickedName = name;
-  document.getElementById('kwPickedName').textContent = name;
+  // 표시용 ERP 품명 찾기
+  var erp = name;
+  for(var i=0;i<G.length;i++){
+    if(G[i].name === name){
+      var v0 = G[i].variants && G[i].variants[0];
+      if(v0 && v0.ename) erp = v0.ename;
+      break;
+    }
+  }
+  document.getElementById('kwPickedName').textContent = erp;
   kwRenderList();
 }
 
@@ -4621,18 +4764,25 @@ function kwPick(name){
 function kwSubmit(){
   if(!kwState.selected.length){ showToast('키워드로 쓸 단어를 선택해주세요'); return; }
   if(!kwState.pickedName){ showToast('매핑할 품명을 선택해주세요'); return; }
-  // 흔한 단어 경고: 선택한 키워드 중 5개 이상 품목에 나오는 게 있으면 확인
-  var commonWords = kwState.selected.filter(function(w){ return kwWordFreq(w) >= 5; });
-  if(commonWords.length){
-    var warn = '⚠ 주의: 아래 단어는 여러 품목에 들어있어 잘못 매칭될 수 있습니다.\n\n';
-    commonWords.forEach(function(w){ warn += '  • "'+w+'" → '+kwWordFreq(w)+'개 품목에 있음\n'; });
-    warn += '\n그래도 등록하시겠습니까?\n(권장: 그 제품에만 있는 고유한 단어 1개만 선택)';
-    if(!confirm(warn)) return;
+  // 조합(AND) 방식: 단어 2개 이상이면 "모두 있을 때만" 매칭되므로 흔한 단어도 안전
+  // 단어가 1개뿐인데 흔하면 경고
+  if(kwState.selected.length === 1){
+    var w = kwState.selected[0];
+    if(kwWordFreq(w) >= 5){
+      var warn = '⚠ "'+w+'"는 '+kwWordFreq(w)+'개 품목에 들어있는 흔한 단어예요.\n\n';
+      warn += '이 단어 하나만 등록하면 다른 품목도 잘못 매칭될 수 있습니다.\n\n';
+      warn += '💡 팁: 단어를 2개 이상 선택하면(예: "리폼모듈"+"25W"),\n';
+      warn += '두 단어가 모두 있는 발주에만 매칭되어 훨씬 정확합니다.\n\n';
+      warn += '그래도 이 단어 하나로 등록할까요?';
+      if(!confirm(warn)) return;
+    }
   }
   addUserKw(kwState.pickedName, kwState.selected);
-  showToast('✅ 키워드 등록됨: '+kwState.selected.join(', ')+' → '+kwState.pickedName);
+  var msg = kwState.selected.length >= 2
+    ? '✅ 조합 키워드 등록: '+kwState.selected.join(' + ')+' (모두 있을 때 매칭) → '+kwState.pickedName
+    : '✅ 키워드 등록됨: '+kwState.selected.join(', ')+' → '+kwState.pickedName;
+  showToast(msg);
   closeKwMod();
-  // 다시 매칭 (키워드 반영 위해 재파싱)
   parsePreview(true);
 }
 
