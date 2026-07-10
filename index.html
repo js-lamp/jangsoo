@@ -381,7 +381,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 @media(min-width:560px){.parse-split{flex-direction:row}}
 .parse-left{flex:1;display:flex;flex-direction:column;min-height:0;border-bottom:2px solid var(--bdr)}
 @media(min-width:560px){.parse-left{border-bottom:none;border-right:2px solid var(--bdr)}}
-@media(min-width:900px){.parse-left{flex:0 0 440px}.parse-right{flex:1}}
+@media(min-width:900px){.parse-left{flex:0 0 520px}.parse-right{flex:1}}
 .parse-right{flex:1;display:flex;flex-direction:column;min-height:0;background:var(--sur2)}
 .parse-col-label{flex-shrink:0;padding:8px 12px;font-size:11px;font-weight:700;color:var(--ink2);background:var(--A3);border-bottom:1px solid var(--bdr)}
 .parse-ta{width:100%;flex:1;padding:12px;font-size:13px;font-family:monospace;border:none;outline:none;resize:none;color:var(--ink);background:#fff;min-height:120px}
@@ -2010,7 +2010,7 @@ function voHandleSpeech(text){
       // 후보 조회
       var cands = poFindCandidates(line, 6);
       if(cands.length===0){
-        voOrder.items.push({code:'?', ename:line, gname:line, ct:'-', qty:qty, unit:unit, unconfirmed:true, rawText:line});
+        voOrder.items.push({code:'?', ename:line, gname:line, ct:'-', qty:qty, unit:unit, unconfirmed:true, rawText:line, origText:line});
         added++;
         return;
       }
@@ -3750,16 +3750,27 @@ function userKwScore(gName, line){
   });
   if(hits === 0) return 0;
   // AND 조합: 등록된 키워드가 여러 개면 "모두" 있을 때 강한 점수, 일부만이면 약하게
-  // (예: "리폼모듈"+"25W" 둘 다 등록 → 둘 다 있어야 확실. 하나만 맞으면 흔한 단어라 약하게)
   if(kws.length >= 2){
     if(hits === kws.length) return hits + 1; // 모두 만족: 보너스
     return hits * 0.4; // 일부만 만족: 약하게 (흔한 단어 오매칭 방지)
   }
-  return hits; // 단일 키워드는 기존대로
+  // 단일 키워드: 그 단어가 너무 흔하면(여러 품목에 있음) 점수 약화 (샤인 등 오매칭 방지)
+  var freq = (typeof kwWordFreq === 'function') ? kwWordFreq(kws[0]) : 1;
+  if(freq >= 5) return 0.3;   // 흔한 단어(5개+ 품목) 단독은 거의 무시
+  return hits;                // 고유 단어는 기존대로
 }
 // 사이즈 표기 정규화 (1280→1285 등 자주 틀리는 치수)
 function poNormSize(s){
-  return s.replace(/1280\s*[*xX×]\s*320/g,'1285*320')
+  var r = s;
+  // 띄어쓰기/하이픈으로 된 사이즈(예: "1285 320", "640-640")를 별표로 통일
+  // 조건: 두 숫자가 각각 3~4자리 (사이즈 범위). 와트(2자리)나 수량과 구분됨
+  r = r.replace(/\b(\d{3,4})\s+(\d{3,4})\b/g, function(m, a, b){
+    // 흔한 사이즈 조합만 (앞 숫자가 400~1400 범위)
+    var na = parseInt(a);
+    if(na >= 400 && na <= 1400) return a + '*' + b;
+    return m;
+  });
+  return r.replace(/1280\s*[*xX×]\s*320/g,'1285*320')
           .replace(/1280\s*[*xX×]\s*180/g,'1285*180')
           .replace(/1280\s*[*xX×]\s*230/g,'1285*230')
           .replace(/960\s*[*xX×]\s*180/g,'960*180')
@@ -4332,7 +4343,7 @@ function parseOrderItems(text){
         // 후보 여러 개 → 선택 대기 상태
         items.push({
           code:v.code, ename:v.ename, gname:g.name, ct:v.ct, qty:qty, unit:unit,
-          ambiguous:true, rawText:line,
+          ambiguous:true, rawText:line, origText:line,
           candidates: ambigList.map(function(cg){
             var cv = ct ? cg.variants.find(function(x){return x.ct===ct;}) : null;
             if(!cv) cv = cg.variants[0];
@@ -4340,10 +4351,10 @@ function parseOrderItems(text){
           })
         });
       } else {
-        items.push({code:v.code, ename:v.ename, gname:g.name, ct:v.ct, qty:qty, unit:unit, rawText:line});
+        items.push({code:v.code, ename:v.ename, gname:g.name, ct:v.ct, qty:qty, unit:unit, rawText:line, origText:line});
       }
     } else {
-      items.push({code:'?', ename:line, gname:line, ct:'-', qty:qty, unit:unit, unconfirmed:true, rawText:line});
+      items.push({code:'?', ename:line, gname:line, ct:'-', qty:qty, unit:unit, unconfirmed:true, rawText:line, origText:line});
     }
   });
   return items;
@@ -4417,7 +4428,7 @@ function parsePreview(reparse){
   items.forEach(function(it, idx){
     var pname = it.unconfirmed ? (it.rawText||it.ename) : ((it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct):''));
     var cnt = pvCounts(it);
-    colMeta.push({idx:idx, it:it, pname:pname, code:(it.unconfirmed?'?':it.code), each:cnt.each, box:cnt.box, raw:(it.rawText||it.ename||'')});
+    colMeta.push({idx:idx, it:it, pname:pname, code:(it.unconfirmed?'?':it.code), each:cnt.each, box:cnt.box, raw:(it.rawText||it.ename||''), orig:(it.origText||it.rawText||it.ename||'')});
   });
 
   // 발주원문 열은 제거 (왼쪽 발주내용과 줄 맞춤으로 대체). 코드/품명/개수/박스 4열
@@ -4500,23 +4511,30 @@ function renderLeftAligned(colMeta){
     if(ta) ta.style.display = '';
     return;
   }
-  // textarea 숨기고 줄맞춤 영역 표시
+  // textarea 숨기고 줄맞춤 영역 표시 (원본 열 + 수정 열)
   if(ta) ta.style.display = 'none';
   leftBox.style.display = 'block';
-  var h = '<div style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 6px;text-align:center;border-radius:6px 6px 0 0">📝 발주 내용 (줄을 탭하면 바로 수정)</div>';
+  var h = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0">';
+  h += '<div style="background:#6B7280;color:#fff;font-size:10px;font-weight:700;padding:7px 6px;text-align:center;border-radius:6px 0 0 0">📄 발주 원본 (고정)</div>';
+  h += '<div style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 6px;text-align:center;border-radius:0 6px 0 0">✏️ 발주 내용 (탭하여 수정)</div>';
+  h += '</div>';
   h += '<div id="pvLeftRows" style="border:1px solid var(--bdr);border-top:none;border-radius:0 0 6px 6px;overflow:hidden">';
   colMeta.forEach(function(m, ri){
     var it = m.it;
     var stripe = (ri % 2 === 1) ? '#FAFAFA' : '#fff';
     var bg = it.unconfirmed?'#FEF2F2':(it.ambiguous?'#FFF7ED':stripe);
     var cl = it.unconfirmed?'#DC2626':(it.ambiguous?'#C2410C':'var(--ink)');
-    var rawEsc = (m.raw||'').replace(/"/g,'&quot;');
-    h += '<div class="pvleftrow" data-pvrow="'+ri+'" onclick="editLeftRow('+ri+')" '
-      + 'style="padding:8px 8px;border-top:'+(ri>0?'1px solid var(--bdr)':'none')+';background:'+bg+';color:'+cl+';font-size:13px;line-height:1.3;cursor:pointer;display:flex;align-items:center;min-height:20px" '
-      + 'title="탭하여 수정">'+ (m.raw||'') +'</div>';
+    var origVal = m.orig || m.raw || '';
+    var rawVal = m.raw || '';
+    h += '<div class="pvleftpair" data-pvrow="'+ri+'" style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:'+(ri>0?'1px solid var(--bdr)':'none')+'">'
+      // 원본 셀 (고정, 회색 글씨, 수정 불가)
+      + '<div style="padding:8px 8px;background:#F9FAFB;color:#6B7280;font-size:12px;line-height:1.3;display:flex;align-items:center;border-right:1px solid var(--bdr);user-select:text">'+origVal+'</div>'
+      // 수정 가능 셀
+      + '<div class="pvleftrow" data-pvrow="'+ri+'" onclick="editLeftRow('+ri+')" style="padding:8px 8px;background:'+bg+';color:'+cl+';font-size:13px;line-height:1.3;cursor:pointer;display:flex;align-items:center" title="탭하여 수정">'+rawVal+'</div>'
+      + '</div>';
   });
   h += '</div>';
-  h += '<div style="font-size:10px;color:var(--ink3);padding:6px 2px;text-align:center">✏️ 줄을 탭하면 그 줄만 수정 · <button onclick="backToTextarea()" style="background:none;border:none;color:var(--B,#2855A0);font-size:10px;font-weight:700;cursor:pointer;text-decoration:underline;padding:0">전체 텍스트로 편집</button></div>';
+  h += '<div style="font-size:10px;color:var(--ink3);padding:6px 2px;text-align:center">✏️ 오른쪽 칸(발주 내용)을 탭하면 그 줄만 수정 · 왼쪽 원본은 고정 · <button onclick="backToTextarea()" style="background:none;border:none;color:var(--B,#2855A0);font-size:10px;font-weight:700;cursor:pointer;text-decoration:underline;padding:0">전체 텍스트로 편집</button></div>';
   leftBox.innerHTML = h;
   // 좌우 행 높이 동기화
   setTimeout(function(){ syncRowHeights(); }, 20);
@@ -4524,21 +4542,21 @@ function renderLeftAligned(colMeta){
 
 // 좌우 같은 인덱스 행끼리 높이 맞추기
 function syncRowHeights(){
-  var leftRows = document.querySelectorAll('#pvLeftRows .pvleftrow');
+  var leftPairs = document.querySelectorAll('#pvLeftRows .pvleftpair');
   var grid = document.getElementById('pvGrid');
-  if(!grid || !leftRows.length) return;
-  // 오른쪽은 grid라 각 행의 실제 높이를 코드셀 기준으로 측정
+  if(!grid || !leftPairs.length) return;
+  // 오른쪽 grid 각 행 높이 측정
   var rightCells = {};
   grid.querySelectorAll('.pvrow').forEach(function(el){
     var idx = el.getAttribute('data-pvrow');
     var hgt = el.offsetHeight;
     if(!rightCells[idx] || hgt > rightCells[idx]) rightCells[idx] = hgt;
   });
-  leftRows.forEach(function(lr){
-    var idx = lr.getAttribute('data-pvrow');
-    lr.style.height = 'auto';
-    var need = Math.max(lr.offsetHeight, rightCells[idx]||0);
-    lr.style.height = need + 'px';
+  leftPairs.forEach(function(lp){
+    var idx = lp.getAttribute('data-pvrow');
+    lp.style.height = 'auto';
+    var need = Math.max(lp.offsetHeight, rightCells[idx]||0);
+    lp.style.height = need + 'px';
   });
 }
 
@@ -4578,6 +4596,8 @@ function editLeftRow(ri){
 
 // 수정한 줄을 전체 텍스트에 반영하고 재매칭
 function applyLeftRowEdit(ri, newVal){
+  // 수정 전 원본들 보관 (원본 열은 안 바뀌게)
+  var origSnapshot = parsedItems.map(function(it){ return it.origText || it.rawText || ''; });
   var lines = document.getElementById('parseTa').value.split(/\n/).map(function(l){return l.trim();}).filter(Boolean);
   var oldRaw = parsedItems[ri] ? parsedItems[ri].rawText : null;
   if(oldRaw){
@@ -4590,9 +4610,21 @@ function applyLeftRowEdit(ri, newVal){
     lines[ri] = newVal;
   }
   // 빈 값이면 그 줄 삭제
+  var removedEmpty = (newVal.trim() === '');
   lines = lines.filter(function(l){ return l !== ''; });
   document.getElementById('parseTa').value = lines.join('\n');
   parsePreview(true);
+  // 재파싱 후 원본(origText) 복원 - 수정한 줄 빼고 인덱스 매핑
+  // 삭제가 아니면 같은 개수라 인덱스로 복원, 수정한 ri는 원본 유지
+  if(!removedEmpty && parsedItems.length === origSnapshot.length){
+    parsedItems.forEach(function(it, i){ if(origSnapshot[i]) it.origText = origSnapshot[i]; });
+    // 화면 다시 그려 원본 반영
+    var colMeta = parsedItems.map(function(it, idx){
+      var pname = it.unconfirmed ? (it.rawText||it.ename) : ((it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct):''));
+      return {idx:idx, it:it, orig:(it.origText||it.rawText||''), raw:(it.rawText||it.ename||'')};
+    });
+    renderLeftAligned(colMeta);
+  }
 }
 
 // 전체 텍스트 편집으로 돌아가기 (textarea 다시 표시)
