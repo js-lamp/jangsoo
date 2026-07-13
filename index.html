@@ -2389,8 +2389,13 @@ function buildMsg(items,store){
     var code=it.code+'          '.slice(0,Math.max(0,11-it.code.length));
     var dispName = (it.gname||it.ename);
     if(it.ct && it.ct!=='-') dispName += ' '+ctText(it.ct);
-    if(dispName.length>16) dispName=dispName.slice(0,15)+'…';
-    msg+=code+'  '+dispName+'  /  '+it.qty+it.unit+'\n';
+    // 품명이 길어도 자르지 않음 (뒤쪽 잘림 방지). 길면 수량을 다음 줄에 들여쓰기
+    if(dispName.length > 16){
+      msg += code + '  ' + dispName + '\n';
+      msg += '             └ ' + it.qty + it.unit + '\n';
+    } else {
+      msg += code + '  ' + dispName + '  /  ' + it.qty + it.unit + '\n';
+    }
   });
   msg+=line+'\n총 '+items.length+'개 품목';
   return msg;
