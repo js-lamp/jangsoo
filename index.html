@@ -383,7 +383,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 @media(min-width:560px){.parse-left{border-bottom:none;border-right:2px solid var(--bdr)}}
 @media(min-width:900px){.parse-left{flex:0 0 520px}.parse-right{flex:1}}
 .parse-right{flex:1;display:flex;flex-direction:column;min-height:0;background:var(--sur2)}
-.parse-col-label{flex-shrink:0;padding:8px 12px;font-size:11px;font-weight:700;color:var(--ink2);background:var(--A3);border-bottom:1px solid var(--bdr)}
+.parse-col-label{flex-shrink:0;padding:8px 12px;font-size:11px;font-weight:700;color:var(--ink2);background:var(--A3);border-bottom:1px solid var(--bdr);min-height:42px;display:flex;align-items:center;box-sizing:border-box}
 .parse-ta{width:100%;flex:1;padding:12px;font-size:13px;font-family:monospace;border:none;outline:none;resize:none;color:var(--ink);background:#fff;min-height:120px}
 .parse-preview-btn{flex-shrink:0;margin:8px;padding:11px;background:var(--B,#2855A0);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer}
 .parse-preview-list{flex:1;overflow-y:auto;padding:8px}
@@ -394,7 +394,14 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 .pp-name{font-size:12px;font-weight:700;color:var(--ink)}
 .pp-code{font-size:10px;color:var(--ink2);font-family:monospace}
 .pp-qty{font-size:11px;font-weight:700;color:var(--B,#2855A0)}
-.parse-foot{flex-shrink:0;padding:10px 16px 16px;border-top:1px solid var(--bdr);display:flex;gap:8px}
+.parse-foot{flex-shrink:0;padding:0;border-top:1px solid var(--bdr);display:flex;gap:0}
+.parse-foot-left{display:flex;gap:8px;flex:1;padding:10px 12px 16px;box-sizing:border-box}
+.parse-foot-right{display:flex;flex:1;padding:10px 12px 16px;box-sizing:border-box}
+@media(min-width:900px){
+  /* 왼쪽 발주내용 칸(520px + 오른쪽 테두리 2px)과 정확히 같은 폭 */
+  .parse-foot-left{flex:0 0 522px;border-right:2px solid var(--bdr)}
+  .parse-foot-right{flex:1}
+}
 .parse-btn{flex:1;padding:12px;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer}
 .parse-btn.primary{background:var(--A);color:#fff}
 .parse-btn.secondary{background:var(--sur2);color:var(--ink2);border:1px solid var(--bdr)}
@@ -1084,21 +1091,28 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
         </div>
         <div id="ocrStatus" style="display:none;padding:8px 10px;margin:0 0 6px;background:#E0F2F1;border-radius:6px;font-size:11px;color:#0D6E56"></div>
         <textarea class="parse-ta" id="parseTa" oninput="parsePreviewDebounced()" onselect="onParseTaSelect()" onmouseup="onParseTaSelect()" onkeyup="onParseTaSelect()" placeholder="발주 내용을 붙여넣거나 입력하세요.&#10;&#10;📷 사진(캡처)도 여기에 바로 붙여넣기(Ctrl+V) 하거나&#10;   드래그해서 놓으면 자동으로 글자를 읽습니다.&#10;&#10;예시:&#10;슬림샤인 엣지&#10;1280*320 주광색 40개&#10;640*320 주광색 4개"></textarea>
-        <div id="parseLeftAligned" style="display:none;flex:1;overflow-y:auto"></div>
+        <div id="parseLeftAligned" style="display:none;flex:1;overflow-y:auto;padding:8px"></div>
         <button id="kwFromSelBtn" onclick="openKwFromSelection()" style="display:none;flex-shrink:0;margin:0 8px 0;padding:9px;background:#7C3AED;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer">🧠 선택한 "<span id="kwSelPreview"></span>" 키워드로 학습</button>
-        <button class="parse-preview-btn" onclick="window.__parseTextMode=false; parsePreview(true)">🔍 미리보기 (매칭 확인)</button>
       </div>
       <!-- 오른쪽: 미리보기 -->
       <div class="parse-right">
-        <div class="parse-col-label">👀 매칭 미리보기</div>
+        <div class="parse-col-label" style="display:flex;align-items:center;gap:8px">
+          <span style="white-space:nowrap">👀 매칭 미리보기</span>
+          <span id="pvStats" style="font-weight:400;color:var(--ink2)"></span>
+        </div>
         <div id="parsePreviewList" class="parse-preview-list">
           <div style="text-align:center;color:var(--ink3);font-size:12px;padding:30px 10px">왼쪽에 발주 내용을 입력하고<br><b>미리보기</b>를 누르면<br>매칭 결과가 여기 표시됩니다</div>
         </div>
       </div>
     </div>
     <div class="parse-foot">
-      <button class="parse-btn secondary" onclick="closeParseMod()">취소</button>
-      <button class="parse-btn primary" onclick="parseOrder()">📋 명세서 만들기</button>
+      <div class="parse-foot-left">
+        <button class="parse-btn secondary" onclick="closeParseMod()" style="flex:1">취소</button>
+        <button class="parse-preview-btn" onclick="window.__parseTextMode=false; parsePreview(true)" style="flex:1;margin:0">🔍 미리보기 (매칭 확인)</button>
+      </div>
+      <div class="parse-foot-right">
+        <button class="parse-btn primary" onclick="parseOrder()" style="width:100%">📋 명세서 만들기</button>
+      </div>
     </div>
   </div>
 </div>
@@ -3494,6 +3508,8 @@ function resetParse(){
   // OCR 상태·학습 버튼 정리
   var ocrEl = document.getElementById('ocrStatus');
   if(ocrEl){ ocrEl.style.display = 'none'; ocrEl.textContent = ''; }
+  var stEl = document.getElementById('pvStats');
+  if(stEl) stEl.innerHTML = '';
   var kwBtn = document.getElementById('kwFromSelBtn');
   if(kwBtn) kwBtn.style.display = 'none';
   if(ta) ta.focus();
@@ -4390,6 +4406,7 @@ function parsePreview(reparse){
   if(!text){
     parsedItems = [];
     box.innerHTML = '<div style="text-align:center;color:var(--ink3);font-size:12px;padding:30px 10px">왼쪽에 발주 내용을 입력하고<br><b>미리보기</b>를 누르면<br>매칭 결과가 여기 표시됩니다</div>';
+    var se0 = document.getElementById('pvStats'); if(se0) se0.innerHTML = '';
     renderLeftAligned(null);
     return;
   }
@@ -4400,15 +4417,21 @@ function parsePreview(reparse){
   var items = parsedItems;
   if(!items.length){
     box.innerHTML = '<div style="text-align:center;color:var(--ink3);font-size:12px;padding:30px 10px">인식된 품목이 없습니다.<br>품명이나 코드를 확인해주세요.</div>';
+    var se1 = document.getElementById('pvStats'); if(se1) se1.innerHTML = '';
     renderLeftAligned(null);
     return;
   }
   var okCnt = items.filter(function(it){return !it.unconfirmed && !it.ambiguous;}).length;
   var ambigCnt = items.filter(function(it){return it.ambiguous;}).length;
   var failCnt = items.filter(function(it){return it.unconfirmed;}).length;
-  var h = '<div style="font-size:11px;color:var(--ink2);padding:4px 4px 8px">✓ 매칭 '+okCnt+'개'
-    + (ambigCnt?' · <span style="color:#EA580C">🔀 선택필요 '+ambigCnt+'개</span>':'')
-    + (failCnt?' · <span style="color:#DC2626">⚠ 확인필요 '+failCnt+'개</span>':'')+'</div>';
+  // 매칭 통계는 헤더(매칭 미리보기 옆)에 표시
+  var statsEl = document.getElementById('pvStats');
+  if(statsEl){
+    statsEl.innerHTML = '<span style="font-size:11px">✓ 매칭 '+okCnt+'개'
+      + (ambigCnt?' · <span style="color:#EA580C;font-weight:700">🔀 선택필요 '+ambigCnt+'개</span>':'')
+      + (failCnt?' · <span style="color:#DC2626;font-weight:700">⚠ 확인필요 '+failCnt+'개</span>':'')+'</span>';
+  }
+  var h = '';
   // 미리보기 수량: 박스면 개수로 변환 (명세서와 동일)
   function pvQty(it){
     var boxQty = (typeof QTY_MAP !== 'undefined' && QTY_MAP[it.code]) ? QTY_MAP[it.code] : 1;
