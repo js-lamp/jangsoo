@@ -1726,6 +1726,7 @@ function renderCart(){
   cart.forEach(function(it,i){
     h+='<div class="ci">';
     var ciNm=(it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct):'');
+    if(typeof poCtBadge === 'function') ciNm = poCtBadge(ciNm);
     h+='<div class="ci-info"><div class="ci-name">'+ciNm+'</div><div class="ci-code">'+it.code+'</div></div>';
     h+='<div class="ci-ctrl">';
     h+='<button class="ci-qb" onclick="ciChg('+i+',-1)">&#8722;</button>';
@@ -4623,7 +4624,7 @@ function parsePreview(reparse){
       if(rawEsc2) btn = ' <button onclick="openKwMod(\''+rawEsc2+'\')" style="background:none;border:none;color:#C4B5FD;font-size:11px;cursor:pointer;padding:0 1px;user-select:none" title="학습">🧠</button>';
     }
     // 품명 줄바꿈 허용 (길면 2줄, 왼쪽도 같이 높이 맞춰짐)
-    h += '<div class="pvrow" data-pvrow="'+ri+'" style="padding:8px 6px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:'+nameCl+';font-size:12px;font-weight:600;display:flex;align-items:center;line-height:1.3;user-select:text;-webkit-user-select:text"><span>'+pre+m.pname+btn+'</span></div>';
+    h += '<div class="pvrow" data-pvrow="'+ri+'" style="padding:8px 6px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:'+nameCl+';font-size:12px;font-weight:600;display:flex;align-items:center;line-height:1.3;user-select:text;-webkit-user-select:text"><span>'+pre+poCtBadge(m.pname)+btn+'</span></div>';
     // 개수 셀
     h += '<div class="pvrow" data-pvrow="'+ri+'" style="padding:8px 4px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:'+qtyCl+';font-size:11px;font-weight:700;text-align:center;white-space:nowrap;display:flex;align-items:center;justify-content:center;user-select:text;-webkit-user-select:text">'+(m.each!==''?m.each+'개':'')+'</div>';
     // 박스 셀
@@ -4663,7 +4664,7 @@ function poCtBadge(s){
   t = t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   // "볼전구"는 품목명이므로 색온도 배지 대상에서 제외 (임시 치환으로 보호)
   t = t.replace(/볼\s*전구/g, '\u0001');
-  var base = 'display:inline-block;padding:1px 5px;border-radius:4px;font-weight:700;font-size:11px;line-height:1.5;border:1px solid ';
+  var base = 'display:inline-block;padding:1px 5px;border-radius:4px;font-weight:700;font-size:11px;line-height:1.5;-webkit-print-color-adjust:exact;print-color-adjust:exact;border:1px solid ';
   // 주광색 / 주광 → 파란색
   t = t.replace(/주광색|주광/g, function(m){
     return '<span style="'+base+'#93C5FD;background:#DBEAFE;color:#1D4ED8">'+m+'</span>';
@@ -6904,6 +6905,8 @@ function invRender(company) {
     var itemTotal = amount2 + itemVat;
     totalSupply2 += amount2;
     var pname = (it.gname || it.ename) + (it.ct && it.ct!=='-' ? ' '+ctText(it.ct) : '');
+    // 색온도 색상 배지 적용본 (화면 표시용). 엑셀/카톡 등 텍스트에는 pname 그대로 사용
+    var pnameH = (typeof poCtBadge === 'function') ? poCtBadge(pname) : pname;
 
     if(invUnlocked){
       // ── 단가 모드: 2줄 (No·코드·품명 윗줄, 숫자 아랫줄) ──
@@ -6915,7 +6918,7 @@ function invRender(company) {
       } else {
         rows2 += '<tr class="inv-namerow"><td colspan="5" style="text-align:left;padding:4px 6px;background:#fafafa;font-weight:700;font-size:10px;border:1px solid #ccc">'
           + '<span style="color:#888;font-weight:700">' + rowNoU + '.</span>&nbsp;'
-          + '<span style="color:#555;font-family:monospace">' + it.code + '</span>&nbsp;&nbsp;' + pname
+          + '<span style="color:#555;font-family:monospace">' + it.code + '</span>&nbsp;&nbsp;' + pnameH
           + ' <button onclick="openItemFix(' + i + ')" style="background:none;border:none;color:#aaa;font-size:11px;cursor:pointer;padding:0 2px">✏️</button></td></tr>';
       }
       var prStr = unitPrice > 0 ? unitPrice.toLocaleString() : '-';
@@ -6944,7 +6947,7 @@ function invRender(company) {
         rows2 += '<tr>'
           + '<td style="font-weight:700;color:#888">' + rowNo + '</td>'
           + '<td style="font-family:monospace;font-size:9px;color:#555;white-space:nowrap">' + it.code + '</td>'
-          + '<td class="left" style="font-weight:600">' + pname
+          + '<td class="left" style="font-weight:600">' + pnameH
           + ' <button onclick="openItemFix(' + i + ')" style="background:none;border:none;color:#bbb;font-size:10px;cursor:pointer;padding:0 1px">✏️</button></td>'
           + '<td style="font-weight:700;white-space:nowrap">' + fmtQty(it, qtyEach2) + '</td>'
           + '</tr>';
