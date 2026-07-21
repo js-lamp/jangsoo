@@ -3673,6 +3673,8 @@ function poNorm(s){
 }
 // 색온도 추출
 function poExtractCt(line){
+  // "볼전구"는 품목명(볼구)이므로 색온도 판단에서 제외 - "볼전구 주광색"이면 주광으로 읽혀야 함
+  line = String(line||'').replace(/볼\s*전구/g, ' ');
   if(/전구|3000|웜|warm/i.test(line)) return '전구';
   if(/주백|4000/i.test(line)) return '주백';
   if(/주광|5700|6500|화이트|white|cw/i.test(line)) return '주광'; // 5700K·6500K 모두 주광 계열
@@ -3911,6 +3913,15 @@ function poParenWordInData(word){
 
 function poApplySynonyms(s){
   var r=s;
+  // ── 브랜드 표기 제거: 대리점이 구분용으로 적는 "장수램프/장수전구/(주)장수" 등은 매칭에서 무시 ──
+  // 단, 실제 품목인 "장수장갑"은 살려야 하므로 뒤에 '장갑'이 오면 건드리지 않음
+  r = r.replace(/(\(?\s*주\s*\)?\s*)?장수\s*(램프|조명|전구|전기|산업)?/g, function(m){
+    return /장갑/.test(m) ? m : ' ';
+  });
+  r = r.replace(/장수(?!\s*장갑)/g, ' ');
+  r = r.replace(/\s+/g,' ').trim();
+  // 볼전구 = 볼구 (품목명). "전구"가 색온도로 오인되지 않게 먼저 통일
+  r = r.replace(/볼\s*전구/g, '볼구');
   // ── 발주서 괄호 처리: 괄호 안에서 참고 단어(대체/호환)는 빼고, 데이터에 있는 의미 단어만 살림 ──
   // 예: "(방등대체용)" → "대체용" 빼고 "방등"은 데이터에 있으니 살림 → 방등
   //     "(FPL 36W 대체)" → 다 데이터에 없음 → 통째 제거
@@ -4230,11 +4241,14 @@ function poFindCandidates(line, topN){
 
 // 품목어 포함 여부
 function poHasProduct(line){
+  // 브랜드 표기(장수램프 등)는 품목 판단에서 제외 - "램프" 글자 때문에 오인되지 않게
+  // 단, 실제 품목인 장수장갑은 보존
+  line = String(line||'').replace(/장수(?!\s*장갑)\s*(램프|조명|전구|전기|산업)?/g, ' ');
   // 사이즈 표기(1285*320)나 엣지/샤인/슬림 키워드도 품목으로 인정
   if(/\d{3,4}\s*[*xX×]\s*\d{3,4}/.test(line)) return true;
   // 형광등·램프 코드류 (FHF/FL/FPL/PL/EL/CFL, SS EX-D, 삼파장 등) - 와트 표기 없이 오는 경우
   if(/\bf?hf\b|\bf?pl\s*\d|\bfpl\b|\bfl\b|\bpl\s*\d|\bcfl\b|\bel\b|ss\s*ex|ssex|ex-?[dl]|삼파장|형광/i.test(line)) return true;
-  return /\d+\s*[wW]|인치|["”″]|등|램프|크립톤|투광|다운|평판|벌브|볼구|mr|par|t5|t8|t10|촛대|볼구|스틱|매장|인지|방등|거실|주방|스탠드|실링|트랙|엣지|샤인|슬림|모듈|센서|직부|원형|사각|펜던트/i.test(line);
+  return /\d+\s*[wW]|인치|["”″]|등|램프|장갑|크립톤|투광|다운|평판|벌브|볼구|볼\s*전구|mr|par|t5|t8|t10|촛대|볼구|스틱|매장|인지|방등|거실|주방|스탠드|실링|트랙|엣지|샤인|슬림|모듈|센서|직부|원형|사각|펜던트/i.test(line);
 }
 // 배송/연락처/헤더 등 무시할 줄
 function poIsJunk(line){
@@ -4326,6 +4340,9 @@ function poMergeBlocks(text){
   var rawLines = text.split('\n').map(function(l){return l.trim();}).filter(Boolean);
   var blocks=[], cur='', groupHeader='';
   rawLines.forEach(function(line){
+    // 브랜드 표기만 있는 줄(예: "장수램프", "(주)장수조명")은 구분용이므로 무시
+    var noBrand = line.replace(/(\(?\s*주\s*\)?\s*)?장수(?!\s*장갑)\s*(램프|조명|전구|전기|산업)?/g,' ').replace(/\s+/g,' ').trim();
+    if(!noBrand) { if(cur){blocks.push(cur);cur='';} return; }
     // 전화번호 포함 줄은 무시 (현재 블록 마감만)
     if(poIsPhone(line) && !poHasProduct(line)){ if(cur){blocks.push(cur);cur='';} return; }
     // 품목군 헤더 줄 → 다음 줄들에 상속 (예: "슬림샤인 엣지")
@@ -4508,6 +4525,7 @@ function parsePreview(reparse){
   if(!text){
     parsedItems = [];
     box.innerHTML = '<div style="text-align:center;color:var(--ink3);font-size:12px;padding:30px 10px">왼쪽에 발주 내용을 입력하고<br><b>미리보기</b>를 누르면<br>매칭 결과가 여기 표시됩니다</div>';
+    box.style.paddingTop = '8px';
     var se0 = document.getElementById('pvStats'); if(se0) se0.innerHTML = '';
     renderLeftAligned(null);
     return;
@@ -4519,6 +4537,7 @@ function parsePreview(reparse){
   var items = parsedItems;
   if(!items.length){
     box.innerHTML = '<div style="text-align:center;color:var(--ink3);font-size:12px;padding:30px 10px">인식된 품목이 없습니다.<br>품명이나 코드를 확인해주세요.</div>';
+    box.style.paddingTop = '8px';
     var se1 = document.getElementById('pvStats'); if(se1) se1.innerHTML = '';
     renderLeftAligned(null);
     return;
@@ -4526,10 +4545,19 @@ function parsePreview(reparse){
   var okCnt = items.filter(function(it){return !it.unconfirmed && !it.ambiguous;}).length;
   var ambigCnt = items.filter(function(it){return it.ambiguous;}).length;
   var failCnt = items.filter(function(it){return it.unconfirmed;}).length;
+  // 총 수량 합계 (개수/박스)
+  var totEach = 0, totBox = 0;
+  items.forEach(function(it){
+    var bq = (typeof QTY_MAP !== 'undefined' && QTY_MAP[it.code]) ? QTY_MAP[it.code] : 1;
+    if(it.unit === '박스'){ totEach += (it.qty*bq); totBox += it.qty; }
+    else { totEach += it.qty; if(bq > 1 && it.qty % bq === 0) totBox += (it.qty/bq); }
+  });
+  var totTxt = '<span style="color:var(--B,#2855A0);font-weight:700">총 '+items.length+'종 · '+totEach.toLocaleString()+'개</span>'
+    + (totBox ? '<span style="color:var(--ink2)"> ('+totBox.toLocaleString()+'박스)</span>' : '');
   // 매칭 통계는 헤더(매칭 미리보기 옆)에 표시
   var statsEl = document.getElementById('pvStats');
   if(statsEl){
-    statsEl.innerHTML = '<span style="font-size:11px">✓ 매칭 '+okCnt+'개'
+    statsEl.innerHTML = '<span style="font-size:11px">'+totTxt+' · ✓ 매칭 '+okCnt+'개'
       + (ambigCnt?' · <span style="color:#EA580C;font-weight:700">🔀 선택필요 '+ambigCnt+'개</span>':'')
       + (failCnt?' · <span style="color:#DC2626;font-weight:700">⚠ 확인필요 '+failCnt+'개</span>':'')+'</span>';
   }
@@ -4565,12 +4593,13 @@ function parsePreview(reparse){
   var gridCols = '15% 1fr 14% 14%';
 
   // CSS Grid (행 높이 자동 정렬)
-  h += '<div id="pvGrid" style="display:grid;grid-template-columns:'+gridCols+';border:1px solid var(--bdr);border-radius:8px;overflow:hidden;font-size:12px">';
-  // 헤더
-  h += '<div onclick="copyColumn(\'code\')" style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 4px;text-align:center;cursor:pointer;white-space:nowrap;user-select:none">코드 📋</div>';
-  h += '<div onclick="copyColumn(\'name\')" style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 4px;text-align:center;cursor:pointer;border-left:1px solid rgba(255,255,255,.15);user-select:none">품명 📋</div>';
-  h += '<div onclick="copyColumn(\'each\')" style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 4px;text-align:center;cursor:pointer;white-space:nowrap;border-left:1px solid rgba(255,255,255,.15);user-select:none">개수 📋</div>';
-  h += '<div onclick="copyColumn(\'box\')" style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 4px;text-align:center;cursor:pointer;white-space:nowrap;border-left:1px solid rgba(255,255,255,.15);user-select:none">박스 📋</div>';
+  h += '<div id="pvGrid" style="display:grid;grid-template-columns:'+gridCols+';border:1px solid var(--bdr);border-radius:8px;font-size:12px">';
+  // 헤더 (스크롤해도 상단 고정)
+  var hdSt = 'position:sticky;top:0;z-index:5;background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 4px;text-align:center;cursor:pointer;user-select:none';
+  h += '<div onclick="copyColumn(\'code\')" style="'+hdSt+';white-space:nowrap;border-radius:7px 0 0 0">코드 📋</div>';
+  h += '<div onclick="copyColumn(\'name\')" style="'+hdSt+';border-left:1px solid rgba(255,255,255,.15)">품명 📋</div>';
+  h += '<div onclick="copyColumn(\'each\')" style="'+hdSt+';white-space:nowrap;border-left:1px solid rgba(255,255,255,.15)">개수 📋</div>';
+  h += '<div onclick="copyColumn(\'box\')" style="'+hdSt+';white-space:nowrap;border-left:1px solid rgba(255,255,255,.15);border-radius:0 7px 0 0">박스 📋</div>';
   // 데이터 행
   colMeta.forEach(function(m, ri){
     var it=m.it;
@@ -4603,6 +4632,8 @@ function parsePreview(reparse){
   h += '</div>'; // grid 끝
   h += '<div style="font-size:10px;color:var(--ink3);padding:6px 4px 2px;text-align:center;line-height:1.5">💡 열 제목의 📋을 누르면 그 열 전체가 복사됩니다 · 왼쪽 발주 줄을 탭하면 수정할 수 있어요</div>';
   box.innerHTML = h;
+  // 헤더 고정이 컨테이너 맨 위에 붙도록 위쪽 여백 제거
+  box.style.paddingTop = '0';
   // 왼쪽 발주 내용을 오른쪽 행과 같은 높이로 줄 맞춤
   renderLeftAligned(colMeta);
   // 열별 복사용 데이터 저장
@@ -4625,6 +4656,30 @@ function parsePreview(reparse){
 }
 
 // 왼쪽 발주 내용을 오른쪽 매칭 행과 같은 높이로 줄 맞춤 표시 (탭하면 수정)
+// 발주 내용에서 색온도 단어에 색상 배지 입히기 (주광=파랑, 전구=주황, 주백=옅은색)
+function poCtBadge(s){
+  var t = String(s==null?'':s);
+  // HTML 이스케이프 (원문에 <, & 가 있어도 깨지지 않게)
+  t = t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // "볼전구"는 품목명이므로 색온도 배지 대상에서 제외 (임시 치환으로 보호)
+  t = t.replace(/볼\s*전구/g, '\u0001');
+  var base = 'display:inline-block;padding:1px 5px;border-radius:4px;font-weight:700;font-size:11px;line-height:1.5;border:1px solid ';
+  // 주광색 / 주광 → 파란색
+  t = t.replace(/주광색|주광/g, function(m){
+    return '<span style="'+base+'#93C5FD;background:#DBEAFE;color:#1D4ED8">'+m+'</span>';
+  });
+  // 전구색 / 전구 → 주황색
+  t = t.replace(/전구색|전구/g, function(m){
+    return '<span style="'+base+'#FDBA74;background:#FFEDD5;color:#C2410C">'+m+'</span>';
+  });
+  // 주백색 / 주백 → 옅은색 (은은한 크림톤)
+  t = t.replace(/주백색|주백/g, function(m){
+    return '<span style="'+base+'#E7E5E4;background:#FAFAF9;color:#78716C">'+m+'</span>';
+  });
+  t = t.replace(/\u0001/g, '볼전구');
+  return t;
+}
+
 function renderLeftAligned(colMeta){
   var leftBox = document.getElementById('parseLeftAligned');
   var ta = document.getElementById('parseTa');
@@ -4660,7 +4715,7 @@ function renderLeftAligned(colMeta){
       // 원본 셀 (고정, 회색 글씨, 수정 불가)
       + '<div style="padding:8px 8px;background:#F9FAFB;color:#6B7280;font-size:12px;line-height:1.3;display:flex;align-items:center;border-right:1px solid var(--bdr);user-select:text">'+origVal+'</div>'
       // 수정 가능 셀
-      + '<div class="pvleftrow" data-pvrow="'+ri+'" onclick="editLeftRow('+ri+')" style="padding:8px 8px;background:'+bg+';color:'+cl+';font-size:13px;line-height:1.3;cursor:pointer;display:flex;align-items:center" title="탭하여 수정">'+rawVal+'</div>'
+      + '<div class="pvleftrow" data-pvrow="'+ri+'" onclick="editLeftRow('+ri+')" style="padding:8px 8px;background:'+bg+';color:'+cl+';font-size:13px;line-height:1.3;cursor:pointer;display:flex;align-items:center;flex-wrap:wrap;gap:2px" title="탭하여 수정">'+poCtBadge(rawVal)+'</div>'
       + '</div>';
   });
   h += '</div>';
