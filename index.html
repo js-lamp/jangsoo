@@ -72,23 +72,23 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 .fs{font-size:13px;color:var(--ink3);cursor:pointer;background:none;border:none;padding:0 4px 0 0;line-height:1;flex-shrink:0}
 .empty{padding:20px;text-align:center;color:var(--ink3);font-size:12px;line-height:1.8}
 .re{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;color:var(--ink3);font-size:12px;text-align:center;gap:6px;padding:16px}
-.rt{padding:9px 12px;background:var(--sur);border-bottom:1px solid var(--bdr)}
+.rt{padding:7px 12px;background:var(--sur);border-bottom:1px solid var(--bdr)}
 .rn{font-size:12px;font-weight:700}
 .ra{font-size:10px;color:var(--ink2);margin-top:1px}
-.ctsec{padding:8px 11px;background:var(--sur);border-bottom:1px solid var(--bdr)}
-.ctlbl{font-size:9px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.ctsec{padding:6px 11px;background:var(--sur);border-bottom:1px solid var(--bdr)}
+.ctlbl{font-size:9px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
 .ctgrid{display:flex;flex-wrap:wrap;gap:4px}
 .ctbtn{padding:5px 10px;border-radius:5px;font-size:11px;font-weight:600;font-family:'Noto Sans KR',sans-serif;border:1.5px solid var(--bdr);background:var(--sur2);color:var(--ink2);cursor:pointer;transition:all .1s}
 .ctbtn.on{border-color:var(--A);background:var(--A3);color:var(--A2)}
-.vi{padding:6px 11px;background:var(--sur);border-bottom:1px solid var(--bdr)}
+.vi{padding:5px 11px;background:var(--sur);border-bottom:1px solid var(--bdr)}
 .vc{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--A2)}
 .ve{font-size:10px;color:var(--ink2);margin-top:1px;line-height:1.4}
-.qsec{padding:9px 11px;background:var(--sur);border-bottom:1px solid var(--bdr)}
+.qsec{padding:7px 11px;background:var(--sur);border-bottom:1px solid var(--bdr)}
 .qlbl{font-size:9px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
 .qrow{display:flex;align-items:center;gap:6px}
 .qbtn{width:28px;height:28px;background:var(--sur2);border:1px solid var(--bdr);border-radius:5px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink);font-family:'Noto Sans KR',sans-serif}
 .qinp{width:80px;text-align:center;font-size:16px;font-weight:700;font-family:'JetBrains Mono',monospace;background:var(--sur2);border:1px solid var(--bdr);border-radius:5px;padding:3px;color:var(--ink);outline:none}
-.urow{display:flex;gap:5px;margin-top:6px}
+.urow{display:flex;gap:5px;margin-top:5px}
 .ubtn{flex:1;padding:6px;border-radius:5px;border:1.5px solid var(--bdr);background:var(--sur2);color:var(--ink2);font-size:11px;font-weight:600;font-family:'Noto Sans KR',sans-serif;cursor:pointer;text-align:center;transition:all .1s}
 .ubtn.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 .addbtn{margin:8px 11px;padding:11px;background:var(--A);color:#fff;font-size:13px;font-weight:700;font-family:'Noto Sans KR',sans-serif;border:none;border-radius:var(--r2);cursor:pointer;width:calc(100% - 22px)}
@@ -222,8 +222,8 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 
 /* 빠른 수량 버튼 */
 .qpreset{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
-.qpbtn{padding:4px 7px;border-radius:5px;border:1px solid var(--bdr);background:var(--sur2);
-  color:var(--ink2);font-size:11px;font-weight:600;font-family:'Noto Sans KR',sans-serif;
+.qpbtn{height:28px;padding:0 9px;border-radius:5px;border:1px solid var(--bdr);background:var(--sur2);
+  color:var(--ink2);font-size:12px;font-weight:700;font-family:'Noto Sans KR',sans-serif;
   cursor:pointer;flex-shrink:0;transition:all .15s}
 .qpbtn:active{background:var(--ink);color:#fff;border-color:var(--ink)}
 .qpbtn.sel{background:var(--A3);color:var(--A2);border-color:var(--A)}
@@ -241,8 +241,8 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 .btn-row{display:flex;gap:6px;margin:8px 11px 0}
 .addbtn2{flex:1;padding:11px;background:var(--A);color:#fff;font-size:13px;font-weight:700;font-family:'Noto Sans KR',sans-serif;border:none;border-radius:var(--r2);cursor:pointer}
 .addbtn2:disabled{opacity:.35;cursor:not-allowed}
-.cartbtn{flex:1;padding:8px 4px;background:var(--ink);color:#fff;font-size:11px;font-weight:700;font-family:'Noto Sans KR',sans-serif;border:none;border-radius:var(--r2);cursor:pointer;text-align:center;line-height:1.4}
-.mini-cart{margin:8px 11px 0;border:1px solid var(--bdr);border-radius:var(--r2);background:var(--sur);overflow:hidden;display:none;max-height:280px;overflow-y:auto}
+.cartbtn{flex:1;padding:11px 4px;background:var(--ink);color:#fff;font-size:12px;font-weight:700;font-family:'Noto Sans KR',sans-serif;border:none;border-radius:var(--r2);cursor:pointer;text-align:center;line-height:1.2;white-space:nowrap}
+.mini-cart{margin:6px 11px 8px;border:1px solid var(--bdr);border-radius:var(--r2);background:var(--sur);overflow:hidden;display:none;flex:1;min-height:120px;overflow-y:auto}
 .mini-cart.show{display:block}
 .mini-cart-hd{padding:5px 10px;background:var(--sur2);border-bottom:1px solid var(--bdr);font-size:9px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.5px;position:sticky;top:0}
 .mini-ci{display:flex;align-items:center;padding:4px 4px 4px 8px;border-bottom:1px solid var(--bdr);gap:2px}
@@ -529,18 +529,18 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
     <div class="left" id="leftPanel"><div class="empty">대분류를<br>선택하세요</div></div>
     <div class="right" id="rightPanel">
       <div class="re" id="rEmpty"><span style="font-size:28px">👈</span>품목을<br>선택해주세요</div>
-      <div id="rContent" style="display:none;flex-direction:column">
+      <div id="rContent" style="display:none;flex-direction:column;flex:1;min-height:0">
         <div class="rt"><div class="rn-clickable" onclick="openPriceMod()"><div class="rn" id="rName"></div></div><div class="ra" id="rAlias"></div></div>
         <div class="ctsec"><div class="ctlbl">색온도 · 베이스</div><div class="ctgrid" id="ctGrid"></div></div>
         <div class="vi" id="varInfo" style="display:none"><div class="vc" id="varCode"></div><div class="ve" id="varEname"></div></div>
         <div class="qsec">
-          <div class="qlbl">수량</div>
           <div class="qrow">
             <button class="qbtn" onclick="chgQ(-1)">&#8722;</button>
             <input class="qinp" id="qInp" type="number" value="1" min="1" oninput="clearQPreset()"/>
             <button class="qbtn" onclick="chgQ(1)">&#43;</button>
+            <button class="qpbtn" onclick="setQ(5)">+5</button>
+            <button class="qpbtn" onclick="setQ(10)">+10</button>
           </div>
-          <div class="qpreset" id="qPreset"></div>
           <div class="urow">
             <button class="ubtn on" id="uBox" onclick="selU('박스')">박스</button>
             <button class="ubtn" id="uEa" onclick="selU('개')">개</button>
@@ -548,7 +548,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
         </div>
         <div class="btn-row">
           <button class="addbtn2" id="addBtn" onclick="addToCart()" disabled>＋ 추가</button>
-          <button class="cartbtn" id="cartViewBtn" onclick="goTab('cart')">📝 발주서<br><span id="cartBtnCnt" style="font-size:9px;font-weight:400">작성 0개</span></button>
+          <button class="cartbtn" id="cartViewBtn" onclick="goTab('cart')">📝 발주서(<span id="cartBtnCnt">0</span>)</button>
         </div>
         <div class="mini-cart" id="miniCart">
           <div class="mini-cart-hd">발주 목록 <span id="miniCartCnt">0개</span></div>
@@ -1397,9 +1397,15 @@ var bcMap = {"8809025001809":{"code":"6201-0032","ename":"FL 20 SS D /18","gName
 G.forEach(function(g){ g.variants.forEach(function(v){ if(v.bc) bcMap[v.bc]={code:v.code,ename:v.ename,qty:v.qty,bc:v.bc,gName:g.name,alias:g.alias,sub:g.sub,cat:g.cat}; }); });
 var activeLedGrp='all';
 // 색온도 텍스트 통일 헬퍼
-function ctText(ct){
-  var m={'주광':'주광색','전구':'전구색','주백':'주백색'};
-  return m[ct]||ct;
+function ctText(ct, ename){
+  var m={'주광':'주광','전구':'전구','주백':'주백'};
+  var base = m[ct]||ct;
+  // K값을 앞 두 자리로 붙여 구분: 주광(57)/주광(65), 주백(40), 전구(30)/전구(27)
+  if(m[ct] && ename){
+    var k=String(ename).match(/(2700|3000|3500|4000|5000|5700|6500)\s*K/i);
+    if(k) return base+'('+k[1].slice(0,2)+')';
+  }
+  return base;
 }
 var cats = {};
 G.forEach(function(g){ if(!cats[g.cat]) cats[g.cat]={}; if(!cats[g.cat][g.sub]) cats[g.cat][g.sub]=[]; cats[g.cat][g.sub].push(g); });
@@ -1624,9 +1630,12 @@ function selProduct(g){
   var rc=document.getElementById('rContent'); rc.style.display='flex';
   document.getElementById('rName').textContent=g.name;
   document.getElementById('rAlias').textContent=g.alias?'별칭: '+g.alias:'';
-  var ctL={'주광':'☀️ 주광색','전구':'🌙 전구색','주백':'🌤 주백색','색변환':'🎨 색변환','색구(칼라)':'🎨 칼라','-':'기본'};
+  var ctIcon={'주광':'☀️ ','전구':'🌙 ','주백':'🌤 ','색변환':'🎨 ','색구(칼라)':'🎨 ','-':''};
   var gh='';
-  g.variants.forEach(function(v,i){ gh+='<button class="ctbtn" data-vi="'+i+'">'+(ctL[v.ct]||v.ct)+'</button>'; });
+  g.variants.forEach(function(v,i){
+    var lbl = (v.ct==='색구(칼라)') ? '칼라' : (v.ct==='-' ? '기본' : ctText(v.ct, v.ename));
+    gh+='<button class="ctbtn" data-vi="'+i+'">'+(ctIcon[v.ct]||'')+lbl+'</button>';
+  });
   document.getElementById('ctGrid').innerHTML=gh;
   document.querySelectorAll('.ctbtn').forEach(function(b){
     b.addEventListener('click',function(){ selV(parseInt(b.dataset.vi)); });
@@ -1745,7 +1754,7 @@ function renderCart(){
   var h='';
   cart.forEach(function(it,i){
     h+='<div class="ci">';
-    var ciNm=(it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct):'');
+    var ciNm=(it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct, it.ename):'');
     if(typeof poCtBadge === 'function') ciNm = poCtBadge(ciNm);
     h+='<div class="ci-info"><div class="ci-name">'+ciNm+'</div><div class="ci-code">'+it.code+'</div></div>';
     h+='<div class="ci-ctrl">';
@@ -2147,7 +2156,7 @@ function voShowNextPick(){
     // 색온도 맞는 variant 우선
     var v = item.ct ? g.variants.find(function(x){return x.ct===item.ct;}) : null;
     if(!v) v=g.variants[0];
-    var ctL = (v.ct&&v.ct!=='-')?ctText(v.ct):'';
+    var ctL = (v.ct&&v.ct!=='-')?ctText(v.ct, v.ename):'';
     h += '<button onclick="voPickChoose(\''+v.code+'\')" style="display:block;width:100%;text-align:left;padding:12px;margin-bottom:7px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:9px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:Noto Sans KR,sans-serif">'+g.name+(ctL?' <span style="color:#8b9dc3">'+ctL+'</span>':'')+'<br><span style="font-size:10px;color:#8b9dc3;font-family:monospace">'+v.code+'</span></button>';
   });
   h += '<button onclick="voPickSkip()" style="display:block;width:100%;padding:11px;margin-top:6px;background:rgba(220,38,38,.2);border:none;border-radius:9px;color:#ff8080;font-size:13px;font-weight:600;cursor:pointer;font-family:Noto Sans KR,sans-serif">⚠ 목록에 없음 (나중에 수정)</button>';
@@ -2182,7 +2191,7 @@ function voRenderItems(){
   }
   var h='';
   voOrder.items.forEach(function(it, i){
-    var pname = it.unconfirmed ? ('⚠ '+(it.rawText||it.ename)) : ((it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct):''));
+    var pname = it.unconfirmed ? ('⚠ '+(it.rawText||it.ename)) : ((it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct, it.ename):''));
     var color = it.unconfirmed ? '#DC2626' : '#fff';
     h += '<div style="background:rgba(255,255,255,.08);border-radius:9px;padding:10px;margin-bottom:6px;display:flex;align-items:center;gap:8px">';
     h += '<div style="flex:1"><div style="color:'+color+';font-size:13px;font-weight:600">'+pname+'</div>';
@@ -2423,7 +2432,7 @@ function buildMsg(items,store){
   items.forEach(function(it,i){
     var code=it.code+'          '.slice(0,Math.max(0,11-it.code.length));
     var dispName = (it.gname||it.ename);
-    if(it.ct && it.ct!=='-') dispName += ' '+ctText(it.ct);
+    if(it.ct && it.ct!=='-') dispName += ' '+ctText(it.ct, it.ename);
     // 품명이 길어도 자르지 않음 (뒤쪽 잘림 방지). 길면 수량을 다음 줄에 들여쓰기
     if(dispName.length > 16){
       msg += code + '  ' + dispName + '\n';
@@ -3483,6 +3492,14 @@ function setQPreset(n){
 
 function clearQPreset(){
   document.querySelectorAll('.qpbtn').forEach(function(b){ b.classList.remove('sel'); });
+}
+
+// 수량 줄에 합친 프리셋(+5/+10): 현재값에 더함
+function setQ(n){
+  var inp = document.getElementById('qInp');
+  if(!inp) return;
+  inp.value = (parseInt(inp.value) || 0) + n;
+  selQty = parseInt(inp.value);
 }
 
 // ── 품목군 즐겨찾기 ──
@@ -4689,7 +4706,7 @@ function parsePreview(reparse){
   // 열별 값 미리 계산
   var colMeta = [];
   items.forEach(function(it, idx){
-    var pname = it.unconfirmed ? (it.rawText||it.ename) : ((it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct):''));
+    var pname = it.unconfirmed ? (it.rawText||it.ename) : ((it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct, it.ename):''));
     var cnt = pvCounts(it);
     colMeta.push({idx:idx, it:it, pname:pname, code:(it.unconfirmed?'?':it.code), each:cnt.each, box:cnt.box, raw:(it.rawText||it.ename||''), orig:(it.origText||it.rawText||it.ename||'')});
   });
@@ -4746,7 +4763,7 @@ function parsePreview(reparse){
     code: items.map(function(it){ return it.unconfirmed ? '' : it.code; }),
     name: items.map(function(it){
       if(it.unconfirmed) return (it.rawText||it.ename||'');
-      return (it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct):'');
+      return (it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct, it.ename):'');
     }),
     each: items.map(function(it){
       var boxQty = (typeof QTY_MAP !== 'undefined' && QTY_MAP[it.code]) ? QTY_MAP[it.code] : 1;
@@ -4769,16 +4786,16 @@ function poCtBadge(s){
   // "볼전구"는 품목명이므로 색온도 배지 대상에서 제외 (임시 치환으로 보호)
   t = t.replace(/볼\s*전구/g, '\u0001');
   var base = 'display:inline-block;padding:1px 5px;border-radius:4px;font-weight:700;font-size:11px;line-height:1.5;-webkit-print-color-adjust:exact;print-color-adjust:exact;border:1px solid ';
-  // 주광색 / 주광 → 파란색
-  t = t.replace(/주광색|주광/g, function(m){
+  // 주광색 / 주광 / 주광(57) → 파란색
+  t = t.replace(/주광색|주광(?:\(\d{2}\))?/g, function(m){
     return '<span style="'+base+'#93C5FD;background:#DBEAFE;color:#1D4ED8">'+m+'</span>';
   });
   // 전구색 / 전구 → 주황색
-  t = t.replace(/전구색|전구/g, function(m){
+  t = t.replace(/전구색|전구(?:\(\d{2}\))?/g, function(m){
     return '<span style="'+base+'#FDBA74;background:#FFEDD5;color:#C2410C">'+m+'</span>';
   });
   // 주백색 / 주백 → 옅은색 (은은한 크림톤)
-  t = t.replace(/주백색|주백/g, function(m){
+  t = t.replace(/주백색|주백(?:\(\d{2}\))?/g, function(m){
     return '<span style="'+base+'#E7E5E4;background:#FAFAF9;color:#78716C">'+m+'</span>';
   });
   t = t.replace(/\u0001/g, '볼전구');
@@ -4935,7 +4952,7 @@ function applyLeftRowEdit(ri, newVal){
     parsedItems.forEach(function(it, i){ if(origSnapshot[i]) it.origText = origSnapshot[i]; });
     // 화면 다시 그려 원본 반영
     var colMeta = parsedItems.map(function(it, idx){
-      var pname = it.unconfirmed ? (it.rawText||it.ename) : ((it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct):''));
+      var pname = it.unconfirmed ? (it.rawText||it.ename) : ((it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct, it.ename):''));
       return {idx:idx, it:it, orig:(it.origText||it.rawText||''), raw:(it.rawText||it.ename||'')};
     });
     renderLeftAligned(colMeta);
@@ -5320,7 +5337,7 @@ function kwTestRun(){
       } else if(it.unconfirmed){
         h += '<div style="padding:4px 0;color:#DC2626">⚠ 미매칭: '+(it.rawText||it.ename)+'</div>';
       } else {
-        h += '<div style="padding:4px 0;color:#059669">✓ '+it.code+' '+it.gname+(it.ct&&it.ct!=='-'?' '+ctText(it.ct):'')+'</div>';
+        h += '<div style="padding:4px 0;color:#059669">✓ '+it.code+' '+it.gname+(it.ct&&it.ct!=='-'?' '+ctText(it.ct, it.ename):'')+'</div>';
       }
     });
     box.innerHTML = h;
@@ -5336,7 +5353,7 @@ function openAmbigMod(idx){
   document.getElementById('ambigRaw').textContent = it.rawText || it.gname || '';
   var h = '';
   it.candidates.forEach(function(c){
-    var ctL = (c.ct && c.ct!=='-') ? ctText(c.ct) : '';
+    var ctL = (c.ct && c.ct!=='-') ? ctText(c.ct, c.ename) : '';
     var isCur = c.code === it.code;
     h += '<div onclick="pickAmbig(\''+c.code+'\')" style="padding:11px;border:1.5px solid '+(isCur?'#EA580C':'#eee')+';border-radius:8px;margin-bottom:6px;cursor:pointer;background:'+(isCur?'#FFF7ED':'#fff')+'">'
       + '<div style="font-size:13px;font-weight:600;color:#1A1814">'+(isCur?'✅ ':'')+c.gname+(ctL?' <span style="color:#2855A0">'+ctL+'</span>':'')+'</div>'
@@ -5464,7 +5481,7 @@ function itemFixRender(){
   results.forEach(function(r){
     var g = r.g;
     g.variants.forEach(function(v){
-      var ctL = (v.ct && v.ct!=='-') ? ctText(v.ct) : '';
+      var ctL = (v.ct && v.ct!=='-') ? ctText(v.ct, v.ename) : '';
       h += '<div onclick="pickItemFix(\''+v.code+'\')" style="padding:10px;border:1px solid #eee;border-radius:8px;margin-bottom:6px;cursor:pointer;background:#fff" ontouchstart="">';
       h += '<div style="font-size:13px;font-weight:600;color:#1A1814">'+g.name+(ctL?' <span style="color:#2855A0">'+ctL+'</span>':'')+'</div>';
       h += '<div style="font-size:10px;color:#999;font-family:monospace;margin-top:2px">'+v.code+' · '+g.sub+'</div>';
@@ -6004,7 +6021,7 @@ function dBuildMsg(items, store, aLine, method, memo){
   items.forEach(function(it,i){
     var code=it.code;
     var dispName2 = (it.gname||it.ename);
-    if(it.ct && it.ct!=='-') dispName2 += ' '+ctText(it.ct);
+    if(it.ct && it.ct!=='-') dispName2 += ' '+ctText(it.ct, it.ename);
     // 품명 전체 표시 (제한 없음 - 줄 바꿔서라도 다 보이게)
     msg+=code+'  '+dispName2+'  /  '+it.qty+it.unit+'\n';
   });
@@ -6064,7 +6081,7 @@ function renderMiniCart() {
   var mcnt = document.getElementById('miniCartCnt');
   var cbcnt = document.getElementById('cartBtnCnt');
   if (!mc) return;
-  if (cbcnt) cbcnt.textContent = '작성 ' + cart.length + '개';
+  if (cbcnt) cbcnt.textContent = cart.length;
   if (mcnt) mcnt.textContent = cart.length + '개';
   mc.classList.toggle('show', cart.length > 0);
   if (!cart.length) { if (ml) ml.innerHTML = ''; return; }
@@ -6072,7 +6089,7 @@ function renderMiniCart() {
   cart.forEach(function(it, i) {
     // gname(앱 품명) + 색온도 사용, CSS ellipsis로 자동 자름
     var nm = (it.gname || it.ename);
-    if(it.ct && it.ct!=='-') nm += ' ' + ctText(it.ct);
+    if(it.ct && it.ct!=='-') nm += ' ' + ctText(it.ct, it.ename);
     h += '<div class="mini-ci">' +
       '<div class="mini-ci-name">' + nm + '</div>' +
       '<div class="mini-ci-qty">' + it.qty + it.unit + '</div>' +
@@ -7009,7 +7026,7 @@ function invRender(company) {
     var itemVat = Math.round(amount2 * 0.1);
     var itemTotal = amount2 + itemVat;
     totalSupply2 += amount2;
-    var pname = (it.gname || it.ename) + (it.ct && it.ct!=='-' ? ' '+ctText(it.ct) : '');
+    var pname = (it.gname || it.ename) + (it.ct && it.ct!=='-' ? ' '+ctText(it.ct, it.ename) : '');
     // 색온도 색상 배지 적용본 (화면 표시용). 엑셀/카톡 등 텍스트에는 pname 그대로 사용
     var pnameH = (typeof poCtBadge === 'function') ? poCtBadge(pname) : pname;
 
@@ -7235,7 +7252,7 @@ function invBuildExcel() {
       var qtyEach = it.unit === '박스' ? it.qty*boxQty : it.qty;
       var amount = unitPrice * qtyEach;
       var vat = Math.round(amount*0.1);
-      var pname = (it.gname||it.ename) + (it.ct&&it.ct!=='-' ? ' '+ctText(it.ct) : '');
+      var pname = (it.gname||it.ename) + (it.ct&&it.ct!=='-' ? ' '+ctText(it.ct, it.ename) : '');
       if(invUnlocked){
         totalSupply += amount;
         aoa.push([idx+1, it.code, pname, qtyEach, unitPrice||'', amount||'', vat||'', (amount+vat)||'']);
