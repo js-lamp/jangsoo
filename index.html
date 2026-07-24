@@ -254,6 +254,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 .act-btn{flex:1;padding:11px 6px;border-radius:var(--r2);border:1.5px solid var(--bdr);background:var(--sur);font-size:12px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;color:var(--ink2)}
 .act-btn:disabled{opacity:.35;cursor:not-allowed}
 .act-btn.print{border-color:var(--B);color:var(--B)}.act-btn.excel{border-color:var(--G);color:var(--G)}
+.act-btn.primary{background:var(--A);color:#fff;border-color:var(--A)}
 @media print{body>*:not(#printArea){display:none!important}#printArea{display:block!important;position:fixed;inset:0;background:#fff;padding:20px;font-family:'Noto Sans KR',sans-serif;z-index:99999}#printArea table{width:100%;border-collapse:collapse;font-size:12px}#printArea th{background:#1A1814;color:#fff;padding:8px 10px;text-align:left;font-size:11px}#printArea td{padding:8px 10px;border-bottom:1px solid #E2DED4}}
 .dov{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:850;display:none;align-items:flex-end;justify-content:center}
 .dov.show{display:flex}
@@ -422,6 +423,34 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 .helpbox-x{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1}
 .helpbox-body{padding:0}
 
+/* 따라하기 투어 */
+#tourMask{position:fixed;inset:0;z-index:10000;display:none;pointer-events:none}
+#tourMask.on{display:block}
+.tour-dim{position:fixed;background:rgba(0,0,0,.55);pointer-events:auto;transition:all .2s}
+.tour-ring{position:fixed;border:3px solid #FFB020;border-radius:10px;box-shadow:0 0 0 4px rgba(255,176,32,.28);
+  pointer-events:none;transition:all .25s;animation:tourPulse 1.4s ease-in-out infinite}
+@keyframes tourPulse{0%,100%{box-shadow:0 0 0 4px rgba(255,176,32,.28)}50%{box-shadow:0 0 0 9px rgba(255,176,32,.12)}}
+.tour-tip{position:fixed;max-width:290px;background:#fff;border-radius:12px;padding:13px 14px;
+  box-shadow:0 10px 34px rgba(0,0,0,.32);pointer-events:auto;z-index:10001;font-family:'Noto Sans KR',sans-serif}
+.tour-tip .tt-step{font-size:10.5px;font-weight:800;color:#2855A0;letter-spacing:.4px;margin-bottom:4px}
+.tour-tip .tt-title{font-size:14px;font-weight:800;color:#1A1814;margin-bottom:5px}
+.tour-tip .tt-desc{font-size:12.5px;color:#5C5850;line-height:1.55}
+.tour-tip .tt-do{margin-top:8px;background:#FFF6E5;border:1px solid #F3D79B;border-radius:7px;
+  padding:7px 9px;font-size:12px;color:#8A5A00;font-weight:700}
+.tour-tip .tt-row{display:flex;gap:6px;margin-top:11px;align-items:center}
+.tour-tip .tt-btn{flex:1;padding:9px;border-radius:8px;border:none;font-size:12.5px;font-weight:700;
+  font-family:'Noto Sans KR',sans-serif;cursor:pointer;background:#2855A0;color:#fff}
+.tour-tip .tt-skip{padding:9px 11px;border-radius:8px;border:1px solid #DDD8D0;background:#fff;
+  font-size:12px;color:#8A8580;font-family:'Noto Sans KR',sans-serif;cursor:pointer;font-weight:600}
+/* PC 메뉴 마우스 올림 안내 */
+.tb{position:relative}
+@media (hover:hover) and (min-width:820px){
+  .tb[data-tip]:hover::after{content:attr(data-tip);position:absolute;top:100%;left:50%;transform:translateX(-50%);
+    margin-top:5px;background:#1A1814;color:#fff;font-size:11.5px;font-weight:500;padding:6px 10px;border-radius:7px;
+    white-space:nowrap;z-index:500;box-shadow:0 4px 14px rgba(0,0,0,.25);pointer-events:none;font-family:'Noto Sans KR',sans-serif}
+  .tb[data-tip]:hover::before{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
+    margin-top:-1px;border:5px solid transparent;border-bottom-color:#1A1814;z-index:501;pointer-events:none}
+}
 /* 공지사항 팝업 */
 .noticemod{display:none;position:fixed;inset:0;z-index:1200;background:rgba(0,0,0,.65);
   align-items:center;justify-content:center;padding:20px}
@@ -472,7 +501,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
     <span style="font-size:16px;font-weight:700">A+</span>
     <span style="font-size:7px;opacity:.7">크게</span>
   </button>
-  <button onclick="openHelp()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:14px;cursor:pointer;padding:2px 4px;display:flex;flex-direction:column;align-items:center;gap:1px">
+  <button id="helpBtn" onclick="openHelp()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:14px;cursor:pointer;padding:2px 4px;display:flex;flex-direction:column;align-items:center;gap:1px">
     <span>❓</span>
     <span style="font-size:8px;opacity:.8">설명서</span>
   </button>
@@ -487,11 +516,11 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 
 <!-- 탭바 -->
 <div class="tabs">
-  <button class="tb on" id="tb-order" onclick="goTab('order',this)">📦 품목선택</button>
-  <button class="tb" id="tb-notice" onclick="goTab('notice',this)">📢 공지<span id="noticeTabBadge" style="display:none;background:var(--R);color:#fff;font-size:9px;padding:1px 4px;border-radius:7px;margin-left:3px;font-weight:700">N</span></button>
-  <button class="tb" id="tb-fav" onclick="goTab('fav',this)">⭐ 즐겨찾기</button>
-  <button class="tb" id="tb-cart" onclick="goTab('cart',this)">🛒 발주목록</button>
-  <button class="tb" id="tb-bc" onclick="goTab('bc',this)">📋 바코드</button>
+  <button class="tb on" id="tb-order" data-tip="품목을 골라 수량을 담는 곳" onclick="goTab('order',this)">📦 품목선택</button>
+  <button class="tb" id="tb-notice" data-tip="공지사항 확인" onclick="goTab('notice',this)">📢 공지<span id="noticeTabBadge" style="display:none;background:var(--R);color:#fff;font-size:9px;padding:1px 4px;border-radius:7px;margin-left:3px;font-weight:700">N</span></button>
+  <button class="tb" id="tb-fav" data-tip="자주 쓰는 품목 모아보기 (★ 눌러 등록)" onclick="goTab('fav',this)">⭐ 즐겨찾기</button>
+  <button class="tb" id="tb-cart" data-tip="담은 품목 확인 → 발주서 전송·명세서·엑셀" onclick="goTab('cart',this)">🛒 발주목록</button>
+  <button class="tb" id="tb-bc" data-tip="바코드 스캔·13자리 입력으로 빠른 발주" onclick="goTab('bc',this)">📋 바코드</button>
 </div>
 
 <!-- ── 품목선택 패널 ── -->
@@ -592,9 +621,9 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
       <div id="cartList"><div class="empty">품목을 추가해주세요</div></div>
     </div>
     <button onclick="openParseMod()" style="width:100%;margin-bottom:8px;padding:10px;background:rgba(40,85,160,.07);color:var(--B);border:1.5px solid rgba(40,85,160,.2);border-radius:var(--r2);font-size:12px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer">📨 받은 발주서로 명세서 만들기</button>
-    <div style="display:flex;gap:8px;margin-top:0">
-      <button class="send-btn-main" id="sendBtn" onclick="sendOrder()" disabled style="flex:1">💬 발주서 전송</button>
-      <button id="invBtn" onclick="openInvMod()" style="flex:0 0 auto;padding:12px 14px;background:var(--sur2);color:var(--ink2);border:1.5px solid var(--bdr);border-radius:var(--r2);font-size:13px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer">📋 명세서</button>
+    <div class="action-row" style="margin-top:0">
+      <button class="act-btn primary" id="sendBtn" onclick="sendOrder()" disabled>💬 발주서 전송</button>
+      <button class="act-btn" id="invBtn" onclick="openInvMod()">📋 명세서</button>
     </div>
     <div class="action-row">
       <button class="act-btn print" id="printBtn" onclick="printOrder()" disabled>🖨️ 인쇄</button>
@@ -659,8 +688,9 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 </div>
 
 <!-- 첫 사용 환영 가이드 -->
+<div id="tourMask"></div>
 <div id="welcomeMod" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);align-items:center;justify-content:center;padding:18px">
-  <div style="background:#fff;border-radius:16px;max-width:380px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,.3)">
+  <div onclick="cancelWelcomeAuto()" onwheel="cancelWelcomeAuto()" ontouchstart="cancelWelcomeAuto()" style="background:#fff;border-radius:16px;max-width:380px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,.3)">
     <div style="background:linear-gradient(135deg,#2855A0,#1a3d75);padding:20px;border-radius:16px 16px 0 0;text-align:center">
       <div style="font-size:34px;margin-bottom:6px">💡</div>
       <div style="color:#fff;font-size:18px;font-weight:800">장수램프 발주 시스템</div>
@@ -694,7 +724,11 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
         <input type="checkbox" id="welcomeHideCb" style="width:17px;height:17px;cursor:pointer">
         다시 보지 않기
       </label>
-      <button onclick="closeWelcome()" style="width:100%;padding:14px;background:#2855A0;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;margin-top:12px">시작하기</button>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button onclick="startTour()" style="flex:1;padding:14px;background:#FFB020;color:#3D2A00;border:none;border-radius:10px;font-size:14.5px;font-weight:800;font-family:'Noto Sans KR',sans-serif;cursor:pointer">👆 따라하기</button>
+        <button onclick="closeWelcome()" style="flex:1;padding:14px;background:#2855A0;color:#fff;border:none;border-radius:10px;font-size:14.5px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer">시작하기</button>
+      </div>
+      <div id="welcomeCountdown" style="text-align:center;font-size:11.5px;color:#8A8580;margin-top:8px;min-height:16px"></div>
     </div>
   </div>
 </div>
@@ -1559,31 +1593,10 @@ function renderLeft(filtered){
     var key=g.cat+'|'+g.sub+'|'+g.name;
     h+='<div class="pi'+(isSel?' sel':'')+(isFav?' fav':'')+'" data-key="'+key+'">';
     var subKey=g.cat+'|'+g.sub;
-    // 재고 계산
-    var _rt=[],_ts=0,_hs=false,_st='';
-    g.variants.forEach(function(v){
-      if(v.code&&STOCK&&STOCK[v.code]){
-        var _d=STOCK[v.code];
-        if(_d.r!==null&&_d.r!==undefined)_rt.push(_d.r);
-        if(_d.s!==undefined){_ts+=_d.s;_hs=true;}
-      }
-    });
-    var _gi=G.indexOf(g);
-    if(_rt.length>0){
-      var _avg=Math.round(_rt.reduce(function(a,b){return a+b;},0)/_rt.length);
-      var _cl=_avg>=120?'stk-hi':_avg>=50?'stk-ok':_avg>=10?'stk-lo':'stk-cr';
-      var _lb=_avg>=120?'재고여유':_avg>=50?'재고적정':_avg>=10?'재고부족':'재고결품';
-      _st='<span class="stk '+_cl+'" data-si="'+_gi+'">'+_lb+'</span>';
-    }else if(_hs){
-      var _cl2=_ts>1000?'stk-hi':_ts>0?'stk-ok':'stk-cr';
-      var _lb2=_ts>1000?'재고여유':_ts>0?'재고적정':'재고결품';
-      _st='<span class="stk '+_cl2+'" data-si="'+_gi+'">'+_lb2+'</span>';
-    }
     var _sq=encodeURIComponent(getShopKW(g.sub,g.name));
     var _su='https://wooree-mall.co.kr/product/search.html?keyword='+_sq;
-    // 1줄: 품명 + 우측에 재고 표시
-    h+='<div class="pn-row"><div class="pn">'+g.name+'</div>';
-    h+='<div class="pn-right">'+_st+'</div></div>';
+    // 1줄: 품명 (재고 표시는 단가 확인 창에서 보여줌)
+    h+='<div class="pn-row"><div class="pn">'+g.name+'</div></div>';
     // 2줄: ☆ + 분류·색온도 + 🔗 이미지
     h+='<div class="ps">';
     h+='<button class="fs" data-fkey="'+subKey+'">'+(isFav?'★':'☆')+'</button>';
@@ -1595,29 +1608,10 @@ function renderLeft(filtered){
   panel.querySelectorAll('.pi').forEach(function(el){
     el.addEventListener('click',function(e){
       if(e.target.classList.contains('fs')){ toggleFav(e.target.dataset.fkey); return; }
-      if(e.target.dataset.si!==undefined){ return; } // 재고는 더블클릭으로 처리
       if(e.target.classList.contains('shop-lnk')){ window.open(e.target.dataset.url,'_blank'); return; }
       var key=el.dataset.key;
       var g=items.find(function(x){ return x.cat+'|'+x.sub+'|'+x.name===key; });
       if(g) selProduct(g);
-    });
-    // 재고 라벨 더블클릭 → 재고 상세 (PC: dblclick)
-    el.addEventListener('dblclick',function(e){
-      if(e.target.dataset.si!==undefined){ openStkModIdx(parseInt(e.target.dataset.si)); }
-    });
-  });
-  // 재고 라벨 모바일 대응: 빠른 연속 탭 2회 (400ms 내)
-  panel.querySelectorAll('.stk').forEach(function(stkEl){
-    stkEl.addEventListener('click',function(e){
-      e.stopPropagation();
-      var now=Date.now();
-      var last=parseInt(stkEl.dataset.lastTap||'0');
-      if(now-last < 400){
-        stkEl.dataset.lastTap='0';
-        if(stkEl.dataset.si!==undefined) openStkModIdx(parseInt(stkEl.dataset.si));
-      } else {
-        stkEl.dataset.lastTap=String(now);
-      }
     });
   });
 }
@@ -3431,29 +3425,100 @@ function searchDealer(){
   }
 }
 
+// 재고 배지 HTML (코드 기준)
+function pmStockChip(code, label){
+  var sd = (typeof STOCK!=='undefined' && STOCK) ? STOCK[code] : null;
+  if(!sd){
+    return '<span style="display:inline-flex;align-items:center;gap:5px;background:var(--sur2);border:1px solid var(--bdr);border-radius:6px;padding:3px 8px">'
+      +(label?'<span style="font-size:10.5px;font-weight:700;color:var(--ink2)">'+label+'</span>':'')
+      +'<span style="font-size:10.5px;color:var(--ink3)">재고 정보 없음</span></span>';
+  }
+  var r = sd.r, s = sd.s, lbl, col, bg;
+  if(r!==null && r!==undefined){
+    lbl = r>=120?'재고여유':r>=50?'재고적정':r>=10?'재고부족':'재고결품';
+    col = r>=120?'#0369A1':r>=50?'#15803D':r>=10?'#F97316':'#DC2626';
+    bg  = r>=120?'#E0F2FE':r>=50?'#DCFCE7':r>=10?'#FFEDD5':'#FEE2E2';
+  } else {
+    lbl = (s>1000)?'재고여유':(s>0)?'재고적정':'재고결품';
+    col = (s>1000)?'#0369A1':(s>0)?'#15803D':'#DC2626';
+    bg  = (s>1000)?'#E0F2FE':(s>0)?'#DCFCE7':'#FEE2E2';
+  }
+  var o = '<span style="display:inline-flex;align-items:center;gap:5px;background:'+bg+';border:1px solid '+col+'33;border-radius:6px;padding:3px 8px">';
+  if(label) o += '<span style="font-size:10.5px;font-weight:800;color:var(--ink)">'+label+'</span>';
+  o += '<span style="font-size:10.5px;font-weight:800;color:'+col+'">'+lbl+'</span>';
+  if(s!==undefined && s!==null) o += '<span style="font-size:11px;font-weight:700;color:var(--ink)">'+Number(s).toLocaleString()+'개</span>';
+  if(r!==null && r!==undefined) o += '<span style="font-size:10px;color:var(--ink3)">('+r+'%)</span>';
+  return o + '</span>';
+}
+// 등급별 단가표 (단가는 색온도와 무관하게 동일하므로 한 번만 표시)
+function pmPriceTable(pd, targetGrade){
+  var t='';
+  ['20','21','22','23','24'].forEach(function(g){
+    var price = pd.p[g];
+    if(!price) return;
+    var isTarget = targetGrade===g;
+    t += '<div class="price-row">'
+      +  '<div class="price-grade">'+GRADE_NAMES[g]+(isTarget?'<span class="price-tag ptag-me">▶ 해당</span>':'')+'</div>'
+      +  '<div class="price-val'+(isTarget?' mine':'')+'">'+price.toLocaleString()+'원</div>'
+      +  '</div>';
+  });
+  return t;
+}
 function renderPriceList(targetGrade){
   if(!ppGroup){ document.getElementById('priceList').innerHTML=''; return; }
   var h='';
+  // ── 재고 현황: 색온도(코드)별로 다르므로 각각 표시 ──
+  // 라벨이 겹치면(백색/흑색처럼) 본체색·와트를 붙여 구분
+  var labs = ppGroup.variants.map(function(v){
+    return (v.ct && v.ct!=='-') ? ctText(v.ct, v.ename) : '';
+  });
+  var cnt={};
+  labs.forEach(function(l){ cnt[l]=(cnt[l]||0)+1; });
+  var stockChips='';
+  ppGroup.variants.forEach(function(v, i){
+    var lab = labs[i];
+    if(cnt[lab] > 1){
+      var extra = '';
+      var bc = (v.ename||'').match(/(백색|흑색)/);
+      if(bc) extra = bc[1];
+      if(!extra){
+        var w = (v.ename||'').match(/(\d+)\s*W/i);
+        if(w) extra = w[1]+'W';
+      }
+      if(extra) lab = (lab? lab+' ' : '') + extra;
+    }
+    stockChips += pmStockChip(v.code, lab);
+  });
+  if(stockChips){
+    h += '<div style="margin-bottom:12px">'
+      +  '<div style="font-size:10.5px;font-weight:800;color:var(--ink2);letter-spacing:.4px;margin-bottom:6px">📊 재고 현황</div>'
+      +  '<div style="display:flex;flex-wrap:wrap;gap:5px">'+stockChips+'</div>'
+      +  '</div>';
+  }
+  // ── 단가: 색온도가 달라도 같으므로 등급별로 한 번만 ──
+  // (단, 한 품목군에 단가가 서로 다른 제품이 섞인 경우엔 나눠서 표시)
+  var groups=[], seen={};
   ppGroup.variants.forEach(function(v){
     var pd=PRICES[v.code];
     if(!pd) return;
-    var ctL={'주광':'☀️ 주광색','전구':'🌙 전구색','주백':'🌤 주백색','-':'기본'};
-    h+='<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--bdr)">';
-    h+='<div style="font-size:12px;font-weight:700;margin-bottom:6px;color:var(--ink)">'+(ctL[v.ct]||v.ct||'-')+'</div>';
-    h+='<div style="font-size:10px;font-family:monospace;color:var(--A2);margin-bottom:6px">'+v.code+'</div>';
-    // 단가 목록
-    var grades=['20','21','22','23','24'];
-    grades.forEach(function(g){
-      var price=pd.p[g];
-      if(!price) return;
-      var isTarget=targetGrade===g;
-      h+='<div class="price-row">';
-      h+='<div class="price-grade">'+GRADE_NAMES[g]+(isTarget?'<span class="price-tag ptag-me">▶ 해당</span>':'')+'</div>';
-      h+='<div class="price-val'+(isTarget?' mine':'')+'">'+(price?price.toLocaleString()+'원':'—')+'</div>';
-      h+='</div>';
-    });
-    h+='</div>';
+    var key=['20','21','22','23','24'].map(function(k){ return pd.p[k]||'-'; }).join('/');
+    if(seen[key]===undefined){ seen[key]=groups.length; groups.push({pd:pd, codes:[v.code], enames:[v.ename]}); }
+    else { groups[seen[key]].codes.push(v.code); groups[seen[key]].enames.push(v.ename); }
   });
+  if(groups.length){
+    h += '<div style="font-size:10.5px;font-weight:800;color:var(--ink2);letter-spacing:.4px;margin-bottom:6px">💰 등급별 단가</div>';
+    groups.forEach(function(gr, i){
+      var rows = pmPriceTable(gr.pd, targetGrade);
+      if(!rows) return;
+      h += '<div style="'+(i>0?'margin-top:12px;padding-top:12px;border-top:1px solid var(--bdr)':'')+'">';
+      // 단가가 갈리는 예외 품목만 어떤 코드인지 밝혀줌
+      if(groups.length>1){
+        h += '<div style="font-size:11px;font-weight:700;color:var(--ink);margin-bottom:5px">'+(gr.enames[0]||'')+'</div>'
+          +  '<div style="font-size:9.5px;font-family:monospace;color:var(--A2);margin-bottom:5px">'+gr.codes.join(' · ')+'</div>';
+      }
+      h += rows + '</div>';
+    });
+  }
   if(!h) h='<div style="padding:16px;text-align:center;color:var(--ink3)">단가 정보 없음</div>';
   document.getElementById('priceList').innerHTML=h;
 }
@@ -5533,6 +5598,10 @@ document.getElementById('helpMod').addEventListener('click',function(e){ if(e.ta
 
 function getHelpHTML(){
   return '<div style="font-family:"Noto Sans KR",sans-serif;color:#1A1814">'
+  +'<div style="padding:14px 16px;background:#FFF6E5;border-bottom:1px solid #F0DCA0">'
+  +'<button onclick="closeHelp();setTimeout(function(){__tourIdx=-1;tourNext();},350)" style="width:100%;padding:12px;background:#FFB020;color:#3D2A00;border:none;border-radius:9px;font-size:13.5px;font-weight:800;font-family:\'Noto Sans KR\',sans-serif;cursor:pointer">👆 따라하기 다시보기</button>'
+  +'<div style="font-size:11px;color:#8A6D1A;text-align:center;margin-top:6px">화면을 짚어주며 발주 순서를 알려드려요</div>'
+  +'</div>'
   // 빠른시작
   +'<div style="background:#D4920A;padding:20px;color:#fff">'
   +'<div style="font-size:12px;font-weight:700;letter-spacing:1px;opacity:.8;margin-bottom:14px">⚡ 빠른 시작</div>'
@@ -5867,10 +5936,116 @@ function dClose(){
   document.getElementById('dov').classList.remove('show');
 }
 
+// ── 따라하기 투어 ──
+// 실제 화면 요소를 짚어주고, 그 요소를 누르면 다음 단계로 진행
+var TOUR_STEPS = [
+  { sel:'#tb-order', title:'품목 선택', desc:'여기서 품목을 고르고 수량을 담아요. 지금 눌러보세요.',
+    doTxt:'👆 품목선택 탭을 눌러보세요', advance:'click' },
+  { sel:'#srchInp', title:'품목 찾기', desc:'품명이나 별칭을 적으면 바로 찾아져요. 분류 버튼으로 골라도 돼요.',
+    doTxt:'👆 검색창을 눌러보세요', advance:'click' },
+  { sel:'#leftPanel', title:'품목 고르기', desc:'목록에서 품목을 누르면 오른쪽에 색온도·수량 칸이 열려요.',
+    doTxt:'👆 품목을 하나 눌러보세요', advance:'click' },
+  { sel:'#addBtn', title:'발주서에 담기', desc:'색온도와 수량(박스/개)을 정한 뒤 추가를 누르면 발주 목록에 쌓여요.',
+    doTxt:'👆 + 추가 버튼이에요', advance:'next' },
+  { sel:'#tb-cart', title:'발주목록 확인', desc:'담은 품목을 확인하고 수량을 고칠 수 있어요.',
+    doTxt:'👆 발주목록 탭을 눌러보세요', advance:'click' },
+  { sel:'#sendBtn', title:'발주서 전송', desc:'누르면 발주 내용이 자동 복사돼요. 카톡에 붙여넣기만 하면 끝!',
+    doTxt:'👆 여기가 마지막 단계예요', advance:'next' },
+  { sel:'#helpBtn', title:'언제든 다시 보기', desc:'설명서에서 자세한 사용법과 이 따라하기를 다시 볼 수 있어요.',
+    doTxt:'✅ 따라하기 끝! 이제 발주해보세요', advance:'next', last:true }
+];
+var __tourIdx=-1, __tourCleanup=null;
+
+function startTour(){
+  closeWelcome();
+  localStorage.setItem('jsTourDone','1');
+  setTimeout(function(){ __tourIdx=-1; tourNext(); }, 350);
+}
+function tourNext(){
+  __tourIdx++;
+  if(__tourIdx >= TOUR_STEPS.length){ endTour(); return; }
+  tourShow(TOUR_STEPS[__tourIdx]);
+}
+function endTour(){
+  if(__tourCleanup){ __tourCleanup(); __tourCleanup=null; }
+  var m=document.getElementById('tourMask');
+  if(m){ m.classList.remove('on'); m.innerHTML=''; }
+  __tourIdx=-1;
+}
+function tourShow(step){
+  var mask=document.getElementById('tourMask');
+  if(!mask) return;
+  var el=document.querySelector(step.sel);
+  // 요소가 없으면 (화면 상태에 따라) 건너뜀
+  if(!el || el.offsetParent===null && step.sel!=='#tb-order'){ tourNext(); return; }
+  if(__tourCleanup){ __tourCleanup(); __tourCleanup=null; }
+  mask.classList.add('on');
+  var r=el.getBoundingClientRect();
+  var pad=5;
+  var top=r.top-pad, left=r.left-pad, w=r.width+pad*2, hgt=r.height+pad*2;
+  // 대상만 뚫린 어둠(사각 4장) + 테두리
+  mask.innerHTML =
+     '<div class="tour-dim" style="top:0;left:0;right:0;height:'+Math.max(0,top)+'px"></div>'
+    +'<div class="tour-dim" style="top:'+(top+hgt)+'px;left:0;right:0;bottom:0"></div>'
+    +'<div class="tour-dim" style="top:'+top+'px;left:0;width:'+Math.max(0,left)+'px;height:'+hgt+'px"></div>'
+    +'<div class="tour-dim" style="top:'+top+'px;left:'+(left+w)+'px;right:0;height:'+hgt+'px"></div>'
+    +'<div class="tour-ring" style="top:'+top+'px;left:'+left+'px;width:'+w+'px;height:'+hgt+'px"></div>';
+  // 말풍선 위치 (대상 아래, 공간 없으면 위)
+  var tipTop = top+hgt+12, below=true;
+  if(tipTop > window.innerHeight-190){ below=false; }
+  var tip=document.createElement('div');
+  tip.className='tour-tip';
+  var isLast = !!step.last;
+  tip.innerHTML =
+     '<div class="tt-step">'+(__tourIdx+1)+' / '+TOUR_STEPS.length+'</div>'
+    +'<div class="tt-title">'+step.title+'</div>'
+    +'<div class="tt-desc">'+step.desc+'</div>'
+    +'<div class="tt-do">'+step.doTxt+'</div>'
+    +'<div class="tt-row">'
+      +'<button class="tt-btn" onclick="'+(isLast?'endTour()':'tourNext()')+'">'+(isLast?'시작하기':'다음')+'</button>'
+      +(isLast?'':'<button class="tt-skip" onclick="endTour()">그만보기</button>')
+    +'</div>';
+  mask.appendChild(tip);
+  var tw=Math.min(290, window.innerWidth-24);
+  var tipLeft=Math.min(Math.max(12, left+w/2-tw/2), window.innerWidth-tw-12);
+  tip.style.left=tipLeft+'px';
+  tip.style.width=tw+'px';
+  if(below) tip.style.top=tipTop+'px';
+  else tip.style.top=Math.max(12, top-tip.offsetHeight-12)+'px';
+  // 대상 클릭으로 진행하는 단계
+  if(step.advance==='click'){
+    var handler=function(){ setTimeout(tourNext, 260); };
+    el.addEventListener('click', handler, {once:true});
+    __tourCleanup=function(){ el.removeEventListener('click', handler); };
+  }
+}
+window.addEventListener('resize', function(){
+  if(__tourIdx>=0 && __tourIdx<TOUR_STEPS.length) tourShow(TOUR_STEPS[__tourIdx]);
+});
+
+var __welcomeTimer=null, __welcomeTick=null;
 function showWelcome(){
   document.getElementById('welcomeMod').style.display='flex';
+  // 5초 뒤 자동으로 닫힘 (남은 시간 표시)
+  var left=5;
+  var el=document.getElementById('welcomeCountdown');
+  if(el) el.textContent = left+'초 뒤 자동으로 닫힙니다';
+  clearInterval(__welcomeTick); clearTimeout(__welcomeTimer);
+  __welcomeTick=setInterval(function(){
+    left--;
+    if(el) el.textContent = left>0 ? (left+'초 뒤 자동으로 닫힙니다') : '';
+    if(left<=0) clearInterval(__welcomeTick);
+  },1000);
+  __welcomeTimer=setTimeout(function(){ closeWelcome(); },5000);
+}
+// 팝업 안에서 조작하면 자동 닫기 취소 (읽는 중에 닫히지 않게)
+function cancelWelcomeAuto(){
+  clearTimeout(__welcomeTimer); clearInterval(__welcomeTick);
+  var el=document.getElementById('welcomeCountdown');
+  if(el) el.textContent='';
 }
 function closeWelcome(){
+  clearTimeout(__welcomeTimer); clearInterval(__welcomeTick);
   var cb=document.getElementById('welcomeHideCb');
   if(cb && cb.checked){
     localStorage.setItem('jsWelcomeHide','1');
