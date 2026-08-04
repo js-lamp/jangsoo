@@ -1117,13 +1117,13 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
       <button onclick="closeParseMod()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--ink2);line-height:1">&#215;</button>
     </div>
     <div style="padding:10px 16px;font-size:11px;color:var(--ink2);background:var(--A3);border-bottom:1px solid var(--bdr)">
-      왼쪽에 발주 내용을 붙여넣고 <b>미리보기</b>를 누르면 오른쪽에 매칭 결과가 표시됩니다. 동일 품목군(예: 슬림샤인 엣지)은 위에 한 번만 적어도 됩니다. 빨간색은 왼쪽에서 수정하세요.
+      왼쪽에 발주 내용을 붙여넣고 <b>미리보기</b>를 누르면 오른쪽에 매칭 결과가 표시됩니다. 동일 품목군(예: 슬림샤인 엣지)은 위에 한 번만 적어도 됩니다. <b>왼쪽 줄을 탭하면 그 자리에서 바로 고칠 수 있어요.</b> 빨간색은 확인이 필요한 줄입니다.
     </div>
     <div class="parse-split">
       <!-- 왼쪽: 입력/수정 -->
       <div class="parse-left">
         <div class="parse-col-label" style="display:flex;align-items:center;justify-content:space-between;gap:6px">
-          <span style="flex:1">📝 발주 내용 (수정 가능)</span>
+          <span style="flex:1">📝 발주 원본 (수정 가능)</span>
           <button onclick="resetParse()" title="발주 내용 전체 지우기 (처음부터)" style="padding:5px 9px;background:#fff;color:#DC2626;border:1.5px solid #FCA5A5;border-radius:6px;font-size:11px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer;white-space:nowrap">🔄 새로고침</button>
           <button onclick="document.getElementById('ocrFile').click()" title="사진 파일 선택 · 또는 입력란에 Ctrl+V로 붙여넣기/드래그도 가능" style="padding:5px 10px;background:#0D9488;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer;white-space:nowrap">📷 사진에서 읽기</button>
           <input type="file" id="ocrFile" accept="image/*" style="display:none" onchange="ocrFromImage(this.files[0])">
@@ -1436,8 +1436,25 @@ var bcMap = {"8809025001809":{"code":"6201-0032","ename":"FL 20 SS D /18","gName
 G.forEach(function(g){ g.variants.forEach(function(v){ if(v.bc) bcMap[v.bc]={code:v.code,ename:v.ename,qty:v.qty,bc:v.bc,gName:g.name,alias:g.alias,sub:g.sub,cat:g.cat}; }); });
 var activeLedGrp='all';
 // 색온도 텍스트 통일 헬퍼
+// 색온도 값 정규화
+// 신규품목 시트 등에서 ct가 "4000K"/"6500K" 같은 K표기로 들어오는 경우가 있어
+// 표준 라벨(주광/주백/전구)로 바꿔준다. 이걸 안 하면 ctText가 "4000K"를 그대로 뱉는다.
+function ctNorm(ct){
+  var c = String(ct==null?'':ct).trim();
+  if(!c) return '-';
+  if(/^(주광|주백|전구|색변환|색구)/.test(c)) return c;
+  var k = c.match(/^(2700|3000|4000|5700|6500)\s*K$/i);
+  if(k){
+    var v = parseInt(k[1],10);
+    if(v===5700 || v===6500) return '주광';
+    if(v===4000) return '주백';
+    return '전구';           // 2700 / 3000
+  }
+  return c;
+}
 function ctText(ct, ename){
   var m={'주광':'주광','전구':'전구','주백':'주백'};
+  ct = ctNorm(ct);
   var base = m[ct]||ct;
   // K값을 앞 두 자리로 붙여 구분: 주광(57)/주광(65), 주백(40), 전구(30)/전구(27)
   if(m[ct] && ename){
@@ -1445,6 +1462,31 @@ function ctText(ct, ename){
     if(k) return base+'('+k[1].slice(0,2)+')';
   }
   return base;
+}
+// 품명 뒤에 붙일 색온도 표기를 만든다.
+// 품명에 이미 색온도(주백 / 주백(40) / 4000K)가 들어 있으면 빈 문자열을 돌려줘 중복을 막는다.
+// 예) "LED 엣지 센서등 (원형) 10인치 20W 4000K (CY)" + 주백 → 덧붙이지 않음
+function ctSuffix(dispName, ct, ename){
+  var n = String(dispName==null?'':dispName);
+  var out = '';
+  var c = ctNorm(ct);
+  if(c && c !== '-'){
+    var t = ctText(c, ename);
+    var km = t.match(/\((\d{2})\)$/);         // 주백(40) → "40"
+    var dup = (n.indexOf(t) >= 0)             // "주백(40)" 이미 있음
+           || (n.indexOf(c) >= 0)             // "주백" 이미 있음
+           || (km && new RegExp(km[1]+'00\\s*K','i').test(n));  // 품명에 "4000K" 있음
+    if(t && !dup) out += ' ' + t;
+  }
+  // 본체색(백색/흑색/핑크 등)도 붙여준다. 같은 품목군에 색이 여러 개인 경우
+  // 화면에서 어느 색이 잡혔는지 확인할 수 있어야 하기 때문.
+  // 품명에 이미 색이 들어 있으면(투광등 50W 백색 등) 중복이므로 생략.
+  var bc = poVariantColor(ename);
+  if(bc){
+    var raw = (String(ename||'').match(PO_BODY_COLORS.filter(function(x){return x.key===bc;})[0].data)||[bc])[0];
+    if(n.indexOf(raw) < 0 && n.indexOf(bc) < 0) out += ' ' + raw;
+  }
+  return out;
 }
 var cats = {};
 G.forEach(function(g){ if(!cats[g.cat]) cats[g.cat]={}; if(!cats[g.cat][g.sub]) cats[g.cat][g.sub]=[]; cats[g.cat][g.sub].push(g); });
@@ -1753,7 +1795,7 @@ function renderCart(){
   var h='';
   cart.forEach(function(it,i){
     h+='<div class="ci">';
-    var ciNm=(it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct, it.ename):'');
+    var ciNm=(it.gname||it.ename)+ctSuffix((it.gname||it.ename), it.ct, it.ename);
     if(typeof poCtBadge === 'function') ciNm = poCtBadge(ciNm);
     h+='<div class="ci-info"><div class="ci-name">'+ciNm+'</div><div class="ci-code">'+it.code+'</div></div>';
     h+='<div class="ci-ctrl">';
@@ -2190,7 +2232,7 @@ function voRenderItems(){
   }
   var h='';
   voOrder.items.forEach(function(it, i){
-    var pname = it.unconfirmed ? ('⚠ '+(it.rawText||it.ename)) : ((it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct, it.ename):''));
+    var pname = it.unconfirmed ? ('⚠ '+(it.rawText||it.ename)) : ((it.gname||it.ename)+ctSuffix((it.gname||it.ename), it.ct, it.ename));
     var color = it.unconfirmed ? '#DC2626' : '#fff';
     h += '<div style="background:rgba(255,255,255,.08);border-radius:9px;padding:10px;margin-bottom:6px;display:flex;align-items:center;gap:8px">';
     h += '<div style="flex:1"><div style="color:'+color+';font-size:13px;font-weight:600">'+pname+'</div>';
@@ -2431,7 +2473,7 @@ function buildMsg(items,store){
   items.forEach(function(it,i){
     var code=it.code+'          '.slice(0,Math.max(0,11-it.code.length));
     var dispName = (it.gname||it.ename);
-    if(it.ct && it.ct!=='-') dispName += ' '+ctText(it.ct, it.ename);
+    dispName += ctSuffix(dispName, it.ct, it.ename);
     // 품명이 길어도 자르지 않음 (뒤쪽 잘림 방지). 길면 수량을 다음 줄에 들여쓰기
     if(dispName.length > 16){
       msg += code + '  ' + dispName + '\n';
@@ -3780,12 +3822,24 @@ function poNorm(s){
   return String(s||'').replace(/["”″]/g,'인치').replace(/\(|\)/g,'').replace(/\s+/g,'').replace(/[·\.\-_\/]/g,'').toLowerCase();
 }
 // 색온도 추출
+// 품목명에 들어간 "전구"(색온도가 아님)를 가리는 정규식.
+// "볼전구/할로겐 전구/LED 전구/전구 벌브/크립톤 전구"는 제품 이름이지 색온도가 아니다.
+// 뒤에 "색"이 붙으면(전구색) 그건 진짜 색온도이므로 건드리지 않는다. (lookahead는 구형 안드로이드도 지원)
+var PO_BULB_NOUN_RE = /볼\s*전구(?!\s*색)|할로겐\s*전구(?!\s*색)|LED\s*전구(?!\s*색)|전구\s*벌브|크립톤\s*전구(?!\s*색)/gi;
 function poExtractCt(line){
-  // "볼전구"는 품목명(볼구)이므로 색온도 판단에서 제외 - "볼전구 주광색"이면 주광으로 읽혀야 함
-  line = String(line||'').replace(/볼\s*전구/g, ' ');
-  if(/전구|3000|웜|warm/i.test(line)) return '전구';
-  if(/주백|4000/i.test(line)) return '주백';
-  if(/주광|5700|6500|화이트|white|cw/i.test(line)) return '주광'; // 5700K·6500K 모두 주광 계열
+  var t = String(line||'').replace(PO_BULB_NOUN_RE, ' ');
+  // 1) "전구색/주백색/주광색"처럼 색까지 붙여 쓴 표기가 있으면 그게 정답.
+  //    ("LED 할로겐 전구 MR16 5W 등기구 주광색"이 전구로 잡히던 문제)
+  var m = t.match(/(전구|주백|주광)\s*색/);
+  if(m) return m[1];
+  // 2) K값
+  if(/2700|3000/.test(t)) return '전구';
+  if(/4000/.test(t)) return '주백';
+  if(/5700|6500/.test(t)) return '주광';
+  // 3) 색온도 단어만 적힌 경우
+  if(/전구|웜|warm/i.test(t)) return '전구';
+  if(/주백/.test(t)) return '주백';
+  if(/주광|화이트|white|cw/i.test(t)) return '주광';
   return null;
 }
 // 발주 줄에서 색온도 K값 추출 (5700/6500 구분용). 없으면 기본 5700
@@ -3796,26 +3850,59 @@ function poExtractKelvin(line){
 }
 // 품목(g)에서 색온도(ct)와 K값을 고려해 정확한 variant(코드) 선택
 // 규칙: 주광인데 5700K/6500K variant가 둘 다 있으면 → 발주에 6500 있으면 6500K, 아니면 5700K(기본)
+// ── 본체색(바디컬러) 어휘 ──
+// ask = 발주서에 적히는 표현 / data = ERP 품목명(ename)에 적힌 표현
+// 데이터가 백색·흑색(투광등/트랙등)과 블랙·화이트(스탠드)를 섞어 쓰므로 둘 다 같은 키로 묶는다
+var PO_BODY_COLORS = [
+  { key:'백색',   ask:/백색|화이트|흰\s*색|white/i,            data:/백색|화이트/ },
+  { key:'흑색',   ask:/흑색|블랙|검(?:정|은)|black/i,          data:/흑색|블랙/ },
+  { key:'그레이', ask:/그레이|회\s*색|gr[ae]y/i,               data:/그레이/ },
+  { key:'핑크',   ask:/핑크|분홍|pink/i,                       data:/핑크/ },
+  { key:'옐로우', ask:/옐로우|노(?:랑|란)\s*색?|yellow/i,      data:/옐로우/ },
+  { key:'골드',   ask:/골드|금\s*색|gold/i,                    data:/골드/ },
+  { key:'우드',   ask:/우드|나무|wood/i,                       data:/우드/ },
+  { key:'실버',   ask:/실버|은\s*색|silver/i,                  data:/실버/ },
+  { key:'브라운', ask:/브라운|갈\s*색|brown/i,                 data:/브라운/ }
+];
+// 색온도 표현(주백색/주광색/전구색)은 색상 판정에서 먼저 지운다.
+// "주백색"에 "백색"이 들어 있어 블랙 발주가 백색으로 잡히는 오류가 있었음.
+// (구형 안드로이드가 lookbehind를 지원하지 않아 마스킹 방식을 쓴다)
+function poStripCtWords(s){
+  return String(s==null?'':s).replace(/주\s*백\s*색?|주\s*광\s*색?|전\s*구\s*색?|색\s*변\s*환|색\s*온\s*도/g, ' ');
+}
+// ERP 품목명에서 본체색 읽기
+function poVariantColor(ename){
+  var en = poStripCtWords(ename);
+  for(var i=0;i<PO_BODY_COLORS.length;i++){ if(PO_BODY_COLORS[i].data.test(en)) return PO_BODY_COLORS[i].key; }
+  return null;
+}
+// 발주 줄에서 원하는 본체색 읽기
+function poWantColor(line){
+  var s = poStripCtWords(line);
+  for(var i=0;i<PO_BODY_COLORS.length;i++){ if(PO_BODY_COLORS[i].ask.test(s)) return PO_BODY_COLORS[i].key; }
+  return null;
+}
 function poPickVariant(g, ct, line){
   if(!g || !g.variants || !g.variants.length) return null;
   // 1) ct(주광/주백/전구)로 후보 좁히기
   var cands = ct ? g.variants.filter(function(x){return x.ct===ct;}) : g.variants.slice();
   if(!cands.length) cands = g.variants.slice();
   if(cands.length === 1) return cands[0];
-  // 2) 본체색(백색/흑색) 구분 - 발주에 흑색/블랙이면 흑색, 백색/화이트면 백색
-  //    데이터에 백색/흑색 variant가 둘 다 있을 때만 적용
-  var hasBodyColor = cands.some(function(v){ return /백색|흑색/.test(v.ename||''); });
-  if(hasBodyColor){
-    var wantBlack = /흑색|블랙|black/i.test(line);
-    var wantWhite = /백색|화이트|white/i.test(line);
-    if(wantBlack){
-      var blk = cands.filter(function(v){ return /흑색/.test(v.ename||''); });
-      if(blk.length) cands = blk;
-    } else if(wantWhite){
-      var wht = cands.filter(function(v){ return /백색/.test(v.ename||''); });
-      if(wht.length) cands = wht;
+  // 2) 본체색 구분 — 후보 안에서 색이 실제로 갈릴 때만 적용한다.
+  //    (예전엔 백색/흑색만 봐서 스탠드의 화이트/블랙·핑크·그레이·옐로우를 구분 못 했음)
+  var colSet = {}, nCol = 0;
+  cands.forEach(function(v){
+    var k = poVariantColor(v.ename);
+    if(k && !colSet[k]){ colSet[k] = 1; nCol++; }
+  });
+  if(nCol > 1){
+    var want = poWantColor(line);
+    var picked = want ? cands.filter(function(v){ return poVariantColor(v.ename) === want; }) : [];
+    if(picked.length){
+      cands = picked;
     } else {
-      // 명시 없으면 백색 기본
+      // 색을 안 적었으면 예전과 똑같이 '백색' 표기 제품을 기본으로 (트랙등·T10 Air 등).
+      // 스탠드처럼 데이터가 '화이트/블랙'으로 쓰인 품목은 손대지 않아 기존 선택이 유지된다.
       var whtDef = cands.filter(function(v){ return /백색/.test(v.ename||''); });
       if(whtDef.length) cands = whtDef;
     }
@@ -3937,21 +4024,49 @@ function userKwScore(gName, line){
   return hits;                // 고유 단어는 기존대로
 }
 // 사이즈 표기 정규화 (1280→1285 등 자주 틀리는 치수)
+// 데이터(품명+ERP품명)에 실제 존재하는 평판 사이즈 집합 (한 번만 만들어 캐싱)
+// "180 640"처럼 짧은 변을 먼저 적어도 데이터 방향(640*180)으로 맞추기 위해 사용
+var __sizeSet = null;
+function poBuildSizeSet(){
+  if(__sizeSet) return __sizeSet;
+  var set = {};
+  if(typeof G !== 'undefined'){
+    G.forEach(function(g){
+      var t = (g.name||'') + ' ' + (g.alias||'') + ' ' + g.variants.map(function(v){ return v.ename||''; }).join(' ');
+      var re = /(\d{3,4})\s*[*xX×]\s*(\d{3,4})/g, m;
+      while((m = re.exec(t))){
+        set[m[1]+'*'+m[2]] = 1;
+        // 1285 계열은 발주서에서 1280으로도 적히므로 별칭도 등록
+        if(m[1] === '1285') set['1280*'+m[2]] = 1;
+        if(m[2] === '1285') set[m[1]+'*1280'] = 1;
+      }
+    });
+  }
+  __sizeSet = set;
+  return set;
+}
 function poNormSize(s){
   var r = s;
   // 띄어쓰기/하이픈으로 된 사이즈(예: "1285 320", "640-640")를 별표로 통일
-  // 조건: 두 숫자가 각각 3~4자리 (사이즈 범위). 와트(2자리)나 수량과 구분됨
-  r = r.replace(/\b(\d{3,4})\s+(\d{3,4})\b/g, function(m, a, b){
-    // 흔한 사이즈 조합만 (앞 숫자가 400~1400 범위)
-    var na = parseInt(a);
-    if(na >= 400 && na <= 1400) return a + '*' + b;
+  // 두 숫자 중 하나라도 평판 사이즈 범위(400~1400)면 사이즈로 본다
+  // (예전엔 앞 숫자만 봐서 "180 640"처럼 짧은 변을 먼저 쓰면 인식 못 했음)
+  r = r.replace(/\b(\d{3,4})[\s\-](\d{3,4})\b/g, function(m, a, b){
+    var na = parseInt(a), nb = parseInt(b);
+    if((na >= 400 && na <= 1400) || (nb >= 400 && nb <= 1400)) return a + '*' + b;
     return m;
   });
-  return r.replace(/1280\s*[*xX×]\s*320/g,'1285*320')
-          .replace(/1280\s*[*xX×]\s*180/g,'1285*180')
-          .replace(/1280\s*[*xX×]\s*230/g,'1285*230')
-          .replace(/960\s*[*xX×]\s*180/g,'960*180')
-          .replace(/(\d+)\s*[*xX×]\s*(\d+)/g,'$1*$2'); // 공백 제거 통일
+  r = r.replace(/(\d+)\s*[*xX×]\s*(\d+)/g,'$1*$2'); // 공백 제거 통일
+  // 짧은 변을 먼저 적은 경우 데이터 방향으로 뒤집기 (예: 180*640 → 640*180)
+  var set = poBuildSizeSet();
+  r = r.replace(/\b(\d{3,4})\*(\d{3,4})\b/g, function(m, a, b){
+    if(set[a+'*'+b]) return m;          // 그대로 데이터에 있음
+    if(set[b+'*'+a]) return b+'*'+a;    // 뒤집으면 데이터에 있음
+    return m;
+  });
+  return r.replace(/1280\s*\*\s*320/g,'1285*320')
+          .replace(/1280\s*\*\s*180/g,'1285*180')
+          .replace(/1280\s*\*\s*230/g,'1285*230')
+          .replace(/960\s*\*\s*180/g,'960*180');
 }
 // 데이터(품명+ERP품명)의 괄호 안에 등장하는 단어 집합 (한 번만 생성해 캐싱)
 var __parenWordSet = null;
@@ -4037,6 +4152,9 @@ function poApplySynonyms(s){
   // 설치구분 표기 통일: M바/엠바 → M-bar, T바/티바 → T-bar (데이터는 M-bar/T-bar 표기)
   r = r.replace(/(?:엠|M|m)\s*-?\s*(?:바|BAR|Bar|bar)/g, 'M-bar');
   r = r.replace(/(?:티|T|t)\s*-?\s*(?:바|BAR|Bar|bar)/g, 'T-bar');
+  // 한글 약칭 통일: "파30/파 30/빠30" → PAR30, "엠알16" → MR16 (발주서에 한글로 적는 경우)
+  r = r.replace(/[파빠]\s*(20|30|38)\b/g, 'PAR$1');
+  r = r.replace(/엠\s*알\s*(16)?/g, function(m, n){ return 'MR' + (n||''); });
   // 모델코드와 와트가 붙어 온 경우 분리 (예: G808W → G80 8W, PAR3015W → PAR30 15W)
   r = r.replace(/\b((?:g|par|mr|ar)\s*\d{2,3})(\d{1,3}\s*w)\b/gi, '$1 $2');
   // ── 발주서 괄호 처리: 괄호 안에서 참고 단어(대체/호환)는 빼고, 데이터에 있는 의미 단어만 살림 ──
@@ -4446,7 +4564,9 @@ function poHasProduct(line){
   if(/\d{3,4}\s*[*xX×]\s*\d{3,4}/.test(line)) return true;
   // 형광등·램프 코드류 (FHF/FL/FPL/PL/EL/CFL, SS EX-D, 삼파장 등) - 와트 표기 없이 오는 경우
   if(/\bf?hf\b|\bf?pl\s*\d|\bfpl\b|\bfl\b|\bpl\s*\d|\bcfl\b|\bel\b|ss\s*ex|ssex|ex-?[dl]|삼파장|형광/i.test(line)) return true;
-  return /\d+\s*[wW]|\d+\s*(?:와트|웟트|웟)|인치|["”″]|등|램프|장갑|크립톤|투광|다운|평판|벌브|볼구|볼\s*전구|mr|par|t5|t8|t10|촛대|볼구|스틱|매장|인지|방등|거실|주방|스탠드|실링|트랙|엣지|샤인|슬림|모듈|센서|직부|원형|사각|펜던트/i.test(line);
+  // 한글로 적은 PAR 약칭(파30/빠30)도 품목으로 인정
+  if(/[파빠]\s*(20|30|38)\b/.test(line)) return true;
+  return /\d+\s*[wW]|\d+\s*(?:와트|웟트|웟)|인치|["”″]|등|램프|장갑|크립톤|투광|다운|평판|벌브|볼구|볼\s*전구|mr|par|t5|t8|t10|촛대|볼구|스틱|매장|인지|방등|거실|주방|스탠드|실링|트랙|엣지|샤인|슬림|모듈|센서|직부|원형|사각|펜던트|확산|집중/i.test(line);
 }
 // 배송/연락처/헤더 등 무시할 줄
 function poIsJunk(line){
@@ -4534,16 +4654,21 @@ function poIsPhone(line){
 // 품목군 헤더 후보 (이름만 있고 사이즈/수량 없는 줄)
 function poIsGroupHeader(line){
   var t=line.trim();
-  // 품목군 키워드는 있는데 사이즈(1285*320)·와트·수량(개/박스)이 없는 줄
-  var hasSize = /\d{3,4}\s*[*xX×]\s*\d{3,4}/.test(t);
-  var hasWatt = /\d+\s*[wW]/.test(t);
+  // ★ 사이즈·와트 판정은 정규화된 텍스트로 해야 한다.
+  //   "슬림샤인 640 640 6500K 30"처럼 별표 없이 적으면 원문엔 사이즈가 없어 보여
+  //   줄 전체가 헤더로 삼켜지고 품목이 하나도 안 잡히는 문제가 있었음
+  var nt=poApplySynonyms(t);
+  var hasSize = /\d{3,4}\s*[*xX×]\s*\d{3,4}/.test(nt);
+  var hasWatt = /\d+\s*[wW]/.test(nt);
   var hasQty = /\d+\s*(박스|개|ea|EA)/.test(t);
-  var hasGroupWord = /슬림\s*샤인|평판\s*샤인|엣지평판|평판|샤인|엣지/.test(poApplySynonyms(t));
+  // 색온도(주광/6500K 등) 뒤에 끝자리 숫자가 오면 그건 수량이 적힌 구체 발주줄
+  var hasCtQty = /(주광|주백|전구|색변환|\d{4}\s*K)[^0-9]*\d+\s*$/i.test(t);
+  var hasGroupWord = /슬림\s*샤인|평판\s*샤인|엣지평판|평판|샤인|엣지/.test(nt);
   // "8인치", "10인치" 등 인치 크기만 있는 짧은 줄도 헤더로 인식
   var isInchOnly = /^\s*\d+\s*인치\s*$/.test(t);
   // 세부 타입(직부/센서/원형/사각 등)이 있으면 구체 품목이므로 헤더 아님
   var hasDetailType = /직부|센서|원형|사각|펜던트|다운|매입|투광|스탠드|실링|트랙|벌브|모듈|볼구|촛대|스틱/.test(t);
-  return (hasGroupWord || isInchOnly) && !hasSize && !hasWatt && !hasQty && !hasDetailType;
+  return (hasGroupWord || isInchOnly) && !hasSize && !hasWatt && !hasQty && !hasCtQty && !hasDetailType;
 }
 function poMergeBlocks(text){
   var rawLines = text.split('\n').map(function(l){return l.trim();}).filter(Boolean);
@@ -4813,7 +4938,7 @@ function parsePreview(reparse){
   // 열별 값 미리 계산
   var colMeta = [];
   items.forEach(function(it, idx){
-    var pname = it.unconfirmed ? (it.rawText||it.ename) : ((it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct, it.ename):''));
+    var pname = it.unconfirmed ? (it.rawText||it.ename) : ((it.gname||it.ename)+ctSuffix((it.gname||it.ename), it.ct, it.ename));
     var cnt = pvCounts(it);
     colMeta.push({idx:idx, it:it, pname:pname, code:(it.unconfirmed?'?':it.code), each:cnt.each, box:cnt.box, raw:(it.rawText||it.ename||''), orig:(it.origText||it.rawText||it.ename||'')});
   });
@@ -4873,7 +4998,7 @@ function parsePreview(reparse){
     code: items.map(function(it){ return it.unconfirmed ? '' : it.code; }),
     name: items.map(function(it){
       if(it.unconfirmed) return (it.rawText||it.ename||'');
-      return (it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct, it.ename):'');
+      return (it.gname||it.ename)+ctSuffix((it.gname||it.ename), it.ct, it.ename);
     }),
     each: items.map(function(it){
       var boxQty = (typeof QTY_MAP !== 'undefined' && QTY_MAP[it.code]) ? QTY_MAP[it.code] : 1;
@@ -4893,8 +5018,15 @@ function poCtBadge(s){
   var t = String(s==null?'':s);
   // HTML 이스케이프 (원문에 <, & 가 있어도 깨지지 않게)
   t = t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  // "볼전구"는 품목명이므로 색온도 배지 대상에서 제외 (임시 치환으로 보호)
-  t = t.replace(/볼\s*전구/g, '\u0001');
+  // "볼전구/할로겐 전구/LED 전구/전구 벌브"는 품목명이므로 색온도 배지 대상에서 제외 (임시 치환으로 보호)
+  var __kept = [];
+  t = t.replace(PO_BULB_NOUN_RE, function(m){ __kept.push(m); return '\u0001'; });
+  // 같은 색온도 단어가 연달아 두 번 나오면 하나로 합친다.
+  // 예전 버전이 만든 발주서에 "무드 센서라이트 전구 전구"처럼 중복이 남아 있어서,
+  // 그 텍스트를 그대로 붙여넣으면 배지가 두 개로 보이던 문제.
+  t = t.replace(/(주광|주백|전구)(색)?(\(\d{2}\))?(\s+)\1(색)?(\(\d{2}\))?(?=\s|$)/g, function(m, w, sfx, k){
+    return w + (sfx||'') + (k||'');
+  });
   var base = 'display:inline-block;padding:1px 5px;border-radius:4px;font-weight:700;font-size:11px;line-height:1.5;-webkit-print-color-adjust:exact;print-color-adjust:exact;border:1px solid ';
   // 주광색 / 주광 / 주광(57) → 파란색
   t = t.replace(/주광색|주광(?:\(\d{2}\))?/g, function(m){
@@ -4908,7 +5040,8 @@ function poCtBadge(s){
   t = t.replace(/주백색|주백(?:\(\d{2}\))?/g, function(m){
     return '<span style="'+base+'#E7E5E4;background:#FAFAF9;color:#78716C">'+m+'</span>';
   });
-  t = t.replace(/\u0001/g, '볼전구');
+  var __ki = 0;
+  t = t.replace(/\u0001/g, function(){ return __kept[__ki++] || '볼전구'; });
   return t;
 }
 
@@ -4928,31 +5061,26 @@ function renderLeftAligned(colMeta){
     if(ta) ta.style.display = '';
     return;
   }
-  // textarea 숨기고 줄맞춤 영역 표시 (원본 열 + 수정 열)
+  // textarea 숨기고 줄맞춤 영역 표시 (발주 원본 한 열, 탭하면 그 자리에서 수정)
   if(ta) ta.style.display = 'none';
   leftBox.style.display = 'block';
   leftBox.style.paddingTop = '0';
-  var h = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;position:sticky;top:0;z-index:6">';
-  h += '<div style="background:#6B7280;color:#fff;font-size:10px;font-weight:700;padding:7px 6px;text-align:center;border-radius:6px 0 0 0">📄 발주 원본 (고정)</div>';
-  h += '<div style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 6px;text-align:center;border-radius:0 6px 0 0">✏️ 발주 내용 (탭하여 수정)</div>';
+  var h = '<div style="position:sticky;top:0;z-index:6">';
+  h += '<div style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 6px;text-align:center;border-radius:6px 6px 0 0">✏️ 발주 원본 (탭하여 수정)</div>';
   h += '</div>';
   h += '<div id="pvLeftRows" style="border:1px solid var(--bdr);border-top:none;border-radius:0 0 6px 6px;overflow:hidden">';
   colMeta.forEach(function(m, ri){
     var it = m.it;
     var stripe = (ri % 2 === 1) ? '#FAFAFA' : '#fff';
-    var bg = it.unconfirmed?'#FEF2F2':(it.ambiguous?'#FFF7ED':stripe);
-    var cl = it.unconfirmed?'#DC2626':(it.ambiguous?'#C2410C':'var(--ink)');
-    var origVal = m.orig || m.raw || '';
-    var rawVal = m.raw || '';
-    h += '<div class="pvleftpair" data-pvrow="'+ri+'" style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:'+(ri>0?'1px solid var(--bdr)':'none')+'">'
-      // 원본 셀 (고정, 회색 글씨, 수정 불가)
-      + '<div style="padding:8px 6px;background:#F9FAFB;color:#6B7280;font-size:12px;line-height:1.3;display:flex;align-items:center;border-right:1px solid var(--bdr);user-select:text;word-break:keep-all;overflow-wrap:anywhere">'+origVal+'</div>'
-      // 수정 가능 셀
-      + '<div class="pvleftrow" data-pvrow="'+ri+'" onclick="editLeftRow('+ri+')" style="padding:8px 6px;background:'+bg+';color:'+cl+';font-size:13px;line-height:1.3;cursor:pointer;display:flex;align-items:center;flex-wrap:wrap;gap:2px;word-break:keep-all;overflow-wrap:anywhere" title="탭하여 수정">'+poCtBadge(rawVal)+'</div>'
+    var bg = it.unconfirmed?'#FEF2F2':(it.ambiguous?'#FFF7ED':(it.codeMismatch?'#FEFCE8':stripe));
+    var cl = it.unconfirmed?'#DC2626':(it.ambiguous?'#C2410C':(it.codeMismatch?'#854D0E':'var(--ink)'));
+    var rawVal = m.raw || m.orig || '';
+    h += '<div class="pvleftpair" data-pvrow="'+ri+'" style="border-top:'+(ri>0?'1px solid var(--bdr)':'none')+'">'
+      + '<div class="pvleftrow" data-pvrow="'+ri+'" onclick="editLeftRow('+ri+')" style="padding:8px 8px;background:'+bg+';color:'+cl+';font-size:13px;line-height:1.35;cursor:pointer;display:flex;align-items:center;flex-wrap:wrap;gap:2px;word-break:keep-all;overflow-wrap:anywhere;min-height:100%;box-sizing:border-box" title="탭하여 수정">'+poCtBadge(rawVal)+'</div>'
       + '</div>';
   });
   h += '</div>';
-  h += '<div style="font-size:10px;color:var(--ink3);padding:6px 2px;text-align:center">✏️ 오른쪽 칸(발주 내용)을 탭하면 그 줄만 수정 · 왼쪽 원본은 고정 · <button onclick="backToTextarea()" style="background:none;border:none;color:var(--B,#2855A0);font-size:10px;font-weight:700;cursor:pointer;text-decoration:underline;padding:0">전체 텍스트로 편집</button></div>';
+  h += '<div style="font-size:10px;color:var(--ink3);padding:6px 2px;text-align:center">✏️ 줄을 탭하면 그 자리에서 수정할 수 있어요 · <button onclick="backToTextarea()" style="background:none;border:none;color:var(--B,#2855A0);font-size:10px;font-weight:700;cursor:pointer;text-decoration:underline;padding:0">전체 텍스트로 편집</button></div>';
   leftBox.innerHTML = h;
   // 좌우 행 높이 동기화
   setTimeout(function(){ syncRowHeights(); }, 20);
@@ -5062,7 +5190,7 @@ function applyLeftRowEdit(ri, newVal){
     parsedItems.forEach(function(it, i){ if(origSnapshot[i]) it.origText = origSnapshot[i]; });
     // 화면 다시 그려 원본 반영
     var colMeta = parsedItems.map(function(it, idx){
-      var pname = it.unconfirmed ? (it.rawText||it.ename) : ((it.gname||it.ename)+(it.ct&&it.ct!=='-'?' '+ctText(it.ct, it.ename):''));
+      var pname = it.unconfirmed ? (it.rawText||it.ename) : ((it.gname||it.ename)+ctSuffix((it.gname||it.ename), it.ct, it.ename));
       return {idx:idx, it:it, orig:(it.origText||it.rawText||''), raw:(it.rawText||it.ename||'')};
     });
     renderLeftAligned(colMeta);
@@ -5458,7 +5586,7 @@ function kwTestRun(){
       } else if(it.unconfirmed){
         h += '<div style="padding:4px 0;color:#DC2626">⚠ 미매칭: '+(it.rawText||it.ename)+'</div>';
       } else {
-        h += '<div style="padding:4px 0;color:#059669">✓ '+it.code+' '+it.gname+(it.ct&&it.ct!=='-'?' '+ctText(it.ct, it.ename):'')+'</div>';
+        h += '<div style="padding:4px 0;color:#059669">✓ '+it.code+' '+it.gname+ctSuffix(it.gname, it.ct, it.ename)+'</div>';
       }
     });
     box.innerHTML = h;
@@ -6254,7 +6382,7 @@ function dBuildMsg(items, store, aLine, method, memo){
   items.forEach(function(it,i){
     var code=it.code;
     var dispName2 = (it.gname||it.ename);
-    if(it.ct && it.ct!=='-') dispName2 += ' '+ctText(it.ct, it.ename);
+    dispName2 += ctSuffix(dispName2, it.ct, it.ename);
     // 품명 전체 표시 (제한 없음 - 줄 바꿔서라도 다 보이게)
     msg+=code+'  '+dispName2+'  /  '+it.qty+it.unit+'\n';
   });
@@ -6322,7 +6450,7 @@ function renderMiniCart() {
   cart.forEach(function(it, i) {
     // gname(앱 품명) + 색온도 사용, CSS ellipsis로 자동 자름
     var nm = (it.gname || it.ename);
-    if(it.ct && it.ct!=='-') nm += ' ' + ctText(it.ct, it.ename);
+    nm += ctSuffix(nm, it.ct, it.ename);
     h += '<div class="mini-ci">' +
       '<div class="mini-ci-name">' + nm + '</div>' +
       '<div class="mini-ci-qty">' + it.qty + it.unit + '</div>' +
@@ -6407,7 +6535,7 @@ function mergeNewItems(){
     var exists = G.some(function(g){ return g.variants.some(function(v){ return v.code===code; }); });
     if(exists) return;
     var box = parseInt(it.box) || 1;
-    var ct = (it.ct||'-').trim() || '-';
+    var ct = ctNorm((it.ct||'-').trim());
     var cat = (it.cat||'신규').trim() || '신규';
     var sub = (it.sub||'신규품목').trim() || '신규품목';
     QTY_MAP[code] = box;
@@ -7259,7 +7387,7 @@ function invRender(company) {
     var itemVat = Math.round(amount2 * 0.1);
     var itemTotal = amount2 + itemVat;
     totalSupply2 += amount2;
-    var pname = (it.gname || it.ename) + (it.ct && it.ct!=='-' ? ' '+ctText(it.ct, it.ename) : '');
+    var pname = (it.gname || it.ename) + ctSuffix((it.gname || it.ename), it.ct, it.ename);
     // 색온도 색상 배지 적용본 (화면 표시용). 엑셀/카톡 등 텍스트에는 pname 그대로 사용
     var pnameH = (typeof poCtBadge === 'function') ? poCtBadge(pname) : pname;
 
@@ -7485,7 +7613,7 @@ function invBuildExcel() {
       var qtyEach = it.unit === '박스' ? it.qty*boxQty : it.qty;
       var amount = unitPrice * qtyEach;
       var vat = Math.round(amount*0.1);
-      var pname = (it.gname||it.ename) + (it.ct&&it.ct!=='-' ? ' '+ctText(it.ct, it.ename) : '');
+      var pname = (it.gname||it.ename) + ctSuffix((it.gname||it.ename), it.ct, it.ename);
       if(invUnlocked){
         totalSupply += amount;
         aoa.push([idx+1, it.code, pname, qtyEach, unitPrice||'', amount||'', vat||'', (amount+vat)||'']);
