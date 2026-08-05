@@ -384,10 +384,19 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 .parse-split{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
 @media(min-width:560px){.parse-split{flex-direction:row}}
 .parse-left{flex:1;display:flex;flex-direction:column;min-height:0;border-bottom:2px solid var(--bdr)}
-@media(min-width:560px){.parse-left{border-bottom:none;border-right:2px solid var(--bdr)}}
+@media(min-width:560px){.parse-left{border-bottom:none}}
 @media(min-width:900px){.parse-left{flex:0 0 560px}.parse-right{flex:1}}
 @media(min-width:1280px){.parse-left{flex:0 0 760px}}
 @media(min-width:1600px){.parse-left{flex:0 0 880px}}
+/* 좌우 폭 조절 손잡이 (넓은 화면에서만) */
+.parse-splitter{display:none}
+@media(min-width:900px){
+  .parse-splitter{display:flex;align-items:center;justify-content:center;flex:0 0 10px;
+    cursor:col-resize;background:var(--bdr);position:relative;user-select:none;touch-action:none}
+  .parse-splitter:hover,.parse-splitter.dragging{background:var(--B,#2855A0)}
+  .parse-splitter::after{content:'';width:2px;height:34px;background:rgba(255,255,255,.85);border-radius:2px}
+  .parse-splitter:hover::after,.parse-splitter.dragging::after{background:#fff}
+}
 .parse-right{flex:1;display:flex;flex-direction:column;min-height:0;background:var(--sur2)}
 .parse-col-label{flex-shrink:0;padding:8px 12px;font-size:11px;font-weight:700;color:var(--ink2);background:var(--A3);border-bottom:1px solid var(--bdr);min-height:42px;display:flex;align-items:center;box-sizing:border-box}
 .parse-ta{width:100%;flex:1;padding:12px;font-size:13px;font-family:monospace;border:none;outline:none;resize:none;color:var(--ink);background:#fff;min-height:120px}
@@ -402,12 +411,16 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 .pp-qty{font-size:11px;font-weight:700;color:var(--B,#2855A0)}
 .parse-foot{flex-shrink:0;padding:0;border-top:1px solid var(--bdr);display:flex;gap:0}
 .parse-foot-left{display:flex;gap:8px;flex:1;padding:10px 12px 16px;box-sizing:border-box}
-.parse-foot-right{display:flex;flex:1;padding:10px 12px 16px;box-sizing:border-box}
+.parse-foot-mid{display:none}
+.parse-foot-right{display:flex;gap:8px;flex:1;padding:10px 12px 16px;box-sizing:border-box}
 @media(min-width:900px){
-  /* 왼쪽 발주내용 칸(520px + 오른쪽 테두리 2px)과 정확히 같은 폭 */
-  .parse-foot-left{flex:0 0 522px;border-right:2px solid var(--bdr)}
+  /* 왼쪽 발주 원본 칸과 정확히 같은 폭 (스플리터 드래그 시 JS가 함께 조절) */
+  .parse-foot-left{flex:0 0 560px}
+  .parse-foot-mid{display:block;flex:0 0 10px;background:var(--bdr)}
   .parse-foot-right{flex:1}
 }
+@media(min-width:1280px){.parse-foot-left{flex:0 0 760px}}
+@media(min-width:1600px){.parse-foot-left{flex:0 0 880px}}
 .parse-btn{flex:1;padding:12px;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer}
 .parse-btn.primary{background:var(--A);color:#fff}
 .parse-btn.secondary{background:var(--sur2);color:var(--ink2);border:1px solid var(--bdr)}
@@ -1117,7 +1130,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
       <button onclick="closeParseMod()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--ink2);line-height:1">&#215;</button>
     </div>
     <div style="padding:10px 16px;font-size:11px;color:var(--ink2);background:var(--A3);border-bottom:1px solid var(--bdr)">
-      왼쪽에 발주 내용을 붙여넣고 <b>미리보기</b>를 누르면 오른쪽에 매칭 결과가 표시됩니다. 동일 품목군(예: 슬림샤인 엣지)은 위에 한 번만 적어도 됩니다. <b>왼쪽 줄을 탭하면 그 자리에서 바로 고칠 수 있어요.</b> 빨간색은 확인이 필요한 줄입니다.
+      왼쪽에 발주 내용을 붙여넣고 <b>미리보기</b>를 누르면 오른쪽에 매칭 결과가 표시됩니다. 동일 품목군(예: 슬림샤인 엣지)은 위에 한 번만 적어도 됩니다. <b>왼쪽 줄을 탭하면 그 자리에서 바로 고칠 수 있어요.</b> 빨간색은 확인이 필요한 줄, 보라색 🔁는 같은 코드가 여러 줄에 있다는 표시입니다. 가운데 회색 선을 좌우로 끌면 칸 넓이를 바꿀 수 있어요(두 번 누르면 기본값).
     </div>
     <div class="parse-split">
       <!-- 왼쪽: 입력/수정 -->
@@ -1134,6 +1147,8 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
         <button id="kwFromSelBtn" onclick="openKwFromSelection()" style="display:none;flex-shrink:0;margin:0 8px 0;padding:9px;background:#7C3AED;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer">🧠 선택한 "<span id="kwSelPreview"></span>" 키워드로 학습</button>
       </div>
       <!-- 오른쪽: 미리보기 -->
+      <!-- 좌우 폭 조절 손잡이 -->
+      <div class="parse-splitter" id="parseSplitter" title="좌우로 끌어서 칸 넓이 조절 · 두 번 누르면 기본값"></div>
       <div class="parse-right">
         <div class="parse-col-label" style="display:flex;align-items:center;gap:8px">
           <span style="white-space:nowrap">👀 매칭 미리보기</span>
@@ -1146,11 +1161,13 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
     </div>
     <div class="parse-foot">
       <div class="parse-foot-left">
-        <button class="parse-btn secondary" onclick="closeParseMod()" style="flex:1">취소</button>
-        <button class="parse-preview-btn" onclick="window.__parseTextMode=false; parsePreview(true)" style="flex:1;margin:0">🔍 미리보기 (매칭 확인)</button>
+        <button class="parse-btn secondary" onclick="parseGoBack()" style="flex:1">← 뒤로가기</button>
+        <button class="parse-btn secondary" onclick="closeParseMod()" style="flex:1">✕ 닫기</button>
       </div>
+      <div class="parse-foot-mid"></div>
       <div class="parse-foot-right">
-        <button class="parse-btn primary" onclick="parseOrder()" style="width:100%">📋 명세서 만들기</button>
+        <button class="parse-preview-btn" onclick="window.__parseTextMode=false; parsePreview(true)" style="flex:1;margin:0">🔍 미리보기 (매칭 확인)</button>
+        <button class="parse-btn primary" onclick="parseOrder()" style="flex:1">📋 명세서 만들기</button>
       </div>
     </div>
   </div>
@@ -2468,22 +2485,15 @@ function goFavSub(cat,sub){
 // ── 발주 메시지 ──
 function buildMsg(items,store){
   var d=new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric'});
-  var line='\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500';
-  var msg='[장수램프 발주]\n대리점: '+(store||'미입력')+'\n날짜: '+d+'\n'+line+'\n';
-  items.forEach(function(it,i){
-    var code=it.code+'          '.slice(0,Math.max(0,11-it.code.length));
+  // dBuildMsg와 같은 간결 양식 (배송방법 없이)
+  var msg=(store||'미입력')+' / '+d+'\n';
+  items.forEach(function(it){
     var dispName = (it.gname||it.ename);
     dispName += ctSuffix(dispName, it.ct, it.ename);
-    // 품명이 길어도 자르지 않음 (뒤쪽 잘림 방지). 길면 수량을 다음 줄에 들여쓰기
-    if(dispName.length > 16){
-      msg += code + '  ' + dispName + '\n';
-      msg += '             └ ' + it.qty + it.unit + '\n';
-    } else {
-      msg += code + '  ' + dispName + '  /  ' + it.qty + it.unit + '\n';
-    }
+    msg += it.code + '  ' + dispName + '  /  ' + it.qty + it.unit + '\n';
   });
-  msg+=line+'\n총 '+items.length+'개 품목';
-  return msg;
+  if(items.length>1) msg+='총 '+items.length+'개 품목';
+  return msg.replace(/\n+$/,'');
 }
 
 // ── 전송 ──
@@ -3636,9 +3646,114 @@ function openParseMod(){
   window.__parseTextMode = false;
   document.getElementById('parseMod').classList.add('open');
   bindParsePasteDrop();
+  bindParseSplitter();
+  bindParseScrollSync();
+  parseRestoreLeftWidth();
 }
+// ── 좌우 스크롤 동기화 ──
+// 왼쪽(발주 원본)과 오른쪽(매칭 결과)은 서로 다른 스크롤 영역이라 따로 움직였다.
+// 줄 높이는 syncRowHeights로 맞춰져 있으므로, 스크롤 위치만 맞추면 같은 줄이 나란히 보인다.
+function bindParseScrollSync(){
+  var L = document.getElementById('parseLeftAligned');
+  var R = document.getElementById('parsePreviewList');
+  if(!L || !R || L.__syncBound) return;
+  L.__syncBound = true;
+  var lock = false;
+  function mirror(from, to){
+    return function(){
+      if(lock) return;
+      lock = true;
+      // 헤더 높이가 서로 달라 단순 복사보다 비율이 안전
+      var fMax = from.scrollHeight - from.clientHeight;
+      var tMax = to.scrollHeight - to.clientHeight;
+      if(fMax > 0 && tMax > 0){
+        to.scrollTop = Math.round(from.scrollTop / fMax * tMax);
+      } else {
+        to.scrollTop = from.scrollTop;
+      }
+      requestAnimationFrame(function(){ lock = false; });
+    };
+  }
+  L.addEventListener('scroll', mirror(L, R), {passive:true});
+  R.addEventListener('scroll', mirror(R, L), {passive:true});
+}
+
 function closeParseMod(){
   document.getElementById('parseMod').classList.remove('open');
+}
+// 뒤로가기: 줄맞춤(미리보기) 상태면 전체 텍스트 편집으로 돌아가고,
+// 이미 텍스트 편집 중이면 모달을 닫는다.
+function parseGoBack(){
+  var leftBox = document.getElementById('parseLeftAligned');
+  var shown = leftBox && leftBox.style.display !== 'none' && leftBox.innerHTML.trim() !== '';
+  if(shown && typeof backToTextarea === 'function'){ backToTextarea(); return; }
+  closeParseMod();
+}
+
+// ── 좌우 폭 조절 (스플리터) ──
+var PARSE_LEFT_MIN = 320, PARSE_LEFT_MAX_GAP = 300; // 오른쪽에 최소 300px 남김
+function parseSetLeftWidth(px, save){
+  var split = document.querySelector('.parse-split');
+  var left  = document.querySelector('.parse-left');
+  var foot  = document.querySelector('.parse-foot-left');
+  if(!split || !left) return;
+  if(window.innerWidth < 900) return;             // 좁은 화면은 위아래 배치라 해당 없음
+  var total = split.clientWidth || 0;
+  var max = Math.max(PARSE_LEFT_MIN, total - PARSE_LEFT_MAX_GAP);
+  px = Math.max(PARSE_LEFT_MIN, Math.min(px, max));
+  left.style.flex = '0 0 ' + px + 'px';
+  if(foot) foot.style.flex = '0 0 ' + px + 'px';   // 하단 버튼 경계도 같이 맞춤
+  if(save){ try{ localStorage.setItem('jsParseLeftW', String(px)); }catch(e){} }
+  if(typeof syncRowHeights === 'function') setTimeout(syncRowHeights, 30);
+}
+function parseResetLeftWidth(){
+  try{ localStorage.removeItem('jsParseLeftW'); }catch(e){}
+  var left = document.querySelector('.parse-left');
+  var foot = document.querySelector('.parse-foot-left');
+  if(left) left.style.flex = '';
+  if(foot) foot.style.flex = '';
+  if(typeof syncRowHeights === 'function') setTimeout(syncRowHeights, 30);
+}
+function parseRestoreLeftWidth(){
+  if(window.innerWidth < 900) return;
+  var v = null;
+  try{ v = localStorage.getItem('jsParseLeftW'); }catch(e){}
+  if(v && !isNaN(+v)) parseSetLeftWidth(+v, false);
+}
+function bindParseSplitter(){
+  var sp = document.getElementById('parseSplitter');
+  if(!sp || sp.__bound) return;
+  sp.__bound = true;
+  var dragging = false;
+  function xOf(e){ return (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX; }
+  function start(e){
+    if(window.innerWidth < 900) return;
+    dragging = true; sp.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    e.preventDefault();
+  }
+  function move(e){
+    if(!dragging) return;
+    var split = document.querySelector('.parse-split');
+    if(!split) return;
+    var rect = split.getBoundingClientRect();
+    parseSetLeftWidth(Math.round(xOf(e) - rect.left), false);
+    e.preventDefault();
+  }
+  function end(){
+    if(!dragging) return;
+    dragging = false; sp.classList.remove('dragging');
+    document.body.style.cursor = '';
+    var left = document.querySelector('.parse-left');
+    if(left) parseSetLeftWidth(left.getBoundingClientRect().width, true);
+  }
+  sp.addEventListener('mousedown', start);
+  sp.addEventListener('touchstart', start, {passive:false});
+  document.addEventListener('mousemove', move);
+  document.addEventListener('touchmove', move, {passive:false});
+  document.addEventListener('mouseup', end);
+  document.addEventListener('touchend', end);
+  sp.addEventListener('dblclick', parseResetLeftWidth);   // 두 번 누르면 기본 폭
 }
 // 발주 변환 초기화 (새로고침): 입력·미리보기·상태 모두 비움
 function resetParse(){
@@ -4570,6 +4685,7 @@ function poHasProduct(line){
 }
 // 배송/연락처/헤더 등 무시할 줄
 function poIsJunk(line){
+  if(poIsOrderMeta(line)) return true;
   return /^\[|대리점|날짜|배송|요청사항|총\s*\d+\s*품목|구분|━|─|=====/.test(line)
     || /\d{2,4}-\d{3,4}-\d{4}/.test(line)   // 전화번호
     || /부탁|지점|\^\^|감사|드립니다/.test(line);
@@ -4670,10 +4786,33 @@ function poIsGroupHeader(line){
   var hasDetailType = /직부|센서|원형|사각|펜던트|다운|매입|투광|스탠드|실링|트랙|벌브|모듈|볼구|촛대|스틱/.test(t);
   return (hasGroupWord || isInchOnly) && !hasSize && !hasWatt && !hasQty && !hasCtQty && !hasDetailType;
 }
+// 발주서 머리말(대리점/날짜/배송방법/배송지/요청사항/주소) 판정.
+// 새 간결 양식은 "대리점:" 같은 라벨이 없어서, 상호나 주소에 '등·조명'이 들어가면
+// poHasProduct가 true가 되어 품목으로 오인된다. 그래서 poHasProduct보다 먼저,
+// 무조건 걸러내는 전용 판정을 둔다.
+function poIsOrderMeta(line){
+  var t = String(line||'').trim();
+  // "바른생활라이팅 / 8월 4일 / 택배 (비대부)" 형태의 첫 줄
+  if(/^[^\n\/]{1,40}\/\s*\d{1,2}\s*월\s*\d{1,2}\s*일/.test(t)) return true;
+  // [배송지] [요청사항] [배송방법] 라벨 줄
+  if(/^\[(배송지|요청사항|배송방법|장수램프)/.test(t)) return true;
+  // 주소 줄 (시/도 + 로·길·동 + 번지)
+  if(/(특별시|광역시|특별자치[시도]|[가-힣]{2,}\s*시\s|[가-힣]{2,}\s*도\s)/.test(t)
+     && /(로|길|동|읍|면|리)\s*\d|\d+\s*(번지|층|호)/.test(t)) return true;
+  return false;
+}
 function poMergeBlocks(text){
   var rawLines = text.split('\n').map(function(l){return l.trim();}).filter(Boolean);
-  var blocks=[], cur='', groupHeader='';
+  var blocks=[], cur='', groupHeader='', skipNext=false;
   rawLines.forEach(function(line){
+    // 발주서 머리말은 품목 신호가 있어도 무조건 제외
+    if(poIsOrderMeta(line)){
+      if(cur){blocks.push(cur);cur='';}
+      // [배송지] 바로 다음 줄은 주소이므로 함께 건너뜀
+      skipNext = /^\[배송지/.test(line);
+      return;
+    }
+    if(skipNext){ skipNext=false; if(!poExtractCode(line)){ if(cur){blocks.push(cur);cur='';} return; } }
     // 브랜드 표기만 있는 줄(예: "장수램프", "(주)장수조명")은 구분용이므로 무시
     var noBrand = line.replace(/(\(?\s*주\s*\)?\s*)?장수(?!\s*장갑)\s*(램프|조명|전구|전기|산업)?/g,' ').replace(/\s+/g,' ').trim();
     if(!noBrand) { if(cur){blocks.push(cur);cur='';} return; }
@@ -4913,7 +5052,8 @@ function parsePreview(reparse){
     statsEl.innerHTML = '<span style="font-size:11px">'+totTxt+' · ✓ 매칭 '+okCnt+'개'
       + (ambigCnt?' · <span style="color:#EA580C;font-weight:700">🔀 선택필요 '+ambigCnt+'개</span>':'')
       + (mismCnt?' · <span style="color:#A16207;font-weight:700">⚠ 코드확인 '+mismCnt+'개</span>':'')
-      + (failCnt?' · <span style="color:#DC2626;font-weight:700">⚠ 확인필요 '+failCnt+'개</span>':'')+'</span>';
+      + (failCnt?' · <span style="color:#DC2626;font-weight:700">⚠ 확인필요 '+failCnt+'개</span>':'')
+      + (dupKinds?' · <span style="color:#7C3AED;font-weight:700">🔁 중복 '+dupKinds+'종</span>':'')+'</span>';
   }
   var h = '';
   // 미리보기 수량: 박스면 개수로 변환 (명세서와 동일)
@@ -4940,17 +5080,34 @@ function parsePreview(reparse){
   items.forEach(function(it, idx){
     var pname = it.unconfirmed ? (it.rawText||it.ename) : ((it.gname||it.ename)+ctSuffix((it.gname||it.ename), it.ct, it.ename));
     var cnt = pvCounts(it);
-    colMeta.push({idx:idx, it:it, pname:pname, code:(it.unconfirmed?'?':it.code), each:cnt.each, box:cnt.box, raw:(it.rawText||it.ename||''), orig:(it.origText||it.rawText||it.ename||'')});
+    var bq0 = (typeof QTY_MAP !== 'undefined' && QTY_MAP[it.code]) ? QTY_MAP[it.code] : 1;
+    colMeta.push({idx:idx, it:it, pname:pname, code:(it.unconfirmed?'?':it.code), each:cnt.each, box:cnt.box, bq:bq0, raw:(it.rawText||it.ename||''), orig:(it.origText||it.rawText||it.ename||'')});
   });
+  // ── 같은 코드가 두 번 이상 나오면 중복 표시 ──
+  // (대리점이 같은 품목을 여러 줄에 나눠 적는 경우가 있어 명세서 만들기 전에 눈에 띄어야 함)
+  var dupCount = {}, dupSeen = {};
+  colMeta.forEach(function(m){
+    if(!m.it.unconfirmed && m.code && m.code !== '?') dupCount[m.code] = (dupCount[m.code]||0) + 1;
+  });
+  colMeta.forEach(function(m){
+    var n = dupCount[m.code] || 0;
+    if(n > 1){
+      dupSeen[m.code] = (dupSeen[m.code]||0) + 1;
+      m.dupTotal = n;          // 이 코드가 모두 몇 번 나왔는지
+      m.dupNo = dupSeen[m.code]; // 그중 몇 번째인지
+    }
+  });
+  var dupKinds = Object.keys(dupCount).filter(function(k){ return dupCount[k] > 1; }).length;
 
-  // 발주원문 열은 제거 (왼쪽 발주내용과 줄 맞춤으로 대체). 코드/품명/개수/박스 4열
-  var gridCols = '15% 1fr 14% 14%';
+  // No. / 코드 / 품명 / 개수 / 박스 5열 (왼쪽 발주 원본과 줄 맞춤)
+  var gridCols = '38px 16% 1fr 13% 13%';
 
   // CSS Grid (행 높이 자동 정렬)
   h += '<div id="pvGrid" style="display:grid;grid-template-columns:'+gridCols+';border:1px solid var(--bdr);border-radius:8px;font-size:12px">';
   // 헤더 (스크롤해도 상단 고정)
   var hdSt = 'position:sticky;top:0;z-index:5;background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 4px;text-align:center;cursor:pointer;user-select:none';
-  h += '<div onclick="copyColumn(\'code\')" style="'+hdSt+';white-space:nowrap;border-radius:7px 0 0 0">코드 📋</div>';
+  h += '<div style="'+hdSt+';white-space:nowrap;border-radius:7px 0 0 0;cursor:default">No.</div>';
+  h += '<div onclick="copyColumn(\'code\')" style="'+hdSt+';white-space:nowrap;border-left:1px solid rgba(255,255,255,.15)">코드 📋</div>';
   h += '<div onclick="copyColumn(\'name\')" style="'+hdSt+';border-left:1px solid rgba(255,255,255,.15)">품명 📋</div>';
   h += '<div onclick="copyColumn(\'each\')" style="'+hdSt+';white-space:nowrap;border-left:1px solid rgba(255,255,255,.15)">개수 📋</div>';
   h += '<div onclick="copyColumn(\'box\')" style="'+hdSt+';white-space:nowrap;border-left:1px solid rgba(255,255,255,.15);border-radius:0 7px 0 0">박스 📋</div>';
@@ -4962,13 +5119,16 @@ function parsePreview(reparse){
     var codeCl = it.unconfirmed?'#DC2626':(it.ambiguous?'#EA580C':(it.codeMismatch?'#A16207':'var(--A2)'));
     var nameCl = it.unconfirmed?'#DC2626':(it.ambiguous?'#C2410C':(it.codeMismatch?'#854D0E':'var(--ink)'));
     var qtyCl = it.unconfirmed?'#1A1814':(it.ambiguous?'#EA580C':'var(--B,#2855A0)');
+    // No. 셀
+    h += '<div class="pvrow" data-pvrow="'+ri+'" style="padding:8px 2px;border-top:1px solid var(--bdr);background:'+bg+';color:var(--ink3);font-size:11px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;user-select:none">'+(ri+1)+'</div>';
     // 코드 셀 (행 식별용 data-pvrow)
-    h += '<div class="pvrow" data-pvrow="'+ri+'" style="padding:8px 4px;border-top:1px solid var(--bdr);background:'+bg+';color:'+codeCl+';font-family:monospace;font-size:10px;text-align:center;white-space:nowrap;display:flex;align-items:center;justify-content:center;user-select:text;-webkit-user-select:text">'+m.code+'</div>';
+    h += '<div class="pvrow" data-pvrow="'+ri+'" style="padding:8px 4px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:'+codeCl+';font-family:monospace;font-size:12.5px;font-weight:700;letter-spacing:-.2px;text-align:center;white-space:nowrap;display:flex;align-items:center;justify-content:center;user-select:text;-webkit-user-select:text">'+m.code+'</div>';
     // 품명 셀 (버튼 포함)
     var pre = it.unconfirmed?'⚠ ':(it.codeMismatch?'⚠ ':'');
     var suf = '';
     if(it.unknownCode) suf = ' <span style="font-size:9px;font-weight:700;color:#DC2626;background:#FEE2E2;border-radius:3px;padding:1px 4px;white-space:nowrap">코드 미등록</span>';
     else if(it.codeMismatch) suf = ' <span style="font-size:9px;font-weight:700;color:#A16207;background:#FEF9C3;border-radius:3px;padding:1px 4px;white-space:nowrap">발주코드 '+it.orderCode+' 없음</span>';
+    if(m.dupTotal) suf += ' <span style="font-size:9px;font-weight:700;color:#fff;background:#7C3AED;border-radius:3px;padding:1px 5px;white-space:nowrap" title="같은 코드가 '+m.dupTotal+'줄에 있습니다">🔁 중복 '+m.dupNo+'/'+m.dupTotal+'</span>';
     var btn = '';
     if(it.unconfirmed){
       var rawEsc = (it.rawText||it.ename||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
@@ -4983,8 +5143,10 @@ function parsePreview(reparse){
     h += '<div class="pvrow" data-pvrow="'+ri+'" style="padding:8px 6px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:'+nameCl+';font-size:12px;font-weight:600;display:flex;align-items:center;line-height:1.3;user-select:text;-webkit-user-select:text"><span>'+pre+poCtBadge(m.pname)+suf+btn+'</span></div>';
     // 개수 셀
     h += '<div class="pvrow" data-pvrow="'+ri+'" style="padding:8px 4px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:'+qtyCl+';font-size:11px;font-weight:700;text-align:center;white-space:nowrap;display:flex;align-items:center;justify-content:center;user-select:text;-webkit-user-select:text">'+(m.each!==''?m.each+'개':'')+'</div>';
-    // 박스 셀
-    h += '<div class="pvrow" data-pvrow="'+ri+'" style="padding:8px 4px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:#888;font-size:11px;font-weight:600;text-align:center;white-space:nowrap;display:flex;align-items:center;justify-content:center;user-select:text;-webkit-user-select:text">'+(m.box!==''?m.box+'박스':'')+'</div>';
+    // 박스 셀 (박스당 입수를 함께 보여줘 환산 근거를 눈으로 확인할 수 있게)
+    var bqTxt = '';
+    if(m.box!=='' && m.bq>1) bqTxt = '<br><span style="font-size:9px;color:#AAA;font-weight:500">×'+m.bq+'개</span>';
+    h += '<div class="pvrow" data-pvrow="'+ri+'" title="'+(m.bq>1?'박스당 '+m.bq+'개':'')+'" style="padding:8px 4px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:#888;font-size:11px;font-weight:600;text-align:center;white-space:nowrap;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.2;user-select:text;-webkit-user-select:text">'+(m.box!==''?m.box+'박스'+bqTxt:'')+'</div>';
   });
   h += '</div>'; // grid 끝
   h += '<div style="font-size:10px;color:var(--ink3);padding:6px 4px 2px;text-align:center;line-height:1.5">💡 열 제목의 📋을 누르면 그 열 전체가 복사됩니다 · 왼쪽 발주 줄을 탭하면 수정할 수 있어요</div>';
@@ -5065,8 +5227,10 @@ function renderLeftAligned(colMeta){
   if(ta) ta.style.display = 'none';
   leftBox.style.display = 'block';
   leftBox.style.paddingTop = '0';
-  var h = '<div style="position:sticky;top:0;z-index:6">';
-  h += '<div style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 6px;text-align:center;border-radius:6px 6px 0 0">✏️ 발주 원본 (탭하여 수정)</div>';
+  var LEFT_COLS = '38px 1fr';
+  var h = '<div style="display:grid;grid-template-columns:'+LEFT_COLS+';position:sticky;top:0;z-index:6">';
+  h += '<div style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 2px;text-align:center;border-radius:6px 0 0 0">No.</div>';
+  h += '<div style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 6px;text-align:center;border-radius:0 6px 0 0;border-left:1px solid rgba(255,255,255,.15)">✏️ 발주 원본 (탭하여 수정)</div>';
   h += '</div>';
   h += '<div id="pvLeftRows" style="border:1px solid var(--bdr);border-top:none;border-radius:0 0 6px 6px;overflow:hidden">';
   colMeta.forEach(function(m, ri){
@@ -5075,8 +5239,10 @@ function renderLeftAligned(colMeta){
     var bg = it.unconfirmed?'#FEF2F2':(it.ambiguous?'#FFF7ED':(it.codeMismatch?'#FEFCE8':stripe));
     var cl = it.unconfirmed?'#DC2626':(it.ambiguous?'#C2410C':(it.codeMismatch?'#854D0E':'var(--ink)'));
     var rawVal = m.raw || m.orig || '';
-    h += '<div class="pvleftpair" data-pvrow="'+ri+'" style="border-top:'+(ri>0?'1px solid var(--bdr)':'none')+'">'
-      + '<div class="pvleftrow" data-pvrow="'+ri+'" onclick="editLeftRow('+ri+')" style="padding:8px 8px;background:'+bg+';color:'+cl+';font-size:13px;line-height:1.35;cursor:pointer;display:flex;align-items:center;flex-wrap:wrap;gap:2px;word-break:keep-all;overflow-wrap:anywhere;min-height:100%;box-sizing:border-box" title="탭하여 수정">'+poCtBadge(rawVal)+'</div>'
+    var dupMark = m.dupTotal ? ' <span style="font-size:9px;font-weight:700;color:#fff;background:#7C3AED;border-radius:3px;padding:1px 5px;white-space:nowrap">🔁'+m.dupNo+'/'+m.dupTotal+'</span>' : '';
+    h += '<div class="pvleftpair" data-pvrow="'+ri+'" style="display:grid;grid-template-columns:'+LEFT_COLS+';border-top:'+(ri>0?'1px solid var(--bdr)':'none')+'">'
+      + '<div style="padding:8px 2px;background:#F9FAFB;color:var(--ink3);font-size:11px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--bdr);user-select:none">'+(ri+1)+'</div>'
+      + '<div class="pvleftrow" data-pvrow="'+ri+'" onclick="editLeftRow('+ri+')" style="padding:8px 8px;background:'+bg+';color:'+cl+';font-size:13px;line-height:1.35;cursor:pointer;display:flex;align-items:center;flex-wrap:wrap;gap:2px;word-break:keep-all;overflow-wrap:anywhere;min-height:100%;box-sizing:border-box" title="탭하여 수정">'+poCtBadge(rawVal)+dupMark+'</div>'
       + '</div>';
   });
   h += '</div>';
@@ -5091,18 +5257,27 @@ function syncRowHeights(){
   var leftPairs = document.querySelectorAll('#pvLeftRows .pvleftpair');
   var grid = document.getElementById('pvGrid');
   if(!grid || !leftPairs.length) return;
-  // 오른쪽 grid 각 행 높이 측정
-  var rightCells = {};
+  // 1) 높이 지정을 모두 풀고 자연 높이로 되돌린다
+  leftPairs.forEach(function(lp){ lp.style.height = 'auto'; });
+  var cells = {};
   grid.querySelectorAll('.pvrow').forEach(function(el){
+    el.style.minHeight = '';
     var idx = el.getAttribute('data-pvrow');
-    var hgt = el.offsetHeight;
-    if(!rightCells[idx] || hgt > rightCells[idx]) rightCells[idx] = hgt;
+    (cells[idx] = cells[idx] || []).push(el);
   });
+  // 2) 오른쪽 각 행의 자연 높이 측정
+  var rightH = {};
+  Object.keys(cells).forEach(function(idx){
+    var h = 0;
+    cells[idx].forEach(function(el){ if(el.offsetHeight > h) h = el.offsetHeight; });
+    rightH[idx] = h;
+  });
+  // 3) 좌우 중 큰 값으로 양쪽 다 맞춘다 (예전엔 왼쪽만 늘려서 오른쪽이 짧으면 줄이 어긋났음)
   leftPairs.forEach(function(lp){
     var idx = lp.getAttribute('data-pvrow');
-    lp.style.height = 'auto';
-    var need = Math.max(lp.offsetHeight, rightCells[idx]||0);
+    var need = Math.max(lp.offsetHeight, rightH[idx] || 0);
     lp.style.height = need + 'px';
+    (cells[idx] || []).forEach(function(el){ el.style.minHeight = need + 'px'; });
   });
 }
 
@@ -6373,21 +6548,18 @@ function dConfirm(){
 
 function dBuildMsg(items, store, aLine, method, memo){
   var d=new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric'});
-  var ln='──────────────';
-  var msg='[장수램프 발주]\n대리점: '+(store||'미입력')+'\n날짜: '+d+'\n'+ln+'\n';
-  msg+='[배송방법] '+method+'\n';
+  // 간결 양식: 첫 줄에 대리점 / 날짜 / 배송방법을 한 번에
+  var msg=(store||'미입력')+' / '+d+(method?' / '+method:'')+'\n';
   if(aLine) msg+='[배송지] '+aLine+'\n';
   if(memo) msg+='[요청사항] '+memo+'\n';
-  msg+=ln+'\n';
-  items.forEach(function(it,i){
-    var code=it.code;
+  items.forEach(function(it){
     var dispName2 = (it.gname||it.ename);
     dispName2 += ctSuffix(dispName2, it.ct, it.ename);
-    // 품명 전체 표시 (제한 없음 - 줄 바꿔서라도 다 보이게)
-    msg+=code+'  '+dispName2+'  /  '+it.qty+it.unit+'\n';
+    msg+=it.code+'  '+dispName2+'  /  '+it.qty+it.unit+'\n';
   });
-  msg+=ln+'\n총 '+items.length+'개 품목';
-  return msg;
+  // 품목이 2개 이상일 때만 합계 줄
+  if(items.length>1) msg+='총 '+items.length+'개 품목';
+  return msg.replace(/\n+$/,'');
 }
 
 
