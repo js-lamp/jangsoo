@@ -238,6 +238,17 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 .stk{font-size:9px;font-weight:700;cursor:pointer}.stk:active{opacity:.7}
 .stk-hi{color:#0369A1}.stk-ok{color:#16A34A}.stk-lo{color:#F97316}.stk-cr{color:#DC2626}
 .shop-lnk{font-size:9px;cursor:pointer;color:var(--A2);opacity:.75;background:none;border:none;padding:0;font-weight:600}
+/* PC에서는 품목 목록 글자를 키워 읽기 쉽게 */
+@media(min-width:900px){
+  .pi{padding:10px 12px}
+  .pn{font-size:15px;line-height:1.45}
+  /* 아래칸(분류·색온도·☆)은 기존 사이즈 유지 — 줄 높이가 늘어나지 않게 */
+  /* 🔗이미지는 윗줄로 옮겼으므로 여기만 키움 (윗줄 높이는 .pn이 결정 → 줄 높이 불변) */
+  .pn-right .shop-lnk{font-size:12px;opacity:.9}
+}
+@media(min-width:1400px){
+  .pn{font-size:16px}
+}
 .btn-row{display:flex;gap:6px;margin:8px 11px 0}
 .addbtn2{flex:1;padding:11px;background:var(--A);color:#fff;font-size:13px;font-weight:700;font-family:'Noto Sans KR',sans-serif;border:none;border-radius:var(--r2);cursor:pointer}
 .addbtn2:disabled{opacity:.35;cursor:not-allowed}
@@ -374,11 +385,27 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 .parsebox{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:640px;height:90vh;display:flex;flex-direction:column;overflow:hidden}
 @media(min-width:900px){
   .parsemod{align-items:center}
-  .parsebox{max-width:1150px;height:88vh;border-radius:16px}
+  .parsebox{max-width:1400px;height:88vh;border-radius:16px}
 }
 /* PC 넓은 화면: 모달을 더 넓게 → 왼쪽 발주내용 칸 2줄 넘어감 방지 */
-@media(min-width:1280px){ .parsebox{max-width:1400px;height:90vh} }
-@media(min-width:1600px){ .parsebox{max-width:1560px} }
+@media(min-width:1280px){ .parsebox{max-width:96vw;height:92vh} }
+@media(min-width:1600px){ .parsebox{max-width:96vw} }
+@media(min-width:1900px){ .parsebox{max-width:1860px} }
+/* 관리자 체크 모달 — 상단(제목·요약·필터)이 잘리지 않도록 고정 */
+#admMod{align-items:center;overflow-y:auto;padding:6px 0}
+#admMod .parsebox{height:auto;min-height:50vh;max-height:92vh;max-width:1400px;margin:auto}
+#admMod .parse-hd{position:sticky;top:0;z-index:8;flex-shrink:0;display:flex;align-items:center;gap:8px;
+  padding:12px 16px;background:var(--ink);color:#fff;font-size:15px;font-weight:700;border-radius:16px 16px 0 0}
+@media(max-width:1023px){ #admMod .parse-hd{border-radius:0} }
+.adm-fix{flex-shrink:0;background:#fff}
+.admchip{padding:5px 10px;font-size:11px;border:1px solid var(--bdr);border-radius:14px;background:#fff;color:var(--ink2);cursor:pointer;font-family:'Noto Sans KR',sans-serif;white-space:nowrap;line-height:1.2}
+.admchip:hover{border-color:var(--ink3)}
+.admchip.on{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:700}
+.admchip.sub.on{background:var(--A);border-color:var(--A)}
+.adm-q{width:118px;padding:6px 9px;font-size:12px;border:1px solid var(--bdr);border-radius:7px;font-family:'Noto Sans KR',sans-serif;outline:none;transition:width .18s ease}
+.adm-q:focus{width:270px;border-color:var(--A)}
+.adm-btn{padding:6px 10px;border:none;border-radius:7px;font-size:12px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;white-space:nowrap}
+.adm-div{width:1px;height:18px;background:var(--bdr);margin:0 2px}
 .parsehd{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:13px 16px;border-bottom:1px solid var(--bdr)}
 .parsehd-t{font-size:15px;font-weight:700;flex:1}
 .parse-split{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
@@ -518,6 +545,10 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
   <button onclick="changeFontSize(1)" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:14px;cursor:pointer;padding:2px 5px;display:flex;flex-direction:column;align-items:center;gap:1px" title="글자 크게">
     <span style="font-size:16px;font-weight:700">A+</span>
     <span style="font-size:7px;opacity:.7">크게</span>
+  </button>
+  <button id="admBtn" onclick="openAdmMod()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:14px;cursor:pointer;padding:2px 4px;display:flex;flex-direction:column;align-items:center;gap:1px">
+    <span>📊</span>
+    <span style="font-size:8px;opacity:.8">관리자체크</span>
   </button>
   <button id="helpBtn" onclick="openHelp()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:14px;cursor:pointer;padding:2px 4px;display:flex;flex-direction:column;align-items:center;gap:1px">
     <span>❓</span>
@@ -962,6 +993,49 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
       </div>
     </div>
     <div class="dfoot"><button class="dconfirm" onclick="dConfirm()">&#10003; 이 정보로 발주 전송</button></div>
+  </div>
+</div>
+
+<!-- 관리자 재고 현황 모달 -->
+<div class="parsemod" id="admMod">
+  <div class="parsebox" style="max-width:1200px">
+    <div class="parse-hd">
+      <span style="flex:1">📊 관리자 체크 · 재고 현황</span>
+      <button onclick="closeAdmMod()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:0 4px">&times;</button>
+    </div>
+
+    <!-- 비밀번호 -->
+    <div id="admPinWrap" style="padding:34px 20px;text-align:center">
+      <div style="font-size:13px;color:var(--ink2);margin-bottom:14px">관리자 비밀번호를 입력하세요</div>
+      <input id="admPin" type="password" inputmode="numeric" maxlength="4" placeholder="••••"
+        style="width:150px;padding:12px;font-size:20px;text-align:center;letter-spacing:8px;border:1.5px solid var(--bdr);border-radius:10px;outline:none;font-family:'Noto Sans KR',sans-serif" />
+      <div id="admPinErr" style="min-height:18px;font-size:12px;color:var(--R);margin-top:8px"></div>
+      <button onclick="admCheckPin()" style="padding:11px 26px;background:var(--ink);color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer">확인</button>
+    </div>
+
+    <!-- 본문 -->
+    <div id="admBody" style="display:none;flex:1;min-height:0;flex-direction:column">
+      <!-- 요약 (항상 고정) -->
+      <div id="admSummary" class="adm-fix" style="padding:9px 14px;background:#FFFBEB;border-bottom:1px solid var(--bdr);font-size:12px"></div>
+      <!-- 필터 1줄: 대분류 + 정렬 + 검색 (항상 고정) -->
+      <div class="adm-fix" style="padding:8px 12px;border-bottom:1px solid var(--bdr);display:flex;gap:5px;flex-wrap:wrap;align-items:center">
+        <span id="admCatChips" style="display:flex;gap:4px;flex-wrap:wrap"></span>
+        <input id="admQ" class="adm-q" oninput="admRender()" type="text" placeholder="🔍 품명·코드" />
+        <span class="adm-div"></span>
+        <span id="admSortChips" style="display:flex;gap:4px;flex-wrap:wrap"></span>
+        <label style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer;white-space:nowrap;margin-left:auto">
+          <input id="admLow" type="checkbox" onchange="admRender()" style="cursor:pointer" /> 부족만
+        </label>
+        <button class="adm-btn" onclick="admCopy()" style="background:var(--ink);color:#fff">📋 복사</button>
+        <button class="adm-btn" onclick="closeAdmMod()" style="background:#F3F4F6;color:var(--ink2);border:1px solid var(--bdr)">✕ 닫기</button>
+      </div>
+      <!-- 필터 2줄: 전체 품목군 (항상 고정) -->
+      <div id="admSubChips" class="adm-fix" style="padding:7px 12px;border-bottom:1px solid var(--bdr);display:flex;gap:4px;flex-wrap:wrap;max-height:92px;overflow-y:auto"></div>
+      <!-- 값 보관 (칩이 세팅) -->
+      <input type="hidden" id="admCat" value="" /><input type="hidden" id="admSub" value="" /><input type="hidden" id="admSort" value="rate" />
+      <!-- 목록 -->
+      <div id="admList" style="flex:1;min-height:0;overflow-y:auto;padding:8px 10px"></div>
+    </div>
   </div>
 </div>
 
@@ -1659,13 +1733,13 @@ function renderLeft(filtered){
     var subKey=g.cat+'|'+g.sub;
     var _sq=encodeURIComponent(getShopKW(g.sub,g.name));
     var _su='https://wooree-mall.co.kr/product/search.html?keyword='+_sq;
-    // 1줄: 품명 (재고 표시는 단가 확인 창에서 보여줌)
-    h+='<div class="pn-row"><div class="pn">'+g.name+'</div></div>';
-    // 2줄: ☆ + 분류·색온도 + 🔗 이미지
+    // 1줄: 품명 + 🔗 이미지(우측)
+    h+='<div class="pn-row"><div class="pn">'+g.name+'</div>';
+    h+='<div class="pn-right"><button class="shop-lnk" data-url="'+_su+'">🔗 이미지</button></div></div>';
+    // 2줄: ☆ + 분류·색온도
     h+='<div class="ps">';
     h+='<button class="fs" data-fkey="'+subKey+'">'+(isFav?'★':'☆')+'</button>';
-    h+='<span class="ps-l">'+g.sub+' · '+cts+'</span>';
-    h+='<span class="ps-r"><button class="shop-lnk" data-url="'+_su+'">🔗 이미지</button></span></div>';
+    h+='<span class="ps-l">'+g.sub+' · '+cts+'</span></div>';
     h+='</div>';
   });
   panel.innerHTML=h;
@@ -6677,6 +6751,204 @@ function spCheck() {
   if (!h) h = '<div style="padding:16px;text-align:center;color:var(--ink3)">재고 정보 없음</div>';
   document.getElementById('stkDataList').innerHTML = h;
 }
+
+// ══════════════════════════════════════════
+// 관리자 체크 · 재고 현황
+// STOCK[code] = {s:재고수량, r:재고율%}, CONTAINERS[code] = [{qty, arrival, ansan}]
+// ══════════════════════════════════════════
+var ADM_LOW = 60;   // 재고율 60% 미만 = 부족
+var ADM_CRIT = 30;  // 30% 미만 = 심각
+
+function openAdmMod(){
+  document.getElementById('admPinWrap').style.display = 'block';
+  var b = document.getElementById('admBody');
+  b.style.display = 'none';
+  document.getElementById('admPinErr').textContent = '';
+  var pin = document.getElementById('admPin');
+  pin.value = '';
+  document.getElementById('admMod').classList.add('open');
+  setTimeout(function(){ pin.focus(); }, 120);
+  pin.onkeydown = function(e){ if(e.key === 'Enter') admCheckPin(); };
+}
+function closeAdmMod(){ document.getElementById('admMod').classList.remove('open'); }
+function admCheckPin(){
+  var v = document.getElementById('admPin').value.trim();
+  if(v !== '1233'){
+    document.getElementById('admPinErr').textContent = '비밀번호가 틀렸습니다';
+    document.getElementById('admPin').value = '';
+    return;
+  }
+  document.getElementById('admPinWrap').style.display = 'none';
+  var b = document.getElementById('admBody');
+  b.style.display = 'flex';
+  admBuildFilters();
+  admRender();
+}
+
+// 화면에 쓸 행 목록 만들기 (코드 단위)
+function admRows(){
+  var rows = [];
+  G.forEach(function(g){
+    g.variants.forEach(function(v){
+      var sd = (typeof STOCK !== 'undefined' && STOCK) ? STOCK[v.code] : null;
+      rows.push({
+        cat:g.cat, sub:g.sub, gname:g.name, code:v.code, ct:v.ct, ename:v.ename,
+        qty:(sd && typeof sd.s === 'number') ? sd.s : null,
+        rate:(sd && sd.r !== null && sd.r !== undefined) ? sd.r : null,
+        box:(typeof QTY_MAP !== 'undefined' && QTY_MAP[v.code]) ? QTY_MAP[v.code] : 1,
+        cont:(typeof CONTAINERS !== 'undefined' && CONTAINERS[v.code]) ? CONTAINERS[v.code] : null
+      });
+    });
+  });
+  return rows;
+}
+var ADM_SORTS = [['rate','재고율 낮은순'],['rateD','재고율 높은순'],['qty','재고수량 적은순'],['name','품명순']];
+function admBuildFilters(){
+  // 대분류 — 일반램프·LED 등 전부 칩으로 노출
+  var cats = [], seen = {};
+  G.forEach(function(g){ if(!seen[g.cat]){ seen[g.cat]=1; cats.push(g.cat); } });
+  var cur = document.getElementById('admCat').value;
+  document.getElementById('admCatChips').innerHTML =
+    '<button class="admchip'+(cur===''?' on':'')+'" onclick="admSetCat(\'\')">전체</button>'
+    + cats.map(function(c){ return '<button class="admchip'+(cur===c?' on':'')+'" onclick="admSetCat(\''+c+'\')">'+c+'</button>'; }).join('');
+  // 정렬 — 4가지 모두 노출
+  var cs = document.getElementById('admSort').value;
+  document.getElementById('admSortChips').innerHTML = ADM_SORTS.map(function(x){
+    return '<button class="admchip'+(cs===x[0]?' on':'')+'" onclick="admSetSort(\''+x[0]+'\')">'+x[1]+'</button>';
+  }).join('');
+  admBuildSubs();
+}
+// 선택된 대분류에 속한 품목군 전체 나열
+function admBuildSubs(){
+  var cat = document.getElementById('admCat').value;
+  var subs = [], seen = {};
+  G.forEach(function(g){ if(cat && g.cat !== cat) return; if(!seen[g.sub]){ seen[g.sub]=1; subs.push(g.sub); } });
+  var cur = document.getElementById('admSub').value;
+  if(cur && subs.indexOf(cur) < 0){ document.getElementById('admSub').value = ''; cur = ''; }
+  document.getElementById('admSubChips').innerHTML =
+    '<button class="admchip sub'+(cur===''?' on':'')+'" onclick="admSetSub(\'\')">전체 품목군</button>'
+    + subs.map(function(x){ return '<button class="admchip sub'+(cur===x?' on':'')+'" onclick="admSetSub(\''+x+'\')">'+x+'</button>'; }).join('');
+}
+function admSetCat(c){ document.getElementById('admCat').value = c; admBuildFilters(); admRender(); }
+function admSetSub(x){ document.getElementById('admSub').value = x; admBuildSubs(); admRender(); }
+function admSetSort(x){ document.getElementById('admSort').value = x; admBuildFilters(); admRender(); }
+function admOnCat(){ admBuildFilters(); admRender(); }
+// 재고율 표기 (999% 넘으면 잘라서 표시)
+function admRateTxt(r){
+  if(r === null || r === undefined) return '-';
+  return r > 999 ? '999+%' : r + '%';
+}
+function admRateColor(r){
+  if(r === null) return 'var(--ink3)';
+  if(r < ADM_CRIT) return '#DC2626';
+  if(r < ADM_LOW) return '#F97316';
+  if(r > 120) return '#0EA5E9';
+  return '#16A34A';
+}
+// 가장 빠른 입고 예정 한 줄
+function admNextIn(cont){
+  if(!cont || !cont.length) return null;
+  var isDate = function(x){ return typeof x === 'string' && /^\d{4}-\d{2}-\d{2}/.test(x); };
+  var best = null;
+  cont.forEach(function(c){
+    var d = isDate(c.ansan) ? c.ansan : (isDate(c.arrival) ? c.arrival : null);
+    var txt = d ? d.slice(5).replace('-','/') : (c.ansan || c.arrival || '미정');
+    var item = { d:d, txt:txt, qty:c.qty||0, fixed:!!d };
+    if(!best) { best = item; return; }
+    if(item.d && (!best.d || item.d < best.d)) best = item;
+  });
+  var total = 0; cont.forEach(function(c){ total += (c.qty||0); });
+  return { txt:best.txt, fixed:best.fixed, qty:best.qty, total:total, n:cont.length };
+}
+function admFiltered(){
+  var cat = document.getElementById('admCat').value;
+  var sub = document.getElementById('admSub').value;
+  var q = (document.getElementById('admQ').value||'').trim().toLowerCase();
+  var lowOnly = document.getElementById('admLow').checked;
+  var sort = document.getElementById('admSort').value;
+  var rows = admRows().filter(function(r){
+    if(cat && r.cat !== cat) return false;
+    if(sub && r.sub !== sub) return false;
+    if(lowOnly && !(r.rate !== null && r.rate < ADM_LOW)) return false;
+    if(q){
+      var hay = (r.gname+' '+r.code+' '+(r.ename||'')+' '+r.sub).toLowerCase();
+      if(hay.indexOf(q) < 0) return false;
+    }
+    return true;
+  });
+  rows.sort(function(a,b){
+    if(sort === 'name') return a.gname.localeCompare(b.gname);
+    if(sort === 'qty')  return (a.qty===null?1e9:a.qty) - (b.qty===null?1e9:b.qty);
+    var ar = a.rate===null?1e9:a.rate, br = b.rate===null?1e9:b.rate;
+    return sort === 'rateD' ? br-ar : ar-br;
+  });
+  return rows;
+}
+function admRender(){
+  var rows = admFiltered();
+  // 요약
+  var known = rows.filter(function(r){ return r.rate !== null; });
+  var low = known.filter(function(r){ return r.rate < ADM_LOW; });
+  var crit = known.filter(function(r){ return r.rate < ADM_CRIT; });
+  var lowIn = low.filter(function(r){ return r.cont && r.cont.length; });
+  // 재고율은 판매가 거의 없는 품목에서 수만 %가 나오므로 평균 대신 중앙값을 쓴다
+  var sorted = known.map(function(r){return r.rate;}).sort(function(a,b){return a-b;});
+  var med = sorted.length ? sorted[Math.floor(sorted.length/2)] : 0;
+  document.getElementById('admSummary').innerHTML =
+      '<b>'+rows.length+'개 코드</b>'
+    + ' · 중앙값 재고율 <b style="color:'+admRateColor(med)+'">'+admRateTxt(med)+'</b>'
+    + ' · <span style="color:#F97316;font-weight:700">부족('+ADM_LOW+'% 미만) '+low.length+'개</span>'
+    + ' · <span style="color:#DC2626;font-weight:700">심각('+ADM_CRIT+'% 미만) '+crit.length+'개</span>'
+    + (low.length ? ' · 그중 <b>'+lowIn.length+'개</b>는 입고 예정 있음' : '')
+    + (known.length < rows.length ? ' · <span style="color:var(--ink3)">재고정보 없음 '+(rows.length-known.length)+'개</span>' : '');
+
+  if(!rows.length){
+    document.getElementById('admList').innerHTML = '<div style="padding:30px;text-align:center;color:var(--ink3);font-size:13px">해당하는 품목이 없습니다</div>';
+    return;
+  }
+  var ctL = {'주광':'주광','전구':'전구','주백':'주백','색변환':'색변환'};
+  var h = '<div style="display:grid;grid-template-columns:34px 96px 1fr 74px 92px 128px;background:var(--ink);color:#fff;font-size:10px;font-weight:700;position:sticky;top:-8px;z-index:3;border-radius:7px 7px 0 0">'
+    + '<div style="padding:7px 2px;text-align:center">No.</div>'
+    + '<div style="padding:7px 4px;text-align:center">코드</div>'
+    + '<div style="padding:7px 6px">품명</div>'
+    + '<div style="padding:7px 4px;text-align:center">재고</div>'
+    + '<div style="padding:7px 4px;text-align:center">재고율</div>'
+    + '<div style="padding:7px 6px">입고 예정</div></div>';
+  rows.forEach(function(r, i){
+    var stripe = (i%2===1) ? '#FAFAFA' : '#fff';
+    var isLow = (r.rate !== null && r.rate < ADM_LOW);
+    var bg = (r.rate !== null && r.rate < ADM_CRIT) ? '#FEF2F2' : (isLow ? '#FFF7ED' : stripe);
+    var nx = admNextIn(r.cont);
+    var inTxt = nx
+      ? '<span style="color:'+(nx.fixed?'#0EA5E9':'#9CA3AF')+';font-weight:700">'+nx.txt+'</span>'
+        + '<span style="color:var(--ink3);font-size:10px"> '+(nx.total?nx.total.toLocaleString()+'개':'')+(nx.n>1?' 외 '+(nx.n-1)+'건':'')+'</span>'
+      : (isLow ? '<span style="color:#DC2626;font-weight:700">예정 없음</span>' : '<span style="color:var(--ink3)">-</span>');
+    var boxTxt = (r.qty !== null && r.box > 1) ? '<div style="font-size:9px;color:var(--ink3)">'+Math.floor(r.qty/r.box).toLocaleString()+'박스</div>' : '';
+    h += '<div style="display:grid;grid-template-columns:34px 96px 1fr 74px 92px 128px;border-bottom:1px solid var(--bdr);background:'+bg+';align-items:center">'
+      + '<div style="padding:7px 2px;text-align:center;font-size:11px;color:var(--ink3);font-weight:700">'+(i+1)+'</div>'
+      + '<div style="padding:7px 4px;text-align:center;font-family:monospace;font-size:12px;font-weight:700;color:var(--A2)">'+r.code+'</div>'
+      + '<div style="padding:7px 6px;font-size:13px;font-weight:600;line-height:1.3">'+r.gname
+        + (r.ct && r.ct!=='-' ? ' <span style="font-size:10px;color:var(--ink3);font-weight:500">'+(ctL[r.ct]||r.ct)+'</span>' : '')
+        + '<div style="font-size:10px;color:var(--ink3);font-weight:400">'+r.cat+' · '+r.sub+'</div></div>'
+      + '<div style="padding:7px 4px;text-align:center;font-size:13px;font-weight:700">'+(r.qty!==null?r.qty.toLocaleString():'<span style="color:var(--ink3);font-size:11px">정보없음</span>')+boxTxt+'</div>'
+      + '<div style="padding:7px 4px;text-align:center;font-size:14px;font-weight:700;color:'+admRateColor(r.rate)+'">'+admRateTxt(r.rate)+'</div>'
+      + '<div style="padding:7px 6px;font-size:11px">'+inTxt+'</div>'
+      + '</div>';
+  });
+  document.getElementById('admList').innerHTML = h;
+}
+function admCopy(){
+  var rows = admFiltered();
+  var t = rows.map(function(r){
+    var nx = admNextIn(r.cont);
+    return [r.gname+(r.ct&&r.ct!=='-'?' '+r.ct:''), r.code,
+            (r.qty!==null?r.qty:'-'), (r.rate!==null?r.rate+'%':'-'),
+            (nx?nx.txt+(nx.total?' '+nx.total+'개':''):'-')].join('\t');
+  }).join('\n');
+  copyToClipboard('품명\t코드\t재고\t재고율\t입고예정\n'+t);
+  showToast('✓ '+rows.length+'줄 복사됨 (엑셀에 붙여넣기)');
+}
+document.getElementById('admMod').addEventListener('click', function(e){ if(e.target === this) closeAdmMod(); });
 
 // ── 구글시트 재고 로드 ──
 var SHEET_CSV = 'https://script.google.com/macros/s/AKfycbzkHJKjnCtZv0XJ1vDPBnAFcBGEMCPbIZEOIDWb5NEZL6siD9ZAMgWCic8Bpip-Jbv3/exec';
