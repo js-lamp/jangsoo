@@ -470,7 +470,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 }
 .parse-right{flex:1;display:flex;flex-direction:column;min-height:0;background:var(--sur2)}
 .parse-col-label{flex-shrink:0;padding:8px 12px;font-size:11px;font-weight:700;color:var(--ink2);background:var(--A3);border-bottom:1px solid var(--bdr);min-height:42px;display:flex;align-items:center;box-sizing:border-box}
-.parse-ta{width:100%;flex:1;padding:12px;font-size:13px;font-family:monospace;border:none;outline:none;resize:none;color:var(--ink);background:#fff;min-height:120px}
+.parse-ta{width:100%;flex:1;padding:12px;font-size:14.5px;line-height:1.55;font-family:monospace;border:none;outline:none;resize:none;color:var(--ink);background:#fff;min-height:120px}
 .parse-preview-btn{flex-shrink:0;margin:8px;padding:11px;background:var(--B,#2855A0);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer}
 .parse-preview-list{flex:1;overflow-y:auto;padding:8px}
 .pp-item{background:#fff;border:1px solid var(--bdr);border-radius:8px;padding:8px 10px;margin-bottom:6px}
@@ -1266,7 +1266,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
       <button onclick="closeParseMod()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--ink2);line-height:1">&#215;</button>
     </div>
     <div style="padding:10px 16px;font-size:11px;color:var(--ink2);background:var(--A3);border-bottom:1px solid var(--bdr)">
-      왼쪽에 발주 내용을 붙여넣고 <b>미리보기</b>를 누르면 오른쪽에 매칭 결과가 표시됩니다. 동일 품목군(예: 슬림샤인 엣지)은 위에 한 번만 적어도 됩니다. <b>왼쪽 줄을 탭하면 그 자리에서 바로 고칠 수 있어요.</b> 빨간색은 확인이 필요한 줄, 보라색 🔁는 같은 코드가 여러 줄에 있다는 표시입니다. 가운데 회색 선을 좌우로 끌면 칸 넓이를 바꿀 수 있어요(두 번 누르면 기본값).
+      왼쪽에 발주 내용을 붙여넣고 <b>미리보기</b>를 누르면 오른쪽에 매칭 결과가 표시됩니다. 동일 품목군(예: 슬림샤인 엣지)은 위에 한 번만 적어도 됩니다. <b>왼쪽 발주 원본은 붙여넣은 그대로이고, 아무 곳이나 눌러 바로 고칠 수 있어요.</b> 빨간색은 확인이 필요한 줄, 보라색 🔁는 같은 코드가 여러 줄에 있다는 표시입니다. 가운데 회색 선을 좌우로 끌면 칸 넓이를 바꿀 수 있어요(두 번 누르면 기본값).
     </div>
     <div class="parse-split">
       <!-- 왼쪽: 입력/수정 -->
@@ -5759,7 +5759,7 @@ function parsePreview(reparse){
       + '<b style="margin-left:auto;font-size:14px;color:var(--A2)">공급가 '+pvTotal.toLocaleString()+'원</b>'
       + '<span style="font-size:10px;color:var(--ink3)">(VAT 별도)</span></div>';
   }
-  h += '<div style="font-size:10px;color:var(--ink3);padding:6px 4px 2px;text-align:center;line-height:1.5">💡 열 제목의 📋을 누르면 그 열 전체가 복사됩니다 · 왼쪽 발주 줄을 탭하면 수정할 수 있어요'
+  h += '<div style="font-size:10px;color:var(--ink3);padding:6px 4px 2px;text-align:center;line-height:1.5">💡 열 제목의 📋을 누르면 그 열 전체가 복사됩니다 · 왼쪽 발주 원본을 고치면 바로 다시 매칭됩니다'
     + ' · <button onclick="openKwManage()" style="background:none;border:none;color:#7C3AED;font-size:10px;font-weight:700;cursor:pointer;text-decoration:underline;padding:0;font-family:Noto Sans KR,sans-serif">🧠 키워드 관리</button></div>';
   box.innerHTML = h;
   // 헤더 고정이 컨테이너 맨 위에 붙도록 위쪽 여백 제거
@@ -5827,48 +5827,13 @@ function poCtBadge(s){
 }
 
 function renderLeftAligned(colMeta){
+  // 발주 원본은 붙여넣은 그대로 두고 아무 곳이나 눌러 바로 고칠 수 있게 한다.
+  // (예전에는 오른쪽 매칭 결과와 줄을 맞추려고 왼쪽을 표로 다시 그렸는데,
+  //  원본이 변형돼 보이고 수정도 한 줄씩만 되어서 그대로 두는 쪽으로 되돌림)
   var leftBox = document.getElementById('parseLeftAligned');
   var ta = document.getElementById('parseTa');
-  if(!leftBox) return;
-  if(!colMeta || !colMeta.length){
-    // 매칭 결과 없으면 textarea 다시 보이기
-    leftBox.style.display = 'none';
-    if(ta) ta.style.display = '';
-    return;
-  }
-  // 전체 텍스트 편집 모드면 왼쪽은 textarea 유지 (오른쪽 미리보기만 갱신)
-  if(window.__parseTextMode){
-    leftBox.style.display = 'none';
-    if(ta) ta.style.display = '';
-    return;
-  }
-  // textarea 숨기고 줄맞춤 영역 표시 (발주 원본 한 열, 탭하면 그 자리에서 수정)
-  if(ta) ta.style.display = 'none';
-  leftBox.style.display = 'block';
-  leftBox.style.paddingTop = '0';
-  var LEFT_COLS = '38px 1fr';
-  var h = '<div style="display:grid;grid-template-columns:'+LEFT_COLS+';position:sticky;top:0;z-index:6">';
-  h += '<div style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 2px;text-align:center;border-radius:6px 0 0 0">No.</div>';
-  h += '<div style="background:var(--ink);color:#fff;font-size:10px;font-weight:700;padding:7px 6px;text-align:center;border-radius:0 6px 0 0;border-left:1px solid rgba(255,255,255,.15)">✏️ 발주 원본 (탭하여 수정)</div>';
-  h += '</div>';
-  h += '<div id="pvLeftRows" style="border:1px solid var(--bdr);border-top:none;border-radius:0 0 6px 6px;overflow:hidden">';
-  colMeta.forEach(function(m, ri){
-    var it = m.it;
-    var stripe = (ri % 2 === 1) ? '#FAFAFA' : '#fff';
-    var bg = it.unconfirmed?'#FEF2F2':(it.ambiguous?'#FFF7ED':(it.codeMismatch?'#FEFCE8':stripe));
-    var cl = it.unconfirmed?'#DC2626':(it.ambiguous?'#C2410C':(it.codeMismatch?'#854D0E':'var(--ink)'));
-    var rawVal = m.raw || m.orig || '';
-    var dupMark = m.dupTotal ? ' <span style="font-size:9px;font-weight:700;color:#fff;background:#7C3AED;border-radius:3px;padding:1px 5px;white-space:nowrap">🔁'+m.dupNo+'/'+m.dupTotal+'</span>' : '';
-    h += '<div class="pvleftpair" data-pvrow="'+ri+'" style="display:grid;grid-template-columns:'+LEFT_COLS+';border-top:'+(ri>0?'1px solid var(--bdr)':'none')+'">'
-      + '<div style="padding:8px 2px;background:#F9FAFB;color:var(--ink3);font-size:11px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--bdr);user-select:none">'+(ri+1)+'</div>'
-      + '<div class="pvleftrow" data-pvrow="'+ri+'" onclick="editLeftRow('+ri+')" style="padding:8px 8px;background:'+bg+';color:'+cl+';font-size:13px;line-height:1.35;cursor:pointer;display:flex;align-items:center;flex-wrap:wrap;gap:2px;word-break:keep-all;overflow-wrap:anywhere;min-height:100%;box-sizing:border-box" title="탭하여 수정">'+poCtBadge(rawVal)+dupMark+'</div>'
-      + '</div>';
-  });
-  h += '</div>';
-  h += '<div style="font-size:10px;color:var(--ink3);padding:6px 2px;text-align:center">✏️ 줄을 탭하면 그 자리에서 수정할 수 있어요 · <button onclick="backToTextarea()" style="background:none;border:none;color:var(--B,#2855A0);font-size:10px;font-weight:700;cursor:pointer;text-decoration:underline;padding:0">전체 텍스트로 편집</button></div>';
-  leftBox.innerHTML = h;
-  // 좌우 행 높이 동기화
-  setTimeout(function(){ syncRowHeights(); }, 20);
+  if(leftBox){ leftBox.style.display = 'none'; leftBox.innerHTML = ''; }
+  if(ta) ta.style.display = '';
 }
 
 // 좌우 같은 인덱스 행끼리 높이 맞추기
