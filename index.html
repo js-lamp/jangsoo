@@ -621,7 +621,8 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
   <div class="fz">
     <!-- 대리점 + 담당자 -->
     <div class="store-row">
-      <input class="store-inp" id="storeName" type="text" placeholder="🏪 대리점 이름 입력"/>
+      <input class="store-inp" id="storeName" type="text" placeholder="🏪 대리점 이름 입력" oninput="onStoreNameInput(this.value)"/>
+      <button id="storePinBtn" onclick="toggleStorePin()" title="주문처명 고정 (다음에도 자동 입력)" style="padding:0 9px;background:var(--sur2);border:1px solid var(--bdr);border-radius:var(--r2);font-size:15px;cursor:pointer;line-height:1">📌</button>
       <button class="voice-order-btn" onclick="startVoiceOrder()" title="음성으로 주문">🎙️</button>
       <button class="mgr-btn" id="mgrBtn" onclick="openMgrModal()">👤 <span id="mgrBtnTxt">담당자 설정</span></button>
     </div>
@@ -1008,6 +1009,17 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
           <button class="mbtn" id="mb-freight" onclick="dSelMth('freight')">📦<br>화물</button>
           <button class="mbtn span2" id="mb-parcel" onclick="dSelMth('parcel')">📫 택배</button>
         </div>
+        <div id="dFreightWrap" style="display:none;margin-top:12px;padding:11px 12px;background:#F3F7FF;border:1px solid #C9DAF5;border-radius:8px">
+          <div class="dlbl" style="margin:0 0 6px">🏢 화물 지점</div>
+          <div id="dFreightChips" style="display:flex;flex-wrap:wrap"></div>
+          <div id="dFreightOth" style="display:none;margin-top:6px">
+            <input class="dinp" id="dFreightInp" type="text" placeholder="예) 경동택배 안산지점" style="margin-bottom:6px"/>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+            <div id="dFreightDefNote" style="flex:1;font-size:10.5px;color:var(--ink3);line-height:1.4"></div>
+            <button onclick="dSaveDefFreight()" style="padding:6px 10px;background:var(--ink);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;white-space:nowrap">★ 기본으로 저장</button>
+          </div>
+        </div>
         <div id="dPayWrap" style="display:none">
           <div class="dlbl" style="margin-top:12px;margin-bottom:6px">비용 부담</div>
           <div class="prow">
@@ -1234,6 +1246,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
     </div>
     <div class="invfoot" style="flex-wrap:wrap">
       <button class="inv-cancel-btn" onclick="closeInvMod()">닫기</button>
+      <button class="inv-dl-btn" id="invPrintBtn" onclick="invPrintA4()" style="display:none;background:#B45309">🖨 A4 인쇄</button>
       <button class="inv-dl-btn" id="invCopyBtn" onclick="invCopyImage()" style="display:none;background:#475569">📋 이미지</button>
       <button class="inv-dl-btn" id="invDlBtn" onclick="invDownload()" style="display:none">📥 저장</button>
       <button class="inv-dl-btn" id="invXlsBtn" onclick="invDownloadExcel()" style="display:none;background:#16A34A">📊 엑셀</button>
@@ -1429,7 +1442,8 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
     <!-- 편집 영역 -->
     <div id="noticeEditWrap" style="display:none" class="noticeEditBody">
       <div style="font-size:11px;color:var(--ink2)">📝 공지사항 내용</div>
-      <textarea class="notice-ta" id="noticeEditTa" placeholder="예) 6월 3일 단가 인상&#10;특별 프로모션 진행 등..."></textarea>
+      <textarea class="notice-ta" id="noticeEditTa" placeholder="예) 6월 3일 단가 인상&#10;특별 프로모션 진행 등...&#10;&#10;주소를 그냥 붙여넣으면 눌러서 열 수 있는 링크가 됩니다&#10;https://js-lamp.github.io/jangsoo/"></textarea>
+      <div style="font-size:11px;color:var(--ink2);margin-top:2px">🔗 주소(https://…)·전화번호·이메일을 적으면 자동으로 눌러서 열 수 있는 링크가 됩니다</div>
       <div style="font-size:11px;color:var(--ink2);margin-top:4px">📅 만료일 (이 날짜 이후엔 자동 팝업 안됨)</div>
       <input type="date" id="noticeExpireDate" style="width:100%;padding:10px;font-size:13px;font-family:'Noto Sans KR',sans-serif;border:1px solid var(--bdr);border-radius:8px;outline:none;color:var(--ink)">
       <button class="notice-save-btn" onclick="saveNotice()">+ 공지 등록</button>
@@ -5448,11 +5462,6 @@ function pvDetectDealer(text){
   pvDealer = d ? {name:d.name, code:d.code, grade:d.grade, how:d.how, manual:false} : null;
   return pvDealer;
 }
-function pvDealerPrice(code){
-  if(!pvDealer || !invUnlocked) return 0;
-  var pd = (typeof PRICES!=='undefined') ? PRICES[code] : null;
-  return (pd && pd.p && pd.p[pvDealer.grade]) ? pd.p[pvDealer.grade] : 0;
-}
 function pvRenderDealerBar(){
   var bar = document.getElementById('pvDealerBar');
   if(!bar) return;
@@ -5463,19 +5472,12 @@ function pvRenderDealerBar(){
       + '<span style="font-size:13px">🏢</span>'
       + '<b style="color:var(--B,#2855A0)">'+pvDealer.name+'</b>'
       + '<span style="font-size:10px;color:var(--ink3)">'+(pvDealer.manual?'직접 지정':'자동 인식'+(pvDealer.how==='exact'?'':' (유사)'))+'</span>';
-    if(invUnlocked){
-      h += '<span style="background:var(--A3);color:var(--A2);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">'+pvGradeLabel(pvDealer.grade)+'</span>'
-        +  '<span style="font-size:10px;color:#16A34A;font-weight:700">단가 적용됨</span>'
-        +  '<button onclick="pvLockPrice()" style="background:none;border:1px solid var(--bdr);border-radius:5px;color:var(--ink2);font-size:10px;font-weight:700;padding:2px 7px;cursor:pointer;font-family:Noto Sans KR,sans-serif" title="단가를 즉시 숨깁니다">🔒 잠그기</button>';
-    } else {
-      h += '<button onclick="pvOpenPin()" style="background:var(--B,#2855A0);color:#fff;border:none;border-radius:5px;padding:3px 9px;font-size:11px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer">🔓 단가 보기</button>';
-    }
     h += '<button onclick="pvChangeDealer()" style="margin-left:auto;background:none;border:none;color:var(--ink3);font-size:11px;cursor:pointer;text-decoration:underline;font-family:Noto Sans KR,sans-serif">대리점 변경</button>';
     h += '</div>';
   } else {
     h = '<div style="'+st+'background:#FFF7ED;border:1px solid #FED7AA">'
       + '<span style="font-size:13px">🏢</span>'
-      + '<span style="color:#9A3412">대리점을 못 찾았습니다 — 단가를 보려면 상호를 지정하세요</span>'
+      + '<span style="color:#9A3412">대리점을 못 찾았습니다 — 명세서에 넣으려면 상호를 지정하세요</span>'
       + '<button onclick="pvChangeDealer()" style="margin-left:auto;background:#EA580C;color:#fff;border:none;border-radius:5px;padding:3px 9px;font-size:11px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer">대리점 지정</button>'
       + '</div>';
   }
@@ -5540,38 +5542,6 @@ window.addEventListener('blur', function(){ pvLockPrice(); });
   el.addEventListener('keydown', pvTouchPrice);
   el.addEventListener('scroll', pvTouchPrice, true);
 });
-// 단가 표시 비번 (명세서와 같은 비번) — 입력값은 화면에 ●로만 보인다
-function pvOpenPin(){
-  var bar = document.getElementById('pvDealerBar');
-  if(!bar) return;
-  bar.innerHTML = '<div style="display:flex;align-items:center;gap:6px;margin:0 0 6px;padding:7px 10px;border-radius:7px;font-size:12px;background:#EFF6FF;border:1px solid #BFDBFE">'
-    + '<span>🔒 단가 비밀번호</span>'
-    + '<input id="pvPinInp" type="password" inputmode="numeric" maxlength="4" autocomplete="off" '
-    +   'style="width:70px;padding:5px 8px;font-size:14px;letter-spacing:6px;text-align:center;font-family:monospace;border:1px solid var(--bdr);border-radius:5px;outline:none" />'
-    + '<button onclick="pvPinSubmit()" style="background:var(--B,#2855A0);color:#fff;border:none;border-radius:5px;padding:5px 11px;font-size:11px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer">확인</button>'
-    + '<button onclick="pvRenderDealerBar()" style="background:none;border:none;color:var(--ink3);font-size:11px;cursor:pointer;font-family:Noto Sans KR,sans-serif">취소</button>'
-    + '<span id="pvPinErr" style="color:#DC2626;font-size:11px;font-weight:700"></span></div>';
-  var inp = document.getElementById('pvPinInp');
-  if(inp){
-    inp.focus();
-    inp.addEventListener('keydown', function(e){ if(e.key === 'Enter') pvPinSubmit(); });
-  }
-}
-function pvPinSubmit(){
-  var inp = document.getElementById('pvPinInp');
-  if(!inp) return;
-  if(inp.value.trim() !== '1233'){
-    var er = document.getElementById('pvPinErr');
-    if(er) er.textContent = '비밀번호가 틀렸습니다';
-    inp.value = ''; inp.focus();
-    return;
-  }
-  invUnlocked = true;
-  pvTouchPrice();
-  pvRenderDealerBar();
-  parsePreview(false);
-  showToast('✓ 단가 표시 (3분 후 자동 잠김)');
-}
 var parsePreviewTimer = null;
 var parsedItems = [];  // 현재 파싱된 품목 (선택 반영 상태 유지)
 function parsePreviewDebounced(){
@@ -5687,9 +5657,9 @@ function parsePreview(reparse){
 
   // No. / 코드 / 품명 / 개수 / 박스 5열 (왼쪽 발주 원본과 줄 맞춤)
   // 대리점이 정해지고 단가가 풀려 있으면 단가·금액 2열을 더 붙인다
-  var showPrice = !!(pvDealer && invUnlocked);
-  var pvTotal = 0;
-  var gridCols = showPrice ? '34px 14% 1fr 10% 10% 13% 14%' : '38px 16% 1fr 13% 13%';
+  // 미리보기는 매칭 확인 전용 — 단가는 명세서에서만 본다
+  var showPrice = false;
+  var gridCols = '38px 16% 1fr 13% 13%';
 
   // CSS Grid (행 높이 자동 정렬)
   h += '<div id="pvGrid" style="display:grid;grid-template-columns:'+gridCols+';border:1px solid var(--bdr);border-radius:8px;font-size:12px">';
@@ -5699,11 +5669,7 @@ function parsePreview(reparse){
   h += '<div onclick="copyColumn(\'code\')" style="'+hdSt+';white-space:nowrap;border-left:1px solid rgba(255,255,255,.15)">코드 📋</div>';
   h += '<div onclick="copyColumn(\'name\')" style="'+hdSt+';border-left:1px solid rgba(255,255,255,.15)">품명 📋</div>';
   h += '<div onclick="copyColumn(\'each\')" style="'+hdSt+';white-space:nowrap;border-left:1px solid rgba(255,255,255,.15)">개수 📋</div>';
-  h += '<div onclick="copyColumn(\'box\')" style="'+hdSt+';white-space:nowrap;border-left:1px solid rgba(255,255,255,.15)'+(showPrice?'':';border-radius:0 7px 0 0')+'">박스 📋</div>';
-  if(showPrice){
-    h += '<div onclick="copyColumn(\'price\')" style="'+hdSt+';white-space:nowrap;border-left:1px solid rgba(255,255,255,.15)">단가 📋</div>';
-    h += '<div onclick="copyColumn(\'amount\')" style="'+hdSt+';white-space:nowrap;border-left:1px solid rgba(255,255,255,.15);border-radius:0 7px 0 0">금액 📋</div>';
-  }
+  h += '<div onclick="copyColumn(\'box\')" style="'+hdSt+';white-space:nowrap;border-left:1px solid rgba(255,255,255,.15);border-radius:0 7px 0 0">박스 📋</div>';
   // 데이터 행
   colMeta.forEach(function(m, ri){
     var it=m.it;
@@ -5742,23 +5708,8 @@ function parsePreview(reparse){
     var bqTxt = '';
     if(m.box!=='' && m.bq>1) bqTxt = '<br><span style="font-size:9px;color:#AAA;font-weight:500">×'+m.bq+'개</span>';
     h += '<div class="pvrow" data-pvrow="'+ri+'" title="'+(m.bq>1?'박스당 '+m.bq+'개':'')+'" style="padding:8px 4px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:#888;font-size:11px;font-weight:600;text-align:center;white-space:nowrap;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.2;user-select:text;-webkit-user-select:text">'+(m.box!==''?m.box+'박스'+bqTxt:'')+'</div>';
-    // 단가 · 금액 셀 (대리점 등급 단가 · 미등록 단가는 '-')
-    if(showPrice){
-      var up = it.unconfirmed ? 0 : pvDealerPrice(it.code);
-      var amt = up * (m.each||0);
-      pvTotal += amt;
-      var cellSt = 'padding:8px 4px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';font-size:11px;font-weight:700;text-align:right;white-space:nowrap;display:flex;align-items:center;justify-content:flex-end;user-select:text;-webkit-user-select:text';
-      h += '<div class="pvrow" data-pvrow="'+ri+'" style="'+cellSt+';color:'+(up?'var(--ink2)':'#CCC')+'">'+(up?up.toLocaleString():'-')+'</div>';
-      h += '<div class="pvrow" data-pvrow="'+ri+'" style="'+cellSt+';color:'+(amt?'var(--A2)':'#CCC')+'">'+(amt?amt.toLocaleString():'-')+'</div>';
-    }
   });
   h += '</div>'; // grid 끝
-  if(showPrice){
-    h += '<div style="margin-top:6px;padding:8px 10px;border-radius:7px;background:#F7F5F0;border:1px solid var(--bdr);display:flex;align-items:center;gap:8px;font-size:12px">'
-      + '<span style="color:var(--ink2)">'+pvDealer.name+' · '+pvGradeLabel(pvDealer.grade)+' 기준</span>'
-      + '<b style="margin-left:auto;font-size:14px;color:var(--A2)">공급가 '+pvTotal.toLocaleString()+'원</b>'
-      + '<span style="font-size:10px;color:var(--ink3)">(VAT 별도)</span></div>';
-  }
   h += '<div style="font-size:10px;color:var(--ink3);padding:6px 4px 2px;text-align:center;line-height:1.5">💡 열 제목의 📋을 누르면 그 열 전체가 복사됩니다 · 왼쪽 발주 원본을 고치면 바로 다시 매칭됩니다'
     + ' · <button onclick="openKwManage()" style="background:none;border:none;color:#7C3AED;font-size:10px;font-weight:700;cursor:pointer;text-decoration:underline;padding:0;font-family:Noto Sans KR,sans-serif">🧠 키워드 관리</button></div>';
   box.innerHTML = h;
@@ -5782,14 +5733,6 @@ function parsePreview(reparse){
       if(it.unit === '박스') return it.qty;
       return (boxQty > 1 && it.qty % boxQty === 0) ? (it.qty / boxQty) : '';
     }),
-    price: items.map(function(it){ return showPrice ? (pvDealerPrice(it.code) || '') : ''; }),
-    amount: items.map(function(it){
-      if(!showPrice) return '';
-      var boxQty = (typeof QTY_MAP !== 'undefined' && QTY_MAP[it.code]) ? QTY_MAP[it.code] : 1;
-      var each = (it.unit === '박스') ? it.qty*boxQty : it.qty;
-      var up = pvDealerPrice(it.code);
-      return up ? up*each : '';
-    })
   };
 }
 
@@ -6886,7 +6829,7 @@ function renderNoticeList(){
     h += '<div style="flex:1"></div>';
     h += '<button onclick="event.stopPropagation();delNotice(\''+n.id+'\')" style="background:none;border:none;color:var(--ink3);font-size:14px;cursor:pointer;padding:0">🗑</button>';
     h += '</div>';
-    h += '<div style="font-size:13px;color:var(--ink);font-weight:600;line-height:1.4;'+(isExpired?'opacity:0.5':'')+'">'+preview+(n.text.length>60?'...':'')+'</div>';
+    h += '<div style="font-size:13px;color:var(--ink);font-weight:600;line-height:1.4;'+(isExpired?'opacity:0.5':'')+'">'+escHtml(preview)+(n.text.length>60?'...':'')+'</div>';
     h += '</div>';
   });
   box.innerHTML = h;
@@ -6904,7 +6847,7 @@ function showNoticePopup(n){
   if(cb) cb.checked = false;
   document.getElementById('noticeBody').innerHTML = 
     '<div style="font-size:11px;color:var(--ink3);margin-bottom:8px">'+fmtNoticeDate(n.id)+(n.expireAt?' ~ '+fmtNoticeDate(n.expireAt):'')+'</div>'+
-    '<div style="white-space:pre-wrap">'+escHtml(n.text)+'</div>';
+    '<div style="white-space:pre-wrap">'+noticeLinkify(n.text)+'</div>';
   document.getElementById('noticeMod').setAttribute('data-id', n.id);
   document.getElementById('noticeMod').classList.add('open');
   // 읽음 처리
@@ -6912,7 +6855,34 @@ function showNoticePopup(n){
   renderNoticeBadge();
 }
 
-function escHtml(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escHtml(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// 공지 본문의 주소를 눌러서 열 수 있는 링크로 바꾼다.
+// http(s)://… , www.… , 전화번호(010-…), 이메일까지 인식한다.
+// 주소가 아닌 부분은 그대로 이스케이프하므로 태그가 섞여도 안전하다.
+var NOTICE_LINK_RE = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+|[\w.+-]+@[\w-]+\.[\w.-]+|01[016-9][-.\s]?\d{3,4}[-.\s]?\d{4})/g;
+function noticeLinkify(text){
+  var t = String(text || '');
+  var out = '', last = 0, m;
+  NOTICE_LINK_RE.lastIndex = 0;
+  while((m = NOTICE_LINK_RE.exec(t)) !== null){
+    out += escHtml(t.slice(last, m.index));
+    var raw = m[0], href, label = escHtml(raw);
+    if(/^https?:\/\//i.test(raw))      href = raw;
+    else if(/^www\./i.test(raw))       href = 'http://' + raw;
+    else if(raw.indexOf('@') >= 0)     href = 'mailto:' + raw;
+    else                               href = 'tel:' + raw.replace(/[^0-9+]/g, '');
+    var isTel = href.indexOf('tel:') === 0;
+    out += '<a href="' + escHtml(href) + '"'
+      + (isTel ? '' : ' target="_blank" rel="noopener noreferrer"')
+      + ' onclick="event.stopPropagation()"'
+      + ' style="color:var(--B,#2855A0);font-weight:700;text-decoration:underline;word-break:break-all">'
+      + label + '</a>';
+    last = m.index + raw.length;
+  }
+  out += escHtml(t.slice(last));
+  return out;
+}
 
 function showNotice(){
   var list = getNoticeList();
@@ -7035,6 +7005,7 @@ updateBadge();
 
 
 
+var dFreight = null;
 var dItems=[], dStore='', dMth=null, dPay=null, dAddrMode='def';
 var dDefAddr=JSON.parse(localStorage.getItem('jsDef')||'null');
 var MTHL={'car':'회사차량','charter':'용차','quick':'퀵','freight':'화물','parcel':'택배'};
@@ -7050,11 +7021,15 @@ function dOpen(items,store){
   document.getElementById('dMemo').value='';
   // 대리점명 자동 입력
   var storeInp=document.getElementById('dStoreName');
-  if(storeInp) storeInp.value=store||'';
+  if(storeInp) storeInp.value = store || getPinnedStore() || '';
   document.getElementById('dRcvNm').value='';
   document.getElementById('dRcvPh').value='';
   document.getElementById('dRcvAd').value='';
   document.getElementById('dRcvDt').value='';
+  // 화물 지점: 기본 지점으로 초기화 (없으면 직접 입력)
+  dFreight = getDefFreight() || '__oth';
+  var fi = document.getElementById('dFreightInp'); if(fi) fi.value = '';
+  dRenderFreight();
   dRefresh();
   dSetAddr('def');
   // 기본값: 회사차량 자동 선택
@@ -7189,6 +7164,7 @@ function closeWelcome(){
 
 document.addEventListener('DOMContentLoaded', function(){
   applyFontScale(); // 저장된 글자 크기 적용
+  applyPinnedStore();    // 고정해 둔 주문처명 자동 입력
   setupBcImgDropPaste(); // 드래그앤드롭/붙여넣기 설정
   // 첫 접속이면 환영 가이드, 아니면 바로 공지
   if(!localStorage.getItem('jsWelcomeHide')){
@@ -7200,6 +7176,116 @@ document.addEventListener('DOMContentLoaded', function(){
     if(e.target === this) dClose();
   });
 });
+
+// ── 주문처명(대리점명) 고정 저장 ──
+// 개인 폰·PC에서 늘 같은 곳에서 주문하므로 한 번 고정해두면 매번 안 적어도 된다.
+// 직송 등으로 다른 곳을 적어야 하면 그 자리에서 고쳐 쓰면 되고, 고정값은 그대로 남는다.
+function getPinnedStore(){
+  try { return localStorage.getItem('jsStorePin') || ''; } catch(e){ return ''; }
+}
+function setPinnedStore(v){
+  try { if(v) localStorage.setItem('jsStorePin', v); else localStorage.removeItem('jsStorePin'); } catch(e){}
+  renderStorePin();
+}
+function renderStorePin(){
+  var btn = document.getElementById('storePinBtn');
+  if(!btn) return;
+  var pinned = getPinnedStore();
+  var inp = document.getElementById('storeName');
+  var same = pinned && inp && inp.value.trim() === pinned;
+  btn.textContent = same ? '📌' : '📍';
+  btn.style.background = same ? 'var(--A3,#FFF3D6)' : 'var(--sur2)';
+  btn.style.borderColor = same ? 'var(--A,#E8A33D)' : 'var(--bdr)';
+  btn.title = same
+    ? '고정됨: ' + pinned + ' (눌러서 해제)'
+    : (pinned ? '고정값: ' + pinned + ' (눌러서 지금 이름으로 바꿈)' : '이 주문처명을 고정하기');
+}
+function toggleStorePin(){
+  var inp = document.getElementById('storeName');
+  var v = inp ? inp.value.trim() : '';
+  var pinned = getPinnedStore();
+  if(pinned && v === pinned){
+    setPinnedStore('');
+    showToast('주문처명 고정 해제');
+  } else if(v){
+    setPinnedStore(v);
+    showToast('📌 주문처명 고정: ' + v);
+  } else {
+    showToast('주문처명을 먼저 입력해주세요');
+    if(inp) inp.focus();
+  }
+}
+function onStoreNameInput(){ renderStorePin(); }
+// 앱 시작 시 고정된 주문처명 자동 입력
+function applyPinnedStore(){
+  var pinned = getPinnedStore();
+  var inp = document.getElementById('storeName');
+  if(inp && pinned && !inp.value.trim()) inp.value = pinned;
+  renderStorePin();
+}
+
+// ── 화물 지점 (기본 지점 저장 + 이번만 다른 지점) ──
+function getFreightTerms(){
+  try { return JSON.parse(localStorage.getItem('jsFreightTerms') || '[]'); } catch(e){ return []; }
+}
+function saveFreightTerms(list){
+  try { localStorage.setItem('jsFreightTerms', JSON.stringify(list)); } catch(e){}
+}
+function getDefFreight(){
+  try { return localStorage.getItem('jsFreightDef') || ''; } catch(e){ return ''; }
+}
+function setDefFreight(v){
+  try { if(v) localStorage.setItem('jsFreightDef', v); else localStorage.removeItem('jsFreightDef'); } catch(e){}
+}
+// 화물 지점 선택 UI 그리기 (기본 지점 + 최근 쓴 지점 + 직접 입력)
+function dRenderFreight(){
+  var wrap = document.getElementById('dFreightWrap');
+  if(!wrap) return;
+  wrap.style.display = (dMth === 'freight') ? 'block' : 'none';
+  if(dMth !== 'freight') return;
+  var def = getDefFreight();
+  var terms = getFreightTerms();
+  var box = document.getElementById('dFreightChips');
+  var h = '';
+  if(def){
+    h += '<button class="tbtn' + (dFreight === def ? ' gon' : '') + '" onclick="dPickFreight(' + JSON.stringify(def).replace(/"/g,'&quot;') + ')" style="margin:0 4px 4px 0">★ ' + def + '</button>';
+  }
+  terms.forEach(function(t){
+    if(t === def) return;
+    h += '<button class="tbtn' + (dFreight === t ? ' gon' : '') + '" onclick="dPickFreight(' + JSON.stringify(t).replace(/"/g,'&quot;') + ')" style="margin:0 4px 4px 0">' + t + '</button>';
+  });
+  h += '<button class="tbtn' + (dFreight === '__oth' ? ' aon' : '') + '" onclick="dPickFreight(\'__oth\')" style="margin:0 4px 4px 0">+ 다른 지점</button>';
+  box.innerHTML = h;
+  document.getElementById('dFreightOth').style.display = (dFreight === '__oth') ? 'block' : 'none';
+  var note = document.getElementById('dFreightDefNote');
+  if(note) note.textContent = def ? ('기본 지점: ' + def) : '기본 지점이 없습니다 — 지점을 적고 ★ 기본으로 저장을 누르세요';
+}
+function dPickFreight(v){
+  dFreight = v;
+  dRenderFreight();
+  if(v === '__oth'){
+    var i = document.getElementById('dFreightInp');
+    if(i) i.focus();
+  }
+}
+// 지금 적은 지점을 기본으로 저장
+function dSaveDefFreight(){
+  var v = (document.getElementById('dFreightInp').value || '').trim();
+  if(!v && dFreight && dFreight !== '__oth') v = dFreight;
+  if(!v){ showToast('화물 지점을 입력해주세요'); return; }
+  setDefFreight(v);
+  var terms = getFreightTerms();
+  if(terms.indexOf(v) < 0){ terms.unshift(v); saveFreightTerms(terms.slice(0, 6)); }
+  dFreight = v;
+  dRenderFreight();
+  showToast('★ 기본 화물지점 저장: ' + v);
+}
+// 이번 발주에 쓸 화물 지점 문자열
+function dFreightValue(){
+  if(dMth !== 'freight') return '';
+  if(dFreight === '__oth') return (document.getElementById('dFreightInp').value || '').trim();
+  return dFreight || getDefFreight() || '';
+}
 
 function dRefresh(){
   var el=document.getElementById('dAddrTxt');
@@ -7239,6 +7325,9 @@ function dSelMth(m){
   // 용차·퀵 선택 시 비대부 불가 안내 표시
   var note=document.getElementById('dCharterNote');
   if(note) note.style.display = (m==='charter'||m==='quick') ? 'block' : 'none';
+  // 화물이면 지점 선택 영역 표시 (기본 지점이 있으면 자동 선택)
+  if(m === 'freight' && !dFreight) dFreight = getDefFreight() || '__oth';
+  dRenderFreight();
 }
 
 function dSelPay(p){
@@ -7284,6 +7373,7 @@ function dConfirm(){
     // 상단 대리점명 칸도 업데이트
     var mainStore=document.getElementById('storeName');
     if(mainStore && !mainStore.value.trim()) mainStore.value=dStore;
+    renderStorePin();
   }
   if(PAYNEED.indexOf(dMth)>=0 && !dPay){ showToast('비용 부담을 선택해주세요'); return; }
 
@@ -7306,7 +7396,15 @@ function dConfirm(){
     if(dt) aLine+=' '+dt;
   }
 
+  var fTerm = dFreightValue();
+  if(dMth === 'freight' && !fTerm){ showToast('화물 지점을 선택하거나 입력해주세요'); return; }
+  // 직접 입력한 지점은 다음에 다시 고를 수 있게 최근 목록에 남긴다 (기본 지점은 그대로)
+  if(dMth === 'freight' && fTerm){
+    var terms = getFreightTerms();
+    if(terms.indexOf(fTerm) < 0){ terms.unshift(fTerm); saveFreightTerms(terms.slice(0,6)); }
+  }
   var mStr=MTHE[dMth]||dMth;
+  if(fTerm) mStr += ' · ' + fTerm;
   if(dPay==='dealer') mStr+=' (비대부)';
   if(dPay==='cod') mStr+=' (착불)';
   if(dPay==='cash') mStr+=' (현불)';
@@ -8478,6 +8576,7 @@ function openInvMod() {
   try { history.pushState({invMod:true}, '', location.href); } catch(e){}
   // 비번 없이 바로 품명·수량 명세서 표시
   invRender(storeVal);
+  var pb=document.getElementById('invPrintBtn'); if(pb) pb.style.display = '';
   document.getElementById('invDlBtn').style.display = '';
   document.getElementById('invCopyBtn').style.display = '';
   document.getElementById('invXlsBtn').style.display = '';
@@ -8791,9 +8890,191 @@ function invRender(company) {
   var preview = document.getElementById('invPreview');
   preview.innerHTML = html;
   preview.style.display = 'block';
+  var pb=document.getElementById('invPrintBtn'); if(pb) pb.style.display = '';
   document.getElementById('invDlBtn').style.display = '';
   document.getElementById('invCopyBtn').style.display = '';
   document.getElementById('invXlsBtn').style.display = '';
+}
+
+// ── A4 거래명세서 인쇄 ──
+// 종이 양식(거래명세서)과 같은 배치로 A4 한 장에 맞춰 출력한다.
+// 품목이 27줄을 넘으면 자동으로 다음 장으로 넘어간다.
+var INV_ROWS_PER_PAGE = 27;
+function invPrintA4(){
+  if(!cart || !cart.length){ showToast('명세서에 담긴 품목이 없습니다'); return; }
+  var company = (document.getElementById('invCompany').value || '').trim();
+  // 상호 입력칸이 비어 있으면 발주서에서 인식한 대리점을 쓴다
+  if(!company) company = (typeof poDetectedDealer === 'string' ? poDetectedDealer : '') || '';
+  var today = new Date();
+  var y = today.getFullYear(), mo = String(today.getMonth()+1).padStart(2,'0'), da = String(today.getDate()).padStart(2,'0');
+  var dateStr = y + '-' + mo + '-' + da;
+  var docNo = 'SN' + y + mo + da + String(today.getHours()).padStart(2,'0') + String(today.getMinutes()).padStart(2,'0');
+
+  function esc(t){
+    return String(t == null ? '' : t)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // 품목 줄 만들기 (단가는 잠금 해제됐을 때만)
+  var lines = [], supply = 0;
+  cart.forEach(function(it){
+    var pd = PRICES[it.code];
+    var up = (pd && invGrade && pd.p[invGrade]) ? pd.p[invGrade] : 0;
+    var boxQty = QTY_MAP[it.code] || 1;
+    var each = (it.unit === '박스') ? it.qty * boxQty : it.qty;
+    var amt = up * each;
+    supply += amt;
+    var pname = (it.gname || it.ename) + ctSuffix((it.gname || it.ename), it.ct, it.ename);
+    lines.push({
+      code: it.code, name: pname, qty: each,
+      price: invUnlocked && up > 0 ? up.toLocaleString() : '',
+      amount: invUnlocked && amt > 0 ? amt.toLocaleString() : '',
+      note: (it.unit === '박스') ? (it.qty + '박스') : ''
+    });
+  });
+  var vat = Math.round(supply * 0.1);
+  var totalQty = lines.reduce(function(a,b){ return a + (b.qty||0); }, 0);
+  var supplyStr = invUnlocked && supply > 0 ? supply.toLocaleString() : '';
+  var vatStr    = invUnlocked && vat > 0 ? vat.toLocaleString() : '';
+  var totalStr  = invUnlocked && supply > 0 ? (supply + vat).toLocaleString() : '';
+
+  // 페이지 나누기
+  var pages = [];
+  for(var i = 0; i < lines.length; i += INV_ROWS_PER_PAGE) pages.push(lines.slice(i, i + INV_ROWS_PER_PAGE));
+  if(!pages.length) pages.push([]);
+
+  var body = '';
+  pages.forEach(function(pageLines, pi){
+    var isLast = (pi === pages.length - 1);
+    var rows = '';
+    pageLines.forEach(function(l){
+      rows += '<tr>'
+        + '<td class="c">' + esc(l.code) + '</td>'
+        + '<td class="l">' + esc(l.name) + '</td>'
+        + '<td class="r">' + esc(l.qty) + '</td>'
+        + '<td class="r">' + esc(l.price) + '</td>'
+        + '<td class="r">' + esc(l.amount) + '</td>'
+        + '<td class="c">' + esc(l.note) + '</td></tr>';
+    });
+    // 마지막 장에는 합계 줄
+    if(isLast){
+      rows += '<tr class="sum">'
+        + '<td class="c">합 계</td><td></td>'
+        + '<td class="r">' + totalQty + '</td>'
+        + '<td></td><td class="r">' + supplyStr + '</td><td></td></tr>';
+    }
+    // 남은 칸은 빈 줄로 채워 양식 모양 유지
+    var used = pageLines.length + (isLast ? 1 : 0);
+    for(var k = used; k < INV_ROWS_PER_PAGE + 1; k++){
+      rows += '<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>';
+    }
+
+    body += '<div class="page">'
+      + '<div class="hd">'
+        + '<div class="ttl">거 래 명 세 서</div>'
+        + '<div class="use">회 계 용</div>'
+      + '</div>'
+      + '<div class="meta"><span>No. ' + docNo + (pages.length > 1 ? ('-' + (pi+1)) : '') + '</span>'
+        + '<span>발행일자 : &nbsp;' + dateStr + '</span></div>'
+      + '<table class="party">'
+        + '<colgroup><col style="width:16px"><col style="width:64px"><col><col style="width:26px"><col style="width:56px">'
+        + '<col style="width:16px"><col style="width:64px"><col><col style="width:26px"><col style="width:56px"></colgroup>'
+        + '<tr>'
+          + '<td class="vt" rowspan="4">공급받는자</td>'
+          + '<td class="lb">등록번호</td><td colspan="3"></td>'
+          + '<td class="vt" rowspan="4">공급자</td>'
+          + '<td class="lb">등록번호</td><td colspan="3">119-81-07096</td>'
+        + '</tr>'
+        + '<tr>'
+          + '<td class="lb">상 호<br>(법인명)</td><td class="big">' + esc(company) + '</td>'
+          + '<td class="lb2">성명</td><td></td>'
+          + '<td class="lb">상 호<br>(법인명)</td><td>우리엔터프라이즈(주)</td>'
+          + '<td class="lb2">성명</td><td>엄태욱, 윤지용</td>'
+        + '</tr>'
+        + '<tr>'
+          + '<td class="lb">사업장<br>주 소</td><td colspan="3"></td>'
+          + '<td class="lb">사업장<br>주 소</td><td colspan="3">경기도 안산시 단원구 성곡로 79</td>'
+        + '</tr>'
+        + '<tr>'
+          + '<td class="lb">업 태</td><td></td><td class="lb2">종목</td><td></td>'
+          + '<td class="lb">업 태</td><td>도매,제조업</td><td class="lb2">종목</td><td>전구, 조명장치</td>'
+        + '</tr>'
+      + '</table>'
+      + '<table class="items">'
+        + '<colgroup><col style="width:88px"><col><col style="width:62px"><col style="width:78px"><col style="width:92px"><col style="width:66px"></colgroup>'
+        + '<thead><tr><th>CODE NO.</th><th>품 &nbsp; 명</th><th>수 량</th><th>단 가</th><th>금 액</th><th>비고</th></tr></thead>'
+        + '<tbody>' + rows + '</tbody>'
+      + '</table>'
+      + (isLast
+        ? '<table class="foot">'
+          + '<colgroup><col style="width:26px"><col><col style="width:56px"><col style="width:92px"><col style="width:66px"></colgroup>'
+          + '<tr><td class="vt" rowspan="3">비고</td><td rowspan="3"></td>'
+            + '<td class="lb">합 계</td><td class="r">' + supplyStr + '</td><td></td></tr>'
+          + '<tr><td class="lb">부가세</td><td class="r">' + vatStr + '</td><td></td></tr>'
+          + '<tr><td class="lb">총 액</td><td class="r">' + totalStr + '</td><td></td></tr>'
+          + '</table>'
+          + '<table class="sign">'
+          + '<colgroup><col style="width:26px"><col style="width:70px"><col style="width:70px"><col style="width:26px"><col style="width:70px"></colgroup>'
+          + '<tr><td class="vt">담당</td><td></td><td></td><td class="vt">부서장</td><td></td></tr>'
+          + '</table>'
+        : '<div class="cont">다음 장에 계속 (' + (pi+1) + '/' + pages.length + ')</div>')
+      + '</div>';
+  });
+
+  var css = ''
+    + '@page{size:A4 portrait;margin:10mm}'
+    + '*{box-sizing:border-box}'
+    + 'body{margin:0;font-family:"Malgun Gothic","Noto Sans KR",sans-serif;color:#000;font-size:10.5px}'
+    + '.page{width:190mm;min-height:272mm;page-break-after:always;position:relative}'
+    + '.page:last-child{page-break-after:auto}'
+    + '.hd{position:relative;margin-bottom:6px}'
+    + '.ttl{text-align:center;font-size:19px;font-weight:700;letter-spacing:10px;padding:6px 0 2px;'
+    +      'border-bottom:1.5px solid #000;width:230px;margin:0 auto}'
+    + '.use{position:absolute;right:0;top:0;border:1px dashed #000;padding:8px 12px;font-size:12px;letter-spacing:2px}'
+    + '.meta{display:flex;justify-content:space-between;font-size:10.5px;margin:6px 2px 4px}'
+    + 'table{width:100%;border-collapse:collapse;table-layout:fixed}'
+    + '.party td{border:1px solid #000;padding:2px 4px;font-size:10px;height:19px;overflow:hidden;'
+    +      'white-space:nowrap;text-overflow:ellipsis}'
+    + '.party .vt{text-align:center;font-size:9px;line-height:1.15;word-break:break-all;padding:2px 1px}'
+    + '.party .lb{text-align:center;font-size:9.5px;line-height:1.2}'
+    + '.party .lb2{text-align:center;font-size:9.5px}'
+    + '.party .big{font-weight:700;font-size:11px}'
+    + '.items{margin-top:5px}'
+    + '.items th{border:1px solid #000;background:#e8e8e8;padding:4px 2px;font-size:10.5px;font-weight:700}'
+    + '.items td{border:1px solid #000;padding:2px 4px;font-size:10px;height:26px;overflow:hidden;white-space:nowrap}'
+    + '.items td.l{text-align:left}.items td.c{text-align:center}.items td.r{text-align:right}'
+    + '.items tr.sum td{font-weight:700}'
+    + '.foot{margin-top:8px}'
+    + '.foot td{border:1px solid #000;padding:3px 4px;font-size:10px;height:20px}'
+    + '.foot .vt{text-align:center;font-size:9px;line-height:1.15;word-break:break-all}'
+    + '.foot .lb{text-align:center;font-weight:700}'
+    + '.foot .r{text-align:right}'
+    + '.sign{margin-top:-1px}'
+    + '.sign td{border:1px solid #000;height:34px;font-size:9px;text-align:center;vertical-align:middle}'
+    + '.sign .vt{font-size:9px;line-height:1.15;word-break:break-all}'
+    + '.cont{text-align:right;font-size:9px;margin-top:4px;color:#555}'
+    + '@media screen{body{background:#e9e9e9;padding:12px}'
+    +   '.page{background:#fff;margin:0 auto 14px;padding:8mm;box-shadow:0 1px 5px rgba(0,0,0,.3)}}';
+
+  var html = '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">'
+    + '<title>거래명세서_' + esc(company) + '_' + dateStr + '</title>'
+    + '<style>' + css + '</style></head><body>' + body
+    + '<script>window.onload=function(){setTimeout(function(){window.print();},250);}<\/script>'
+    + '</body></html>';
+
+  var pw = window.open('', '_blank');
+  if(pw){
+    pw.document.write(html);
+    pw.document.close();
+  } else {
+    var blob = new Blob([html], {type:'text/html;charset=utf-8'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = '거래명세서_' + company + '_' + dateStr + '.html';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('팝업이 차단되어 파일로 저장했습니다 — 열어서 인쇄하세요');
+  }
 }
 
 function invCopyImage(){
