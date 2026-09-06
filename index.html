@@ -63,7 +63,10 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
   .parsebtn{flex:1.35;padding:10px 12px;font-size:13px}
   .srch{padding:9px 36px 9px 11px}
 }
-.split{display:flex;flex:1;overflow:hidden;min-height:0}
+.split{display:flex;flex:1;overflow:hidden;min-height:0;position:relative}
+.split.lcol .left{display:none}
+.split.lcol .right{width:100%}
+#splitToggle{position:absolute;left:6px;bottom:8px;z-index:20;padding:6px 10px;background:var(--ink);color:#fff;border:none;border-radius:16px;font-size:11px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;opacity:.9;box-shadow:0 1px 4px rgba(0,0,0,.25)}
 .left{width:50%;border-right:1px solid var(--bdr);background:var(--sur);overflow-y:auto;-webkit-overflow-scrolling:touch}
 .right{flex:1;background:var(--sur2);overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column}
 .pi{padding:9px 10px;border-bottom:1px solid var(--bdr);cursor:pointer;position:relative}
@@ -648,7 +651,8 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
     </div>
   </div>
   <!-- 좌우 분할 -->
-  <div class="split">
+  <div class="split" id="splitBox">
+    <button id="splitToggle" onclick="toggleLeftPane()" title="품목 목록을 접어 주문 화면을 넓게 씁니다">◀ 목록 접기</button>
     <div class="left" id="leftPanel"><div class="empty">대분류를<br>선택하세요</div></div>
     <div class="right" id="rightPanel">
       <div class="re" id="rEmpty"><span style="font-size:28px">👈</span>품목을<br>선택해주세요</div>
@@ -1060,6 +1064,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
       <button id="admTabStock" onclick="admShowTab('stock')" style="background:rgba(255,255,255,.22);border:none;color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:5px;cursor:pointer;font-family:'Noto Sans KR',sans-serif">재고</button>
       <button id="admTabBc" onclick="admShowTab('bc')" style="background:none;border:1px solid rgba(255,255,255,.35);color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:5px;cursor:pointer;font-family:'Noto Sans KR',sans-serif">🏷 바코드 등록</button>
       <button onclick="admOpenKw()" style="background:none;border:1px solid rgba(255,255,255,.35);color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:5px;cursor:pointer;font-family:'Noto Sans KR',sans-serif">🧠 키워드</button>
+      <button id="admTabData" onclick="admShowTab('data')" style="background:none;border:1px solid rgba(255,255,255,.35);color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:5px;cursor:pointer;font-family:'Noto Sans KR',sans-serif">📊 데이터</button>
       <button onclick="closeAdmMod()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:0 4px">&times;</button>
     </div>
 
@@ -1072,6 +1077,22 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
       <button onclick="admCheckPin()" style="padding:11px 26px;background:var(--ink);color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer">확인</button>
     </div>
 
+    <div id="admDataPanel" style="display:none;flex:1;min-height:0;flex-direction:column;overflow:auto">
+      <div style="padding:12px 14px">
+        <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:11px 12px;font-size:11.5px;color:#1E3A8A;line-height:1.7;margin-bottom:12px">
+          <b>📊 기본 데이터를 엑셀로 주고받습니다</b><br>
+          ① 내려받기 → ② 엑셀에서 <b>바코드</b>를 채우거나 <b>신제품 줄을 추가</b> → ③ 다시 올리기<br>
+          <span style="color:#64748B">올리면 무엇이 바뀌는지 먼저 보여드리고, 확인을 눌러야 반영됩니다. ERP코드가 이미 있으면 바코드만 채우고, 없으면 신제품으로 추가합니다.</span>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+          <button onclick="dataExportExcel()" style="flex:1;min-width:130px;padding:11px;background:#16A34A;color:#fff;border:none;border-radius:7px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif">⬇ 전체 내려받기</button>
+          <button onclick="dataExportMissingBc()" style="flex:1;min-width:130px;padding:11px;background:#0891B2;color:#fff;border:none;border-radius:7px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif">⬇ 바코드 없는 항목만</button>
+        </div>
+        <button onclick="document.getElementById('dataXlsInp').click()" style="width:100%;padding:11px;background:#2855A0;color:#fff;border:none;border-radius:7px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;margin-bottom:10px">⬆ 수정한 엑셀 올리기</button>
+        <input type="file" id="dataXlsInp" accept=".xlsx,.xls,.csv" style="display:none" onchange="dataImportFile(this)">
+        <div id="dataPlanBox" style="display:none;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:11px 12px"></div>
+      </div>
+    </div>
     <div id="admBcPanel" style="display:none;flex:1;min-height:0;flex-direction:column">
       <div class="adm-fix" style="padding:9px 14px;background:#EFF6FF;border-bottom:1px solid var(--bdr);font-size:12px;color:var(--ink2)">
         상품코드(바코드)가 없는 품목에 바코드를 이어붙입니다. 등록하면 발주서 변환·바코드 스캔에서 바로 인식됩니다.
@@ -1731,6 +1752,22 @@ function goTab(id, btn){
   if(btn){ btn.classList.add('on'); }
   else{ var i=TABS.indexOf(id); if(i>=0) document.querySelectorAll('.tb')[i].classList.add('on'); }
   if(id==='fav') renderFavTab();
+}
+
+// ── 품목 목록 접기 (바코드로 주문할 때 주문 화면을 넓게) ──
+function toggleLeftPane(force){
+  var box = document.getElementById('splitBox');
+  if(!box) return;
+  var on = (typeof force === 'boolean') ? force : !box.classList.contains('lcol');
+  box.classList.toggle('lcol', on);
+  var btn = document.getElementById('splitToggle');
+  if(btn) btn.textContent = on ? '▶ 목록 펼치기' : '◀ 목록 접기';
+  try { localStorage.setItem('jsLeftCollapsed', on ? '1' : ''); } catch(e){}
+}
+function applyLeftPaneState(){
+  var on = false;
+  try { on = localStorage.getItem('jsLeftCollapsed') === '1'; } catch(e){}
+  toggleLeftPane(on);
 }
 
 // ── 대분류 ──
@@ -3111,6 +3148,8 @@ function extractBarcodeLines(text){
 var scanning=false, scanMode='order';
 var bdDetector=null, bdStream=null, bdRAF=null, bdLastCode='', bdSameCount=0;
 function openScanner(mode){
+  // 바코드로 주문할 때는 왼쪽 품목 목록을 접어 주문 화면을 넓게 쓴다
+  try{ if(arguments[0]==='order') toggleLeftPane(true); }catch(e){}
   scanMode=mode||'order';
   document.getElementById('camModal').classList.add('open');
   if(scanning) return;
@@ -4686,6 +4725,11 @@ function poApplySynonyms(s){
   r = r.replace(/볼\s*전구/g, '볼구');
   // 와트 표기 통일: "30와트/30 와트/30웟" → "30W"
   r = r.replace(/(\d+)\s*(?:와트|웟트|웟|watt)/gi, '$1W');
+  // 평판은 브랜드 표기를 생략하면 KC 슬림 샤인이 기본.
+  // (KS/엣지/고효율/샤인스마트/담파/브라켓/M-bar 등을 적었으면 그대로 둔다)
+  if(/평판/.test(r) && !/(KS|KC|엣지|고효율|샤인\s*스마트|샤인스마트|T\s*담파|담파|브라켓|M\s*-?\s*bar|슬림)/i.test(r)){
+    r = r.replace(/평판/g, 'KC 슬림 샤인');
+  }
   // 볼구는 롱/숏 구분을 안 적는 경우가 많다 → 표기가 없으면 롱볼구가 기본.
   // ("볼 12", "볼구 12", "볼구 12W" → "롱 볼구 12W")
   // 롱·숏을 명시했으면 손대지 않는다.
@@ -5513,6 +5557,28 @@ function parseOrderItems(text){
         // 중복 품목군 제거
         var seen = {};
         ambigList = ambigList.filter(function(cg){ if(seen[cg.name])return false; seen[cg.name]=1; return true; });
+        // 발주에 적힌 용도 단어(투광·다운·촛대 등)를 1순위 후보가 갖고 있으면,
+        // 그 단어가 없는 후보는 다른 물건이므로 선택지에서 뺀다.
+        // (예: "투광등 30W" → 일자등 30W·EL 30이 후보로 뜨던 문제)
+        if(ambigList.length >= 2 && lineUse.length){
+          var topName = ambigList[0].name;
+          lineUse.forEach(function(k){
+            if(topName.indexOf(k) < 0) return;
+            var kept = ambigList.filter(function(cg){ return cg.name.indexOf(k) >= 0; });
+            if(kept.length) ambigList = kept;
+          });
+        }
+        // 본체색을 안 적었으면 백색이 기본 → 흑색 후보는 빼서 선택창을 띄우지 않는다.
+        // (색을 적었으면 위 매칭에서 이미 그 색이 잡히므로 이 필터는 동작하지 않는다)
+        if(!/흑색|검정|블랙|black/i.test(line)){
+          var noBlack = ambigList.filter(function(cg){ return !/흑색/.test(cg.name); });
+          if(noBlack.length) ambigList = noBlack;
+        }
+        // 와트를 적었는데 와트가 없는 후보(투광등 파이프 등)는 선택지에서 제외
+        if(lineWatt){
+          var withWatt = ambigList.filter(function(cg){ return poExtractWatt(cg.name); });
+          if(withWatt.length) ambigList = withWatt;
+        }
       }
       if(ambigList.length >= 2){
         // 후보 여러 개 → 선택 대기 상태
@@ -5884,7 +5950,9 @@ function parsePreview(reparse){
   });
   h += '</div>'; // grid 끝
   h += '<div style="font-size:10px;color:var(--ink3);padding:6px 4px 2px;text-align:center;line-height:1.5">💡 열 제목의 📋을 누르면 그 열 전체가 복사됩니다 · 왼쪽 발주 원본을 고치면 바로 다시 매칭됩니다'
-    + ' · <button onclick="openKwManage()" style="background:none;border:none;color:#7C3AED;font-size:10px;font-weight:700;cursor:pointer;text-decoration:underline;padding:0;font-family:Noto Sans KR,sans-serif">🧠 키워드 관리</button></div>';
+    + ' · <button onclick="openKwManage()" style="background:none;border:none;color:#7C3AED;font-size:10px;font-weight:700;cursor:pointer;text-decoration:underline;padding:0;font-family:Noto Sans KR,sans-serif">🧠 키워드 관리</button>'
+    + (failCnt ? ' · <button onclick="mailUnresolved()" style="background:none;border:none;color:#DC2626;font-size:10px;font-weight:700;cursor:pointer;text-decoration:underline;padding:0;font-family:Noto Sans KR,sans-serif">✉ 미매칭 '+failCnt+'건 메일로 알리기</button>' : '')
+    + '</div>';
   box.innerHTML = h;
   // 헤더 고정이 컨테이너 맨 위에 붙도록 위쪽 여백 제거
   box.style.paddingTop = '0';
@@ -7338,6 +7406,7 @@ function closeWelcome(){
 document.addEventListener('DOMContentLoaded', function(){
   applyFontScale(); // 저장된 글자 크기 적용
   applyPinnedStore();    // 고정해 둔 주문처명 자동 입력
+  applyLeftPaneState();  // 목록 접기 상태 복원
   setupBcImgDropPaste(); // 드래그앤드롭/붙여넣기 설정
   // 첫 접속이면 환영 가이드, 아니면 바로 공지
   if(!localStorage.getItem('jsWelcomeHide')){
@@ -7732,6 +7801,7 @@ function openAdmMod(){
   var b = document.getElementById('admBody');
   b.style.display = 'none';
   document.getElementById('admBcPanel').style.display = 'none';   // 비번 전에는 바코드 패널도 숨김
+  var dtp = document.getElementById('admDataPanel'); if(dtp) dtp.style.display = 'none';
   document.getElementById('admPinErr').textContent = '';
   var pin = document.getElementById('admPin');
   pin.value = '';
@@ -7814,12 +7884,18 @@ function admShowTab(t){
   var bc = document.getElementById('admBcPanel');
   var pin = document.getElementById('admPinWrap');
   if(pin && pin.style.display !== 'none') return;   // 비번 통과 전에는 전환 불가
+  var dt = document.getElementById('admDataPanel');
   var on = 'rgba(255,255,255,.22)', off = 'none';
   document.getElementById('admTabStock').style.background = (t==='stock')?on:off;
   document.getElementById('admTabBc').style.background    = (t==='bc')?on:off;
-  document.getElementById('admTitle').textContent = (t==='bc') ? '🏷 관리자 체크 · 바코드 등록' : '📊 관리자 체크 · 재고 현황';
+  document.getElementById('admTabData').style.background  = (t==='data')?on:off;
+  document.getElementById('admTitle').textContent =
+    (t==='bc') ? '🏷 관리자 체크 · 바코드 등록'
+    : (t==='data') ? '📊 관리자 체크 · 데이터 엑셀'
+    : '📊 관리자 체크 · 재고 현황';
   stock.style.display = (t==='stock') ? 'flex' : 'none';
   bc.style.display    = (t==='bc')    ? 'flex' : 'none';
+  if(dt) dt.style.display = (t==='data') ? 'flex' : 'none';
   if(t==='bc'){ admBcCheck(); admBcRender(); }
 }
 // 입력한 바코드 상태 안내 (이미 등록됨 / 사용 가능 / 자릿수 부족)
@@ -8710,6 +8786,7 @@ function closeQrScanner() {
 // ── 초기화 (앱과 독립적으로 재고 로드) ──
 loadUserKwLocal();               // 사용자 키워드 즉시 로드 (localStorage)
 loadUserBcLocal(); applyUserBc();  // 관리자 등록 바코드 즉시 반영
+loadUserItems();                   // 엑셀로 추가한 신제품 복원
 setTimeout(loadStockFromSheet, 500);
 setTimeout(loadContainers, 800);
 setTimeout(loadUserKwCloud, 1100); // 클라우드 키워드 동기화
@@ -9294,6 +9371,288 @@ function invDownloadBlob(blob){
   a.download = '거래명세서_' + company + '_' + today + '.png';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(a.href);
+}
+
+// ── 미등록·미매칭 항목 메일로 보내기 ──
+// 바코드가 없어서 못 읽은 것, 명세서에서 품명을 못 찾은 것을 모아 담당자에게 알린다.
+var ADMIN_MAIL = 'kimjs@wooree.co.kr';
+// 지금 화면에서 확인이 필요한 항목들을 모은다
+function collectUnresolved(){
+  var out = [];
+  // 1) 발주서 변환 미리보기에서 품명을 못 찾은 줄
+  try {
+    (parsedItems || []).forEach(function(it){
+      if(it.unconfirmed) out.push({ kind: '품명 미매칭', text: it.rawText || it.ename || '', code: '', bc: '' });
+      else if(it.unknownCode) out.push({ kind: '코드 미등록', text: it.rawText || '', code: it.code || '', bc: '' });
+    });
+  } catch(e){}
+  // 2) 바코드 스캔 목록에서 미등록 바코드
+  try {
+    (scanList || []).forEach(function(it){
+      if(it.unknown || !it.code || it.code === '?') out.push({ kind: '미등록 바코드', text: it.ename || '', code: '', bc: it.bc || it.barcode || '' });
+    });
+  } catch(e){}
+  // 3) 명세서에 담긴 것 중 코드가 없는 항목
+  try {
+    (cart || []).forEach(function(it){
+      if(!it.code || it.code === '?') out.push({ kind: '명세서 미매칭', text: it.ename || it.gname || '', code: '', bc: '' });
+    });
+  } catch(e){}
+  // 같은 내용 중복 제거
+  var seen = {}, uniq = [];
+  out.forEach(function(x){
+    var k = x.kind + '|' + x.text + '|' + x.code + '|' + x.bc;
+    if(!seen[k]){ seen[k] = 1; uniq.push(x); }
+  });
+  return uniq;
+}
+function mailUnresolved(){
+  var list = collectUnresolved();
+  if(!list.length){ showToast('보낼 미등록·미매칭 항목이 없습니다'); return; }
+  var store = '';
+  try { store = (document.getElementById('storeName').value || '').trim(); } catch(e){}
+  var d = new Date();
+  var ds = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  var body = '장수램프 발주앱 — 등록이 필요한 항목\n'
+    + '주문처: ' + (store || '(미입력)') + '\n'
+    + '일자: ' + ds + '\n'
+    + '건수: ' + list.length + '건\n'
+    + '──────────────────────────────\n';
+  list.forEach(function(x, i){
+    body += (i+1) + '. [' + x.kind + '] ' + x.text
+      + (x.code ? '  (코드 ' + x.code + ')' : '')
+      + (x.bc ? '  (바코드 ' + x.bc + ')' : '') + '\n';
+  });
+  body += '──────────────────────────────\n'
+    + '※ 바코드가 비어 있으면 바코드를, 품명을 못 찾았으면 정식 품명을 알려주세요.\n';
+  var subject = '[장수램프] 등록 필요 항목 ' + list.length + '건 · ' + (store || '주문처미입력') + ' · ' + ds;
+  var href = 'mailto:' + ADMIN_MAIL + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+  try {
+    var a = document.createElement('a');
+    a.href = href; a.style.display = 'none';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    showToast('✉ 메일 앱으로 ' + list.length + '건 전달');
+  } catch(e){
+    if(navigator.clipboard) navigator.clipboard.writeText(body);
+    showToast('메일 앱을 못 열어 내용을 복사했습니다');
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  기본 데이터 엑셀 내보내기 / 가져오기 (관리자)
+//  · 품목·바코드·박스수량을 엑셀로 받아 고친 뒤 다시 올린다
+//  · 바코드 없는 항목 채우기, 신제품 추가에 사용
+// ══════════════════════════════════════════════════
+function withXLSX(cb){
+  if(typeof XLSX !== 'undefined') return cb();
+  showToast('엑셀 모듈 로딩 중...');
+  var sc = document.createElement('script');
+  sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  sc.onload = function(){ cb(); };
+  sc.onerror = function(){ showToast('엑셀 모듈 로드 실패 (인터넷 연결 확인)'); };
+  document.head.appendChild(sc);
+}
+// 코드 → 바코드 역인덱스
+function bcByCode(){
+  var m = {};
+  Object.keys(bcMap).forEach(function(b){ if(!m[bcMap[b].code]) m[bcMap[b].code] = b; });
+  return m;
+}
+var DATA_XLS_HEAD = ['대분류','중분류','품목군','ERP코드','정식품명','색온도','바코드','박스수량','관리자등록'];
+function dataBuildRows(){
+  var byCode = bcByCode();
+  var rows = [DATA_XLS_HEAD];
+  G.forEach(function(g){
+    (g.variants || []).forEach(function(v){
+      var bc = byCode[v.code] || '';
+      rows.push([
+        g.cat || '', g.sub || '', g.name, v.code, v.ename || '',
+        v.ct || '', bc, (QTY_MAP[v.code] || ''),
+        (bc && USER_BC[bc]) ? 'Y' : ''
+      ]);
+    });
+  });
+  return rows;
+}
+function dataExportExcel(){
+  withXLSX(function(){
+    try {
+      var rows = dataBuildRows();
+      var ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [{wch:10},{wch:12},{wch:28},{wch:12},{wch:34},{wch:8},{wch:16},{wch:9},{wch:9}];
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '품목데이터');
+      var d = new Date();
+      var ds = d.getFullYear() + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0');
+      XLSX.writeFile(wb, '장수램프_품목데이터_' + ds + '.xlsx');
+      showToast('✓ ' + (rows.length-1) + '행 내려받음 — 고친 뒤 다시 올리세요');
+    } catch(e){ showToast('엑셀 만들기 실패: ' + e.message); }
+  });
+}
+// 바코드가 비어 있는 항목만 따로 (채워 넣기 편하게)
+function dataExportMissingBc(){
+  withXLSX(function(){
+    try {
+      var all = dataBuildRows();
+      var head = all[0];
+      var rows = [head].concat(all.slice(1).filter(function(r){ return !r[6]; }));
+      if(rows.length === 1){ showToast('바코드가 빠진 항목이 없습니다'); return; }
+      var ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [{wch:10},{wch:12},{wch:28},{wch:12},{wch:34},{wch:8},{wch:16},{wch:9},{wch:9}];
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '바코드없음');
+      XLSX.writeFile(wb, '장수램프_바코드없는항목.xlsx');
+      showToast('✓ 바코드 없는 ' + (rows.length-1) + '개 내려받음');
+    } catch(e){ showToast('엑셀 만들기 실패: ' + e.message); }
+  });
+}
+// 업로드 → 미리보기 (바로 반영하지 않고 무엇이 바뀌는지 먼저 보여준다)
+var dataImportPlan = null;
+function dataImportFile(inp){
+  var f = inp.files && inp.files[0];
+  if(!f) return;
+  inp.value = '';
+  withXLSX(function(){
+    var rd = new FileReader();
+    rd.onload = function(e){
+      try {
+        var wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+        var ws = wb.Sheets[wb.SheetNames[0]];
+        var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+        dataImportPlan = dataBuildPlan(rows);
+        dataRenderPlan();
+      } catch(err){ showToast('엑셀 읽기 실패: ' + err.message); }
+    };
+    rd.readAsArrayBuffer(f);
+  });
+}
+// 엑셀 내용과 현재 데이터를 비교해 '할 일' 목록을 만든다
+function dataBuildPlan(rows){
+  var plan = { addBc: [], newItem: [], skip: [], bad: [] };
+  if(!rows || rows.length < 2){ plan.bad.push('내용이 없습니다'); return plan; }
+  // 머리글 위치 찾기 (열 순서가 바뀌어도 이름으로 찾음)
+  var head = rows[0].map(function(x){ return String(x||'').replace(/\s/g,''); });
+  var ix = {};
+  DATA_XLS_HEAD.forEach(function(h){ ix[h] = head.indexOf(h); });
+  if(ix['ERP코드'] < 0 || ix['품목군'] < 0){
+    plan.bad.push('머리글에 "품목군"과 "ERP코드"가 있어야 합니다');
+    return plan;
+  }
+  var byCode = bcByCode();
+  var codeSet = {};
+  G.forEach(function(g){ (g.variants||[]).forEach(function(v){ codeSet[v.code] = g; }); });
+
+  rows.slice(1).forEach(function(r, i){
+    var ln = i + 2;
+    var get = function(k){ return ix[k] >= 0 ? String(r[ix[k]] == null ? '' : r[ix[k]]).trim() : ''; };
+    var code = get('ERP코드'), gname = get('품목군');
+    if(!code && !gname) return;                    // 빈 줄
+    var bc = get('바코드').replace(/\D/g, '');
+    if(codeSet[code]){
+      // 이미 있는 품목 → 바코드만 확인
+      if(!bc){ return; }
+      if(bc.length !== 13){ plan.bad.push(ln + '행: 바코드가 13자리가 아닙니다 (' + get('바코드') + ')'); return; }
+      var cur = byCode[code];
+      if(cur === bc){ plan.skip.push(code); return; }
+      if(bcMap[bc] && bcMap[bc].code !== code){
+        plan.bad.push(ln + '행: 바코드 ' + bc + ' 는 이미 다른 품목(' + (bcMap[bc].gName||bcMap[bc].code) + ')에 있습니다');
+        return;
+      }
+      plan.addBc.push({ code: code, bc: bc, gname: codeSet[code].name, had: cur });
+    } else {
+      // 없는 코드 → 신제품 후보
+      if(!code){ plan.bad.push(ln + '행: ERP코드가 비어 있습니다'); return; }
+      if(!gname){ plan.bad.push(ln + '행: 품목군이 비어 있습니다'); return; }
+      if(bc && bc.length !== 13){ plan.bad.push(ln + '행: 바코드가 13자리가 아닙니다'); return; }
+      plan.newItem.push({
+        cat: get('대분류') || 'LED', sub: get('중분류') || '기타',
+        gname: gname, code: code, ename: get('정식품명') || gname,
+        ct: get('색온도') || '-', bc: bc,
+        box: parseInt(get('박스수량'), 10) || 1
+      });
+    }
+  });
+  return plan;
+}
+function dataRenderPlan(){
+  var p = dataImportPlan, box = document.getElementById('dataPlanBox');
+  if(!box) return;
+  if(!p){ box.innerHTML = ''; box.style.display = 'none'; return; }
+  var h = '<div style="font-size:12px;font-weight:700;margin-bottom:6px">📋 올린 내용 확인</div>';
+  h += '<div style="font-size:11.5px;line-height:1.7;margin-bottom:8px">'
+    + '· 바코드 추가/변경 <b style="color:#059669">' + p.addBc.length + '</b>건<br>'
+    + '· 신제품 추가 <b style="color:#2855A0">' + p.newItem.length + '</b>건<br>'
+    + '· 그대로 (변경 없음) ' + p.skip.length + '건'
+    + (p.bad.length ? '<br>· <b style="color:#DC2626">확인 필요 ' + p.bad.length + '건</b>' : '')
+    + '</div>';
+  function list(arr, fmt, color){
+    if(!arr.length) return '';
+    var s2 = '<div style="max-height:120px;overflow:auto;border:1px solid var(--bdr);border-radius:6px;padding:6px;margin-bottom:8px;background:#fff">';
+    arr.slice(0, 40).forEach(function(x){ s2 += '<div style="font-size:11px;color:' + color + ';padding:1px 0">' + fmt(x) + '</div>'; });
+    if(arr.length > 40) s2 += '<div style="font-size:10px;color:#999">외 ' + (arr.length-40) + '건</div>';
+    return s2 + '</div>';
+  }
+  h += list(p.addBc, function(x){ return '🏷 ' + x.gname + ' · ' + x.code + ' → ' + x.bc + (x.had ? ' (기존 ' + x.had + ' 대체)' : ''); }, '#065F46');
+  h += list(p.newItem, function(x){ return '🆕 ' + x.gname + ' · ' + x.code + (x.bc ? ' · ' + x.bc : ''); }, '#1E3A8A');
+  h += list(p.bad, function(x){ return '⚠ ' + x; }, '#B45309');
+  var can = p.addBc.length + p.newItem.length;
+  h += '<div style="display:flex;gap:6px">'
+    + '<button onclick="dataCancelPlan()" style="flex:1;padding:9px;background:#f0f0f0;color:#555;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif">취소</button>'
+    + '<button onclick="dataApplyPlan()" ' + (can ? '' : 'disabled') + ' style="flex:2;padding:9px;background:' + (can ? '#059669' : '#ccc') + ';color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:' + (can ? 'pointer' : 'not-allowed') + ';font-family:Noto Sans KR,sans-serif">' + can + '건 반영하기</button>'
+    + '</div>';
+  box.innerHTML = h;
+  box.style.display = 'block';
+}
+function dataCancelPlan(){ dataImportPlan = null; dataRenderPlan(); }
+function dataApplyPlan(){
+  var p = dataImportPlan;
+  if(!p) return;
+  var n1 = 0, n2 = 0;
+  p.addBc.forEach(function(x){ addUserBc(x.bc, x.code); n1++; });
+  p.newItem.forEach(function(x){
+    if(typeof addNewItemLocal === 'function') addNewItemLocal(x);
+    else dataAddItemLocal(x);
+    n2++;
+  });
+  dataImportPlan = null;
+  dataRenderPlan();
+  if(typeof renderList === 'function') try{ renderList(); }catch(e){}
+  showToast('✓ 바코드 ' + n1 + '건 · 신제품 ' + n2 + '건 반영됨');
+}
+// 신제품을 앱 데이터에 넣고 기기에 저장 (구글시트가 없어도 동작)
+function dataAddItemLocal(x){
+  var g = null;
+  for(var i = 0; i < G.length; i++){ if(G[i].name === x.gname){ g = G[i]; break; } }
+  if(!g){
+    g = { cat: x.cat, sub: x.sub, name: x.gname, variants: [] };
+    G.push(g);
+  }
+  if(!g.variants.some(function(v){ return v.code === x.code; })){
+    g.variants.push({ code: x.code, ename: x.ename, ct: x.ct });
+  }
+  if(x.box) QTY_MAP[x.code] = x.box;
+  if(x.bc) addUserBc(x.bc, x.code);
+  // 기기에 저장 → 새로고침해도 남는다
+  try {
+    var saved = JSON.parse(localStorage.getItem('jsUserItems') || '[]');
+    if(!saved.some(function(s){ return s.code === x.code; })){ saved.push(x); }
+    localStorage.setItem('jsUserItems', JSON.stringify(saved));
+  } catch(e){}
+}
+// 앱 시작 시 사용자가 추가한 신제품 복원
+function loadUserItems(){
+  try {
+    var saved = JSON.parse(localStorage.getItem('jsUserItems') || '[]');
+    saved.forEach(function(x){
+      var g = null;
+      for(var i = 0; i < G.length; i++){ if(G[i].name === x.gname){ g = G[i]; break; } }
+      if(!g){ g = { cat: x.cat, sub: x.sub, name: x.gname, variants: [] }; G.push(g); }
+      if(!g.variants.some(function(v){ return v.code === x.code; })){
+        g.variants.push({ code: x.code, ename: x.ename, ct: x.ct });
+      }
+      if(x.box) QTY_MAP[x.code] = x.box;
+    });
+  } catch(e){}
 }
 
 function invDownloadExcel() {
