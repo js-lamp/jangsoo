@@ -4252,6 +4252,10 @@ function poExtractCt(line){
   if(/전구|웜|warm/i.test(t)) return '전구';
   if(/주백/.test(t)) return '주백';
   if(/주광|화이트|white|cw/i.test(t)) return '주광';
+  // 4) 일반램프에서 쓰는 약자: D=주광(Daylight), L=전구(Lamp/전구색), W=주백
+  //    발주서에 "EL 20-L-3", "볼 12-D-1"처럼 단독으로 떨어져 적힌 경우만 인정한다.
+  var mm = t.match(/(?:^|[\s\-–—/(])([DdLl])(?=$|[\s\-–—/)])/);
+  if(mm) return (mm[1] === 'D' || mm[1] === 'd') ? '주광' : '전구';
   return null;
 }
 // 발주 줄에서 색온도 K값 추출 (5700/6500 구분용). 없으면 기본 5700
@@ -4337,6 +4341,7 @@ var PO_SYNONYMS = [
   // 계속 매칭되도록 두 표기를 모두 남긴다. (투광등 백색/흑색 판정은 그대로 동작)
   ['블랙바디','블랙 흑색'],['블랙','블랙 흑색'],['화이트바디','화이트 백색'],['화이트','화이트 백색'],
   ['매장','매장램프'],['크립톤','미니크립톤'],['촛대','촛대구'],
+  ['A19','LED BULB'],['A-19','LED BULB'],['AI9','LED BULB'],['Al9','LED BULB'],
   ['엣지원형','엣지 원형'],['엣지사각','엣지 사각'],
   ['모듈','리폼모듈'],['cfl','EL'],['CFL','EL'],['삼파장','EL'],['삼파장전구','EL'],
   ['벌브','BULB'],['전구색벌브','BULB'],['led벌브','LED BULB'],['엘이디벌브','LED BULB'],
@@ -4899,7 +4904,13 @@ function poExtractWatt(s){
 }
 // 인치 추출
 function poExtractInch(s){
-  var m=s.match(/(\d+)\s*(인치|["”″])/);
+  var t = String(s||'');
+  var m = t.match(/(\d+)\s*(인치|["”″])/);
+  if(m) return m[1];
+  // "인치"를 생략하고 붙여 쓰는 표기도 인정한다.
+  // 예) "8엣지사각센서", "6다운라이트", "10엣지원형직부"
+  // → 인치로 구분되는 품목(엣지·다운라이트 등) 앞에 붙은 한 자리/두 자리 숫자
+  m = t.match(/(?:^|[\s(\[])(\d{1,2})\s*(?=엣지|다운라이트|다운|매입|이너|COB|cob)/);
   if(m) return m[1];
   return null;
 }
@@ -5270,7 +5281,7 @@ function poHasProduct(line){
   if(/\bf?hf\b|\bf?pl\s*\d|\bfpl\b|\bfl\b|\bpl\s*\d|\bcfl\b|\bel\b|ss\s*ex|ssex|ex-?[dl]|삼파장|형광/i.test(line)) return true;
   // 한글로 적은 PAR 약칭(파30/빠30)도 품목으로 인정
   if(/[파빠]\s*(20|30|38)\b/.test(line)) return true;
-  return /\d+\s*[wW]|\d+\s*(?:와트|웟트|웟)|인치|["”″]|등|램프|장갑|크립톤|투광|다운|평판|벌브|볼구|볼\s*\d|볼\s*전구|mr|par|t5|t8|t10|촛대|볼구|스틱|매장|인지|방등|거실|주방|스탠드|실링|트랙|엣지|샤인|슬림|모듈|센서|직부|원형|사각|펜던트|확산|집중|직관/i.test(line);
+  return /\d+\s*[wW]|\d+\s*(?:와트|웟트|웟)|인치|["”″]|등|램프|장갑|크립톤|투광|다운|평판|벌브|볼구|볼\s*\d|볼\s*전구|a\s*-?\s*19|ai9|al9|mr|par|t5|t8|t10|촛대|볼구|스틱|매장|인지|방등|거실|주방|스탠드|실링|트랙|엣지|샤인|슬림|모듈|센서|직부|원형|사각|펜던트|확산|집중|직관/i.test(line);
 }
 // 배송/연락처/헤더 등 무시할 줄
 function poIsJunk(line){
@@ -5682,6 +5693,20 @@ function parseOrderItems(text){
 }
 
 // ── 미리보기 (오른쪽 패널에 매칭 결과 표시) ──
+// 그 줄의 단위를 개 ↔ 박스로 전환한다 (숫자는 그대로, 뜻만 바꿈)
+// 예: "EL 20-L-3" 을 3개로 읽었는데 사실 3박스인 경우 한 번 눌러 고친다.
+function pvToggleUnit(idx){
+  var it = parsedItems[idx];
+  if(!it) return;
+  it.unit = (it.unit === '박스') ? '개' : '박스';
+  it.qtyGuess = false;          // 사용자가 직접 정했으므로 '수량 확인' 해제
+  parsePreview(false);
+  var bq = (typeof QTY_MAP !== 'undefined' && QTY_MAP[it.code]) ? QTY_MAP[it.code] : 1;
+  showToast(it.unit === '박스'
+    ? '📦 ' + it.qty + '박스' + (bq > 1 ? ' (= ' + (it.qty * bq) + '개)' : '')
+    : '🔢 ' + it.qty + '개');
+}
+
 // ── 못 읽은 줄에서 바로 품목 검색해 지정 ──
 // 키워드 규칙을 먼저 만들지 않아도, 그 자리에서 실제 품목을 찾아 넣을 수 있다.
 // 지정하면 그 발주 표기를 별칭으로 쌓아두므로 다음부터는 저절로 맞는다.
@@ -6021,7 +6046,16 @@ function parsePreview(reparse){
     // 박스 셀 (박스당 입수를 함께 보여줘 환산 근거를 눈으로 확인할 수 있게)
     var bqTxt = '';
     if(m.box!=='' && m.bq>1) bqTxt = '<br><span style="font-size:9px;color:#AAA;font-weight:500">×'+m.bq+'개</span>';
-    h += '<div class="pvrow" data-pvrow="'+ri+'" title="'+(m.bq>1?'박스당 '+m.bq+'개':'')+'" style="padding:8px 4px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:#888;font-size:11px;font-weight:600;text-align:center;white-space:nowrap;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.2;user-select:text;-webkit-user-select:text">'+(m.box!==''?m.box+'박스'+bqTxt:'')+'</div>';
+    // 박스 셀 — 누르면 그 줄을 개 ↔ 박스로 바꾼다.
+    // 손으로 쓴 발주는 뒤 숫자가 박스인 경우가 많아 한 번에 고칠 수 있어야 한다.
+    var isBox = (it.unit === '박스');
+    var swapTxt = isBox
+      ? (m.box + '박스' + bqTxt)
+      : (m.bq > 1 ? '<span style="color:#BBB">개 단위</span>' : '');
+    h += '<div class="pvrow" data-pvrow="'+ri+'" onclick="pvToggleUnit('+m.idx+')" title="눌러서 개 ↔ 박스 전환'+(m.bq>1?' (박스당 '+m.bq+'개)':'')+'" style="padding:6px 4px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:#888;font-size:11px;font-weight:600;text-align:center;white-space:nowrap;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.2;cursor:pointer">'
+      + swapTxt
+      + '<span style="font-size:9px;font-weight:700;color:#fff;background:'+(isBox?'#2855A0':'#B0AFAC')+';border-radius:3px;padding:1px 5px;margin-top:2px">'+(isBox?'박스':'개')+' ⇄</span>'
+      + '</div>';
   });
   h += '</div>'; // grid 끝
   h += '<div style="font-size:10px;color:var(--ink3);padding:6px 4px 2px;text-align:center;line-height:1.5">💡 열 제목의 📋을 누르면 그 열 전체가 복사됩니다 · 왼쪽 발주 원본을 고치면 바로 다시 매칭됩니다'
@@ -7413,6 +7447,34 @@ var MTHL={'car':'회사차량','charter':'용차','quick':'퀵','freight':'화�
 var MTHE={'car':'🚗 회사차량','charter':'🚛 용차','quick':'⚡ 퀵','freight':'📦 화물','parcel':'📫 택배'};
 var PAYNEED=['freight','parcel'];
 
+// 발주 메모에서 화물 지점을 읽어낸다.
+// 예) "대신구월동지점 화물처리 부탁드립니다" → 대신구월동지점
+//     "경동택배 안산지점 화물" → 경동택배 안산지점
+// 지점 이름을 못 찾아도 "화물"이라는 말만 있으면 배송방법은 화물로 잡는다.
+function poFindFreight(text){
+  var t = String(text || '');
+  if(!t) return null;
+  var wantFreight = /화물/.test(t);
+  var term = null;
+  // 줄 단위로 본다 — 윗줄의 상호·전화번호를 지점명으로 끌어오지 않도록
+  var lines = t.split(/\r?\n/).map(function(x){
+    // 전화번호는 지점명이 아니므로 지운다 (010-9090-8247 등)
+    return x.replace(/\d{2,4}[-.\s]?\d{3,4}[-.\s]?\d{4}/g, ' ').trim();
+  });
+  for(var i = 0; i < lines.length && !term; i++){
+    var ln = lines[i];
+    if(!ln) continue;
+    // 1) "○○지점 / ○○영업소 / ○○터미널" (앞의 회사명까지 함께)
+    var m = ln.match(/([가-힣][가-힣A-Za-z]*(?:\s+[가-힣][가-힣A-Za-z0-9]*)?\s*(?:지점|영업소|터미널|취급점))/);
+    if(m){ term = m[1].replace(/\s+/g, ' ').trim(); break; }
+    // 2) "화물" 바로 앞에 붙은 말 (예: "대신구월동 화물")
+    var m2 = ln.match(/([가-힣][가-힣A-Za-z]{1,}(?:\s+[가-힣][가-힣A-Za-z]{1,})?)\s*(?:화물|택배)\s*(?:처리|접수|발송)?/);
+    if(m2 && !/^(화물|택배)$/.test(m2[1])){ term = m2[1].replace(/\s+/g, ' ').trim(); break; }
+  }
+  if(!term && !wantFreight) return null;
+  return { term: term, freight: wantFreight || !!term };
+}
+
 function dOpen(items,store){
   dItems=items; dStore=store;
   dPay=null;
@@ -7437,7 +7499,30 @@ function dOpen(items,store){
   dMth='car';
   var carBtn=document.getElementById('mb-car');
   if(carBtn) carBtn.classList.add('mon');
+  dRenderFreight();   // 기본이 회사차량이므로 지점칸은 닫아 둔다 (이전 발주 상태가 남지 않게)
+  // 발주 내용에 화물 지점이 적혀 있으면 배송방법을 화물로 바꾸고 지점을 채운다
+  dAutoFreight();
   document.getElementById('dov').classList.add('show');
+}
+// 발주 원본/메모에서 화물 지점을 찾아 자동 적용
+function dAutoFreight(){
+  var src = '';
+  try { src = (document.getElementById('parseTa') || {}).value || ''; } catch(e){}
+  if(!src){ try { src = window.__lastOrderText || ''; } catch(e){} }
+  var f = poFindFreight(src);
+  if(!f || !f.freight) return;
+  dSelMth('freight');                      // 배송방법 = 화물
+  if(f.term){
+    dFreight = '__oth';
+    dRenderFreight();
+    var inp = document.getElementById('dFreightInp');
+    if(inp) inp.value = f.term;
+    dFreight = '__oth';
+    dRenderFreight();
+    showToast('🚛 화물 · ' + f.term + ' 자동 입력');
+  } else {
+    showToast('🚛 배송방법을 화물로 맞췄습니다');
+  }
 }
 
 function dClose(){
