@@ -4244,6 +4244,13 @@ function poExtractCt(line){
   //    ("LED 할로겐 전구 MR16 5W 등기구 주광색"이 전구로 잡히던 문제)
   var m = t.match(/(전구|주백|주광)\s*색/);
   if(m) return m[1];
+  // 1-1) 손으로 쓴 발주는 "주 / 전" 한 글자로 적는다.
+  //     ("롱전구 15W 주" 처럼 품명에 '전구'가 들어가도 뒤의 한 글자가 우선)
+  //     앞뒤가 공백·괄호·하이픈으로 떨어진 한 글자만 인정한다.
+  //     "백"은 본체색 백색(사각투광등 백색 등)과 헷갈리므로 넣지 않는다.
+  //     주백은 "주백" 또는 "4000K"로 적으며, 그건 아래 규칙이 처리한다.
+  var one = t.match(/(?:^|[\s(\[])([주전])(?=$|[\s\-–—/)\]])/);
+  if(one) return one[1] === '주' ? '주광' : '전구';
   // 2) K값
   if(/2700|3000/.test(t)) return '전구';
   if(/4000/.test(t)) return '주백';
@@ -5693,6 +5700,33 @@ function parseOrderItems(text){
 }
 
 // ── 미리보기 (오른쪽 패널에 매칭 결과 표시) ──
+// 박스 칸에 적은 숫자를 그 줄의 박스 수로 삼는다 (비우면 개 단위로 되돌림)
+function pvSetBox(idx, v){
+  var it = parsedItems[idx];
+  if(!it) return;
+  var n = parseInt(String(v).replace(/[^0-9]/g, ''), 10);
+  if(!n || n < 1){
+    // 비웠으면 개 단위로 (원래 숫자를 개수로 본다)
+    it.unit = '개';
+  } else {
+    it.qty = n;
+    it.unit = '박스';
+  }
+  it.qtyGuess = false;
+  parsePreview(false);
+}
+// 모든 줄을 한 번에 박스 / 개 단위로 바꾼다 (발주 전체가 박스인 경우가 많다)
+function pvSetAllUnit(u){
+  if(!parsedItems || !parsedItems.length) return;
+  var n = 0;
+  parsedItems.forEach(function(it){
+    if(it.unconfirmed) return;
+    if(it.unit !== u){ it.unit = u; it.qtyGuess = false; n++; }
+  });
+  parsePreview(false);
+  showToast(n ? ('전체 ' + u + ' 단위로 바꿨습니다 (' + n + '줄)') : ('이미 모두 ' + u + ' 단위입니다'));
+}
+
 // 그 줄의 단위를 개 ↔ 박스로 전환한다 (숫자는 그대로, 뜻만 바꿈)
 // 예: "EL 20-L-3" 을 3개로 읽었는데 사실 3박스인 경우 한 번 눌러 고친다.
 function pvToggleUnit(idx){
@@ -5936,6 +5970,8 @@ function parsePreview(reparse){
       + (mismCnt?' · <span style="color:#A16207;font-weight:700">⚠ 코드확인 '+mismCnt+'개</span>':'')
       + (failCnt?' · <span style="color:#DC2626;font-weight:700">⚠ 확인필요 '+failCnt+'개</span>':'')
       + (qtyCnt?' · <span style="color:#DC2626;font-weight:700">🔢 수량확인 '+qtyCnt+'줄</span>':'')
+      + ' · <button onclick="pvSetAllUnit(\'박스\')" style="background:#2855A0;color:#fff;border:none;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif">📦 모두 박스로</button>'
+      + ' <button onclick="pvSetAllUnit(\'개\')" style="background:var(--sur2);color:var(--ink2);border:1px solid var(--bdr);border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif">🔢 모두 개로</button>'
       + (dupKinds?' · <span style="color:#7C3AED;font-weight:700">🔁 중복 '+dupKinds+'종</span>':'')+'</span>';
   }
   var h = '';
@@ -6048,13 +6084,17 @@ function parsePreview(reparse){
     if(m.box!=='' && m.bq>1) bqTxt = '<br><span style="font-size:9px;color:#AAA;font-weight:500">×'+m.bq+'개</span>';
     // 박스 셀 — 누르면 그 줄을 개 ↔ 박스로 바꾼다.
     // 손으로 쓴 발주는 뒤 숫자가 박스인 경우가 많아 한 번에 고칠 수 있어야 한다.
+    // 박스 칸에 숫자를 직접 넣으면 그 줄이 "그 박스 수"로 바뀐다 (개수는 자동 환산).
+    // 비우면 다시 개 단위로 돌아간다.
     var isBox = (it.unit === '박스');
-    var swapTxt = isBox
-      ? (m.box + '박스' + bqTxt)
-      : (m.bq > 1 ? '<span style="color:#BBB">개 단위</span>' : '');
-    h += '<div class="pvrow" data-pvrow="'+ri+'" onclick="pvToggleUnit('+m.idx+')" title="눌러서 개 ↔ 박스 전환'+(m.bq>1?' (박스당 '+m.bq+'개)':'')+'" style="padding:6px 4px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';color:#888;font-size:11px;font-weight:600;text-align:center;white-space:nowrap;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.2;cursor:pointer">'
-      + swapTxt
-      + '<span style="font-size:9px;font-weight:700;color:#fff;background:'+(isBox?'#2855A0':'#B0AFAC')+';border-radius:3px;padding:1px 5px;margin-top:2px">'+(isBox?'박스':'개')+' ⇄</span>'
+    var boxVal = isBox ? it.qty : '';
+    h += '<div class="pvrow" data-pvrow="'+ri+'" style="padding:5px 3px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;line-height:1.2">'
+      + '<input type="text" inputmode="numeric" value="'+boxVal+'" placeholder="박스" '
+      +   'onclick="event.stopPropagation()" onchange="pvSetBox('+m.idx+',this.value)" '
+      +   'onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}" '
+      +   'style="width:46px;padding:3px 2px;text-align:center;font-size:12px;font-weight:700;font-family:monospace;'
+      +   'border:1.5px solid '+(isBox?'#2855A0':'var(--bdr)')+';border-radius:5px;outline:none;color:'+(isBox?'#2855A0':'#bbb')+';background:#fff">'
+      + (isBox && m.bq > 1 ? '<span style="font-size:9px;color:#AAA;font-weight:500">×'+m.bq+'개</span>' : '')
       + '</div>';
   });
   h += '</div>'; // grid 끝
