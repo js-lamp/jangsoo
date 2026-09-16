@@ -6022,7 +6022,7 @@ function parsePreview(reparse){
   // 대리점이 정해지고 단가가 풀려 있으면 단가·금액 2열을 더 붙인다
   // 미리보기는 매칭 확인 전용 — 단가는 명세서에서만 본다
   var showPrice = false;
-  var gridCols = '38px 16% 1fr 13% 13%';
+  var gridCols = '38px 16% 1fr 12% 96px';   // 마지막(박스)은 '7 ×20개'가 한 줄에 들어가도록 고정폭
 
   // CSS Grid (행 높이 자동 정렬)
   h += '<div id="pvGrid" style="display:grid;grid-template-columns:'+gridCols+';border:1px solid var(--bdr);border-radius:8px;font-size:12px">';
@@ -6088,13 +6088,14 @@ function parsePreview(reparse){
     // 비우면 다시 개 단위로 돌아간다.
     var isBox = (it.unit === '박스');
     var boxVal = isBox ? it.qty : '';
-    h += '<div class="pvrow" data-pvrow="'+ri+'" style="padding:5px 3px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;line-height:1.2">'
+    // 입력칸과 "×N개"를 세로로 쌓지 않고 가로로 나란히 둔다 (줄 높이가 낮아지고 읽기 쉬움)
+    h += '<div class="pvrow" data-pvrow="'+ri+'" style="padding:5px 4px;border-top:1px solid var(--bdr);border-left:1px solid var(--bdr);background:'+bg+';display:flex;flex-direction:row;align-items:center;justify-content:center;gap:3px;line-height:1.2;white-space:nowrap">'
       + '<input type="text" inputmode="numeric" value="'+boxVal+'" placeholder="박스" '
       +   'onclick="event.stopPropagation()" onchange="pvSetBox('+m.idx+',this.value)" '
       +   'onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}" '
-      +   'style="width:46px;padding:3px 2px;text-align:center;font-size:12px;font-weight:700;font-family:monospace;'
+      +   'style="width:42px;flex:0 0 42px;padding:3px 2px;text-align:center;font-size:12px;font-weight:700;font-family:monospace;'
       +   'border:1.5px solid '+(isBox?'#2855A0':'var(--bdr)')+';border-radius:5px;outline:none;color:'+(isBox?'#2855A0':'#bbb')+';background:#fff">'
-      + (isBox && m.bq > 1 ? '<span style="font-size:9px;color:#AAA;font-weight:500">×'+m.bq+'개</span>' : '')
+      + (isBox && m.bq > 1 ? '<span style="font-size:10px;color:#999;font-weight:600">×'+m.bq+'개</span>' : '')
       + '</div>';
   });
   h += '</div>'; // grid 끝
