@@ -5332,7 +5332,22 @@ function poFindDealerInfo(text){
   var bestCode=null, bestLen=0, how='';
   function core(s){ return s.replace(/\(주\)|주식회사|\(|\)/g,'').replace(/\s+/g,''); }
   // 3글자 이하 상호는 낱말 단위로 떨어져 있을 때만 인정
-  function okShort(w){ return w.length>3 || poDealerStandalone(toks, w); }
+  // 또, 상호가 품명에도 쓰이는 말(샤인 등)이면 품목 줄에 나온 건 상호가 아니다.
+  // ("슬림 샤인 주광색" 줄의 '샤인'을 대리점 '샤인'으로 잡던 문제)
+  function okShort(w){
+    if(w.length > 3) return true;
+    if(!poDealerStandalone(toks, w)) return false;
+    var nw = poNorm(w);
+    var inCatalog = G.some(function(g){ return poNorm(g.name).indexOf(nw) >= 0; });
+    if(!inCatalog) return true;
+    // 품명에도 있는 말(샤인 등) → 대리점은 발주서 맨 윗줄에만 적으므로 첫 줄에 있을 때만 인정.
+    // 첫 줄이라도 품목 줄이면 제외 (그 말을 뺀 나머지에 품목 신호가 있으면 품목 줄:
+    // "슬림 샤인 주광색" → "슬림 주광색")
+    var first = '';
+    String(text || '').split(/\r?\n/).some(function(ln){ if(ln.trim()){ first = ln.trim(); return true; } return false; });
+    if(!first || !poDealerStandalone(poDealerTokens(first), w)) return false;
+    return !poHasProduct(first.split(w).join(' '));
+  }
   // 1) 정식명 그대로 포함 (주소 줄 포함 전체에서 찾음 — 정식명은 오탐 위험이 낮음)
   for(var code in DEALERS){
     var name = DEALERS[code].name;
@@ -5357,7 +5372,7 @@ function poFindDealerInfo(text){
       if(!name3) continue;
       var c3 = core(name3);
       for(var len=4; len>=2; len--){
-        if(c3.length>=len && nText.indexOf(c3.slice(0,len))>=0 && poDealerStandalone(toks, c3.slice(0,len))){ candidates.push({code:code3, score:len}); break; }
+        if(c3.length>=len && nText.indexOf(c3.slice(0,len))>=0 && poDealerStandalone(toks, c3.slice(0,len)) && okShort(c3.slice(0,len))){ candidates.push({code:code3, score:len}); break; }
       }
     }
     if(candidates.length>0){
@@ -5449,6 +5464,35 @@ function poLineHead(line){
 // 규격·색온도·수량만 있고 품명이 없는 줄인지.
 // "640*320 주광색 10개", "20W 주광 5개", "  1285*180 - 3" → true
 // "640*640 엣지평판 5개", "1285*320 브라켓 2개" → false (품명 단어가 남음)
+// "8인치 엣지 사각 센서등 1개" → "엣지 사각 센서등" (인치가 앞에 오는 품목의 품명 부분)
+function poInchTail(line){
+  var m = String(line || '').match(/^\s*\d{1,2}\s*(?:인치|["”″])\s*(.+)$/);
+  if(!m) return '';
+  var rest = m[1];
+  // 와트·사이즈·수량이 나오기 전까지가 품명
+  var k = rest.search(/\d{3,4}\s*[*xX×]\s*\d{3,4}|\d+\s*[wW](?![a-zA-Z])|\d+\s*와트|[-–—/]?\s*\d+\s*(박스|박|개|[bB][oO][xX]|[eE][aA])|\s[-–—]\s*\d/);
+  var h = (k >= 0 ? rest.slice(0, k) : rest).replace(/[\s\-–—/|,.:]+$/, '').trim();
+  return /[가-힣A-Za-z]{2,}/.test(h) ? h : '';
+}
+// "EL 30 - D - 2" → "EL", "FPL 36 주 2개" → "FPL" (숫자가 형번인 계열)
+function poSeriesCode(line){
+  var m = String(line || '').match(/^\s*(EL|FPL|FL|FHF|FDX|A19)\s*-?\s*\d{1,3}(?!\d)/i);
+  return m ? m[1].toUpperCase() : '';
+}
+
+// 규격·수량 없이 품명만 적힌 줄인지 ("6인치 매입등", "슬림 샤인 주광색")
+// → 바로 아래에 규격만 적힌 줄이 오면 이 줄은 품목이 아니라 머리말이다.
+function poLooksLikeHeader(line){
+  var t = String(line || '').trim();
+  if(!t || !/[가-힣A-Za-z]{2,}/.test(t)) return false;
+  var nt = poApplySynonyms(t);
+  if(/\d{3,4}\s*[*xX×]\s*\d{3,4}/.test(nt)) return false;          // 크기
+  if(/\d+\s*[wW](?![a-zA-Z])|\d+\s*와트/.test(nt)) return false;     // 와트
+  if(/\d+\s*(박스|박|개|[bB][oO][xX]|[eE][aA])/.test(t)) return false; // 수량
+  if(/\d\s*$/.test(t)) return false;                               // 끝 숫자 = 수량
+  return true;
+}
+
 function poIsSpecOnly(line){
   var src = String(line || '');
   if(!/\d/.test(src)) return false;
@@ -5473,6 +5517,8 @@ function poMergeBlocks(text){
   srcAll.forEach(function(l, i){ var t = l.trim(); if(t){ rawLines.push(t); srcIdx.push(i); } });
   var blocks=[], blockSrc=[], cur='', curSrc=-1, groupHeader='', skipNext=false;
   var lastHead = '';   // 직전 품목 줄의 품명 부분 (규격만 적은 다음 줄에 물려준다)
+  var lastInchTail = '';  // 인치가 앞에 오는 품목의 품명 (8인치 엣지 사각 센서등 → 엣지 사각 센서등)
+  var lastSeries = '';    // 형번 계열 (EL 30 → EL)
   function pushCur(){ if(cur){ blocks.push(cur); blockSrc.push(curSrc); cur=''; curSrc=-1; } }
   function pushLine(l, si){ blocks.push(l); blockSrc.push(si); }
   rawLines.forEach(function(line, li){
@@ -5502,10 +5548,10 @@ function poMergeBlocks(text){
     // 전화번호 포함 줄은 무시 (현재 블록 마감만)
     if(poIsPhone(line) && !poHasProduct(line) && !bcLineKnown){ pushCur(); return; }
     // 품목군 헤더 줄 → 다음 줄들에 상속 (예: "슬림샤인 엣지")
-    if(poIsGroupHeader(line)){ pushCur(); groupHeader=line; lastHead=''; return; }
+    if(poIsGroupHeader(line)){ pushCur(); groupHeader=line; lastHead=''; lastInchTail=''; lastSeries=''; return; }
     // ERP 코드가 있는 줄은 무조건 독립 블록 (등록 안 된 코드여도 줄이 사라지지 않게)
     var cm = poExtractCode(line);
-    if(cm){ pushCur(); pushLine(line, si); lastHead=''; return; }
+    if(cm){ pushCur(); pushLine(line, si); lastHead=''; lastInchTail=''; lastSeries=''; return; }
     // 13자리 바코드 줄도 독립 블록 (텍스트로 붙여넣은 바코드)
     if(bcLineKnown){ pushCur(); pushLine(line, si); return; }
     if(poIsJunk(line) && !poHasProduct(line)){ pushCur(); return; }
@@ -5519,6 +5565,37 @@ function poMergeBlocks(text){
     // 품목군 머리말이 없어도, 윗줄에 "품명 + 규격"을 적고 아랫줄에 규격만 적으면 윗줄 품명을 물려준다.
     // 예)  슬림샤인 엣지 1280*320 주광색 30개
     //                    640*320 주광색 10개   → "슬림샤인 엣지 640*320 주광색 10개"
+    // (a) 인치가 앞에 오는 품목: 윗줄 "8인치 엣지 사각 센서등", 아랫줄 "10인치 1개"
+    //     → "10인치 엣지 사각 센서등 1개" (인치만 바꿔 끼운다)
+    if(!groupHeader && lastInchTail){
+      var im = line.match(/^\s*(\d{1,2}\s*(?:인치|["”″]))\s*(.*)$/);
+      if(im && poIsSpecOnly(im[2] || '1')){
+        pushCur();
+        cur = im[1] + ' ' + lastInchTail + ' ' + im[2]; curSrc = si;
+        return;
+      }
+    }
+    // (b) 형번 계열: 윗줄 "EL 30 - D - 2", 아랫줄 "25 - D - 1" → "EL 25 - D - 1"
+    // (크기 표기 640*320 / 640 320 은 형번이 아니므로 제외)
+    if(!groupHeader && lastSeries && /^\s*\d{1,3}(?!\d)/.test(line)
+       && !/\d{3,4}\s*[*xX×]\s*\d{3,4}|\d{3,4}\s+\d{3,4}(?!\d)/.test(line)
+       && poIsSpecOnly(line)){
+      pushCur();
+      cur = lastSeries + ' ' + line; curSrc = si;
+      return;
+    }
+    // (d) 바로 윗줄이 "수량 없이 품명만" 적힌 줄이면, 그 줄은 품목이 아니라 머리말이었다.
+    //     예)  6인치 매입등
+    //          15W 주광 120개   → "6인치 매입등 15W 주광 120개"
+    //          15W 주백 80개    → "6인치 매입등 15W 주백 80개"
+    if(!groupHeader && cur && curSrc >= 0 && poLooksLikeHeader(cur) && poIsSpecOnly(line)){
+      var hdr = cur;
+      cur = ''; curSrc = -1;           // 윗줄을 품목 목록에서 뺀다 (수량 1개짜리 가짜 품목 방지)
+      lastHead = hdr; lastInchTail = ''; lastSeries = '';
+      cur = hdr + ' ' + line; curSrc = si;
+      return;
+    }
+    // (c) 품명 + 규격 뒤에 규격만: 윗줄 "슬림샤인 1285 320", 아랫줄 "640 320"
     if(!groupHeader && lastHead && poIsSpecOnly(line)){
       pushCur();
       cur = lastHead + ' ' + line; curSrc = si;
@@ -5535,7 +5612,12 @@ function poMergeBlocks(text){
         (!headerIsInch && lineHasSize)
       );
       cur = shouldInherit ? (groupHeader + ' ' + line) : line; curSrc = si;
+      // 머리말을 물려받지 않는 새 품목이 나오면 이전 머리말은 끝난 것이다
+      // (안 끊으면 "슬림 샤인 주광색" 머리말이 아래 "6인치 매입등" 묶음까지 따라온다)
+      if(!shouldInherit) groupHeader = '';
       lastHead = poLineHead(cur);
+      lastInchTail = poInchTail(cur);
+      lastSeries = poSeriesCode(cur);
     } else if(/[A-Za-z]{1,4}\s*\d{2,3}/.test(line) && /\d+\s*(박스|박|개|[bB][oO][xX]|[eE][aA])?\s*$/.test(line) && !/^(주광|전구|주백|백색|흑색|색변환)/.test(line.trim())){
       // 품목코드성 단어(PL36, EL32 등)가 있고 끝에 수량 → 독립 품목 (앞 줄과 안 합침)
       // 단, "주광색 40개" 같은 순수 보조정보는 제외
