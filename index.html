@@ -657,7 +657,6 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
     <div class="srchrow">
       <div class="srch-wrap">
         <input class="srch" id="srchInp" type="text" placeholder="품명·별칭 검색..." oninput="onSearch(this.value)"/>
-        <button class="micbtn" id="micBtn" onclick="startVoiceSearch()" title="음성 검색">🎤</button>
       </div>
       <button class="scanbtn" onclick="openScanner('order')">📷 스캔</button>
       <button class="parsebtn" onclick="openParseMod()">📨 발주서 변환</button>
@@ -1093,6 +1092,13 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
 
     <div id="admDataPanel" style="display:none;flex:1;min-height:0;flex-direction:column;overflow:auto">
       <div style="padding:12px 14px">
+        <div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;padding:11px 12px;margin-bottom:14px">
+          <div style="font-size:12.5px;font-weight:700;color:#065F46;margin-bottom:4px">📦 재고 업데이트</div>
+          <div style="font-size:11px;color:#047857;line-height:1.6;margin-bottom:8px">구글시트에 붙여넣던 <b>ERP 재고표 파일</b>을 그대로 고르면 바로 적용됩니다.<br>구글시트에도 함께 올라가 다른 기기·영업사원도 같은 재고를 봅니다.</div>
+          <button onclick="document.getElementById('stockXlsInp').click()" style="width:100%;padding:12px;background:#059669;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif">📂 재고 파일 올리기</button>
+          <input type="file" id="stockXlsInp" accept=".xlsx,.xls,.xlsm,.csv" style="display:none" onchange="stockUploadFile(this)">
+          <div id="stockUpBox" style="display:none;margin-top:8px;background:#fff;border:1px solid #D1FAE5;border-radius:7px;padding:10px 11px;font-size:12px"></div>
+        </div>
         <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:11px 12px;font-size:11.5px;color:#1E3A8A;line-height:1.7;margin-bottom:12px">
           <b>📊 기본 데이터를 엑셀로 주고받습니다</b><br>
           ① 내려받기 → ② 엑셀에서 <b>바코드</b>를 채우거나 <b>신제품 줄을 추가</b> → ③ 다시 올리기<br>
@@ -1324,6 +1330,13 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
           <button onclick="resetParse()" title="발주 내용 전체 지우기 (처음부터)" style="padding:5px 9px;background:#fff;color:#DC2626;border:1.5px solid #FCA5A5;border-radius:6px;font-size:11px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer;white-space:nowrap">🔄 새로고침</button>
           <button onclick="document.getElementById('ocrFile').click()" title="사진 파일 선택 · 또는 입력란에 Ctrl+V로 붙여넣기/드래그도 가능" style="padding:5px 10px;background:#0D9488;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer;white-space:nowrap">📷 사진에서 읽기</button>
           <input type="file" id="ocrFile" accept="image/*" style="display:none" onchange="ocrFromImage(this.files[0])">
+          <button id="pvMicBtn" onclick="pvVoiceToggle()" title="말로 주문 — 받아 적은 글이 발주 원본에 쌓이고 오른쪽에서 바로 매칭됩니다" style="padding:5px 10px;background:#2855A0;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer;white-space:nowrap">🎙️ 음성</button>
+        </div>
+        <div id="pvVoiceBar" style="display:none;padding:8px 10px;margin:0 0 6px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;font-size:12px;color:#1E3A8A;line-height:1.5">
+          <div style="display:flex;align-items:center;gap:6px;font-weight:700"><span id="pvVoiceDot" style="width:9px;height:9px;border-radius:50%;background:#DC2626;display:inline-block"></span><span id="pvVoiceState">듣는 중…</span>
+            <button onclick="pvVoiceToggle()" style="margin-left:auto;padding:3px 10px;background:#DC2626;color:#fff;border:none;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif">■ 멈춤</button></div>
+          <div id="pvVoiceLive" style="margin-top:4px;color:#475569;min-height:17px"></div>
+          <div style="margin-top:3px;font-size:10.5px;color:#64748B">예) "슬림샤인 1285 320 주광 두 박스 그리고 에코 센서등 세 개" · 끝나면 "주문완료" 또는 ■ 멈춤</div>
         </div>
         <div id="ocrStatus" style="display:none;padding:8px 10px;margin:0 0 6px;background:#E0F2F1;border-radius:6px;font-size:11px;color:#0D6E56"></div>
         <textarea class="parse-ta" id="parseTa" oninput="parsePreviewDebounced()" onselect="onParseTaSelect()" onmouseup="onParseTaSelect()" onkeyup="onParseTaSelect()" placeholder="발주 내용을 붙여넣거나 입력하세요.&#10;&#10;📷 사진(캡처)도 여기에 바로 붙여넣기(Ctrl+V) 하거나&#10;   드래그해서 놓으면 자동으로 글자를 읽습니다.&#10;&#10;예시:&#10;슬림샤인 엣지&#10;1280*320 주광색 40개&#10;640*320 주광색 4개"></textarea>
@@ -2119,7 +2132,7 @@ function startVoiceSearch(){
   overlay.classList.add('active');
   document.getElementById('voiceStatus').textContent = '듣고 있어요...';
   document.getElementById('voiceText').textContent = '';
-  document.getElementById('micBtn').classList.add('listening');
+  var __mb=document.getElementById('micBtn'); if(__mb) __mb.classList.add('listening');
 
   voiceRecognition = new SR();
   voiceRecognition.lang = 'ko-KR';
@@ -2160,7 +2173,7 @@ function startVoiceSearch(){
   };
 
   voiceRecognition.onend = function(){
-    document.getElementById('micBtn').classList.remove('listening');
+    var __mb2=document.getElementById('micBtn'); if(__mb2) __mb2.classList.remove('listening');
     // 최종 텍스트로 검색 실행
     if(finalText.trim()){
       var q = finalText.trim();
@@ -2197,7 +2210,7 @@ function closeVoiceOverlay(){
   var overlay = document.getElementById('voiceOverlay');
   overlay.style.display = 'none';
   overlay.classList.remove('active');
-  document.getElementById('micBtn').classList.remove('listening');
+  var __mb2=document.getElementById('micBtn'); if(__mb2) __mb2.classList.remove('listening');
   voiceActive = false;
 }
 
@@ -2220,6 +2233,13 @@ var VO_GUIDES = {
 function startVoiceOrder(){
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!SR){ showToast('이 브라우저는 음성 기능을 지원하지 않습니다'); return; }
+  // 음성 주문은 발주서 변환 안에서 한다 — 받아 적은 글과 매칭 결과를 나란히 보며 고칠 수 있게
+  openParseMod();
+  var st = document.getElementById('storeName');
+  var nm = st ? st.value.trim() : '';
+  if(nm){ document.getElementById('parseTa').value = nm + '\n'; }   // 고정한 대리점명을 첫 줄에
+  setTimeout(pvVoiceToggle, 250);
+  return;
   voStep = 1;
   voOrder = { dealer:'', items:[], method:'', pay:'' };
   document.getElementById('voWizard').style.display = 'flex';
@@ -2265,7 +2285,7 @@ function voToggleMic(){
   // 품목 단계(2)는 길게 여러개 받도록 continuous, 나머지는 단답
   voRec.continuous = (voStep === 2);
   voRec.interimResults = true;
-  voRec.maxAlternatives = 1;
+  voRec.maxAlternatives = 5;      // 후보 문장 여러 개 받아서 품목이 가장 잘 맞는 것을 고른다
   voListening = true;
   voManualStop = false;
   voAccumText = '';
@@ -2281,7 +2301,7 @@ function voToggleMic(){
     var interim='';
     for(var i=e.resultIndex;i<e.results.length;i++){
       if(e.results[i].isFinal){
-        voAccumText += e.results[i][0].transcript + ' ';
+        voAccumText += voBestAlt(e.results[i]) + ' ';
       } else {
         interim += e.results[i][0].transcript;
       }
@@ -2326,6 +2346,91 @@ function voStopMic(){
   if(voRec){ try{ voRec.stop(); }catch(e){} }
 }
 
+// ══════════════════════════════════════════════════
+//  음성 인식 문장 다듬기
+//  크롬 음성 엔진은 "두 박스", "이엘 25", "케이씨 슬림 샤인", "1285 곱하기 320"처럼
+//  받아 적는다. 발주서 변환과 같은 표기로 바꿔서 같은 매칭 규칙을 쓰게 한다.
+// ══════════════════════════════════════════════════
+var VO_NATIVE = { '한':1,'하나':1,'두':2,'둘':2,'세':3,'셋':3,'석':3,'네':4,'넷':4,'넉':4,
+  '다섯':5,'여섯':6,'일곱':7,'여덟':8,'아홉':9 };
+var VO_TENS = { '열':10,'스물':20,'스무':20,'서른':30,'마흔':40,'쉰':50 };
+var VO_SINO = { '일':1,'이':2,'삼':3,'사':4,'오':5,'육':6,'칠':7,'팔':8,'구':9 };
+// "십오" "이십" "삼십이" → 15 20 32
+function voSino(str){
+  var m = String(str).match(/^(?:([일이삼사오육칠팔구])?십)?([일이삼사오육칠팔구])?$/);
+  if(!m || (!m[1] && str.indexOf('십') < 0 && !m[2])) return null;
+  var n = 0;
+  if(str.indexOf('십') >= 0) n += (m[1] ? VO_SINO[m[1]] : 1) * 10;
+  if(m[2]) n += VO_SINO[m[2]];
+  return n || null;
+}
+function voNormalize(text){
+  var s = ' ' + String(text || '') + ' ';
+  // 수량 단위 표기 통일
+  s = s.replace(/박쓰|빡스|박스요|박스씩/g, '박스').replace(/\bbox(es)?\b/gi, '박스').replace(/개요|개씩/g, '개');
+  // 한글 수량 → 숫자 ("열다섯 개" "스무 개" "두 박스" "한박스")
+  // (앞이 공백일 때만 — "직관 40 세 박스"의 40과 붙어 "403박스"가 되지 않게)
+  s = s.replace(/(^|\s)(열|스물|스무|서른|마흔|쉰)?\s*(하나|다섯|여섯|일곱|여덟|아홉|한|두|둘|세|셋|석|네|넷|넉)?\s*(박스|개)/g,
+    function(m0, pre, tens, unit, u){
+      if(!tens && !unit) return m0;
+      var n = (tens ? VO_TENS[tens] : 0) + (unit ? VO_NATIVE[unit] : 0);
+      return pre + n + u;
+    });
+  // 한자어 숫자 + 와트/인치 ("십오 와트" → 15와트)
+  s = s.replace(/([일이삼사오육칠팔구십]{1,4})\s*(?=와트|왓트|인치)/g, function(m0, w){
+    var n = voSino(w); return n ? String(n) : m0;
+  });
+  // 와트
+  s = s.replace(/(\d)\s*(?:와트|왓트|와\s트|watt)/gi, '$1W');
+  // 크기: "1285 곱하기 320", "640 바이 640", "640 엑스 640"
+  s = s.replace(/(\d{3,4})\s*(?:곱하기|바이|엑스|x|X|×)\s*(\d{3,4})/g, '$1*$2');
+  // 영문 약어를 한글로 읽은 것
+  s = s.replace(/엘\s*이\s*디/g, 'LED')
+       .replace(/에프\s*에이치\s*에프/g, 'FHF').replace(/에프\s*디\s*엑스/g, 'FDX')
+       .replace(/에프\s*피\s*엘/g, 'FPL').replace(/에프\s*엘(?=\s*\d)/g, 'FL ')
+       .replace(/(^|\s)이\s*엘(?=\s*\d)/g, '$1EL ')
+       .replace(/엠\s*알(?=\s*\d)/g, 'MR')
+       .replace(/피\s*에이\s*알/g, 'PAR').replace(/(^|\s)파\s*(?=(?:20|30|38)\b)/g, '$1PAR')
+       .replace(/티\s*파이브/g, 'T5').replace(/티\s*에(?:이트|잇)/g, 'T8').replace(/티\s*텐/g, 'T10')
+       .replace(/에이\s*(?:일구|십구|19)/g, 'A19')
+       .replace(/케이\s*씨/g, 'KC').replace(/케이\s*에스/g, 'KS')
+       .replace(/(^|\s)이\s*(26|39|27|14|17)(?=\s|$)/g, '$1E$2');   // "이 39" → E39 (소켓)
+  // 자주 틀리게 받아 적는 말
+  s = s.replace(/에지/g, '엣지').replace(/매립/g, '매입')
+       .replace(/미니\s+크립톤/g, '미니크립톤').replace(/매장\s+램프/g, '매장램프')
+       .replace(/(센서|직부|투광|욕실|일자|십자|매입|방|거실|주방)\s+등(?=\s|$|\d)/g, '$1등')
+       .replace(/(주광|전구|주백)\s+색/g, '$1색');
+  return s.replace(/\s+/g, ' ').trim();
+}
+// 음성 엔진이 준 후보 문장 중 품목이 가장 잘 맞는 것을 고른다
+function voScoreText(t){
+  var sc = 0;
+  voSplitItems(voNormalize(t)).forEach(function(line){
+    var r = null; try { r = parseOrderItems(line)[0]; } catch(e){}
+    if(r && !r.unconfirmed && !r.ambiguous){
+      sc += 10;
+      if(poExtractCt(line)) sc += 2;                        // 색온도까지 알아들은 문장 우선
+      if(/\d+\s*(박스|개)/.test(line)) sc += 1;             // 수량까지 알아들은 문장 우선
+    }
+    else if(r && r.ambiguous) sc += 4;
+    else if(r) sc += 1;
+  });
+  return sc;
+}
+function voBestAlt(result){
+  var best = result[0].transcript, bestSc = -1;
+  for(var k = 0; k < result.length; k++){
+    var t = result[k].transcript;
+    var sc;
+    if(voStep === 1) sc = poFindDealer(t) ? 10 : 0;
+    else if(voStep === 3) sc = voMatchMethod(t) ? 10 : 0;
+    else if(voStep === 4) sc = voMatchPay(t) ? 10 : 0;
+    else sc = voScoreText(t);
+    if(sc > bestSc){ bestSc = sc; best = t; }   // 동점이면 엔진 1순위 유지
+  }
+  return best;
+}
+
 // 음성 텍스트를 여러 품목으로 분리
 // "엣지 원형 직부등 주광 1박스 미니크립톤 5와트 2박스" → 2개로
 function voSplitItems(text){
@@ -2361,13 +2466,28 @@ function voHandleSpeech(text){
       voFinishItems();
       return;
     }
-    // 음성 품목 분리
-    var blocks = voSplitItems(text);
+    // 음성 품목 분리 — 받아 적은 문장을 발주서 표기로 다듬은 뒤 나눈다
+    var blocks = voSplitItems(voNormalize(text));
     var added = 0;
     var ambiguous = []; // 애매한 품목 (선택창 띄울 것)
     blocks.forEach(function(line){
       line = line.trim();
       if(!line) return;
+      // 발주서 변환과 같은 매칭 규칙 (기본값·소켓·색온도·인치 생략·박스 등 전부 적용)
+      var pr = null; try { pr = parseOrderItems(line)[0]; } catch(e){}
+      if(pr && !pr.unconfirmed && !pr.ambiguous){
+        voOrder.items.push({code:pr.code, ename:pr.ename, gname:pr.gname, ct:pr.ct, qty:pr.qty, unit:pr.unit});
+        added++;
+        return;
+      }
+      if(pr && pr.ambiguous && pr.candidates && pr.candidates.length){
+        var pc = [];
+        pr.candidates.forEach(function(cd){
+          var gg = null; for(var q=0;q<G.length;q++){ if(G[q].name===cd.gname){ gg=G[q]; break; } }
+          if(gg && !pc.some(function(x){ return x.g===gg; })) pc.push({g:gg, score:0});
+        });
+        if(pc.length){ ambiguous.push({line:line, qty:pr.qty, unit:pr.unit, ct:pr.ct, cands:pc}); return; }
+      }
       if(!poHasProduct(line) && !poExtractCode(line)) return;
       var qtyMatch = line.match(/(\d+)\s*(박스|개)/);
       var qty = qtyMatch ? parseInt(qtyMatch[1]) : 1;
@@ -3951,6 +4071,7 @@ function bindParseScrollSync(){
 }
 
 function closeParseMod(){
+  if(pvListening){ pvStopByUser = true; pvVoiceStop(); }
   document.getElementById('parseMod').classList.remove('open');
   // 명세서로 이어가는 경우가 아니면 단가를 다시 잠근다
   if(!pvGoingToInv) pvLockPrice();
@@ -5858,6 +5979,20 @@ function parseOrderItems(text){
             if(kept.length) ambigList = kept;
           });
         }
+        // 발주에 적은 모델명(T5·T8·PAR30·MR16·EL·FPL·LED 등)을 1순위 후보가 갖고 있으면,
+        // 그 모델명이 없는 후보는 뺀다 (예: "T5 20W" → 욕실등 20W·EL 20이 끼던 문제)
+        if(ambigList.length >= 2){
+          var topN = poNorm(ambigList[0].name);
+          var mtoks = (String(line).match(/[A-Za-z]{1,4}\d{0,3}/g) || []).filter(function(t){
+            return t.length >= 2 && !/^(W|K|B|mm|box|ea)$/i.test(t);
+          });
+          mtoks.forEach(function(t){
+            var nt = poNorm(t);
+            if(topN.indexOf(nt) < 0) return;
+            var kept2 = ambigList.filter(function(cg){ return poNorm(cg.name).indexOf(nt) >= 0; });
+            if(kept2.length) ambigList = kept2;
+          });
+        }
         // 본체색을 안 적었으면 백색이 기본 → 흑색 후보는 빼서 선택창을 띄우지 않는다.
         // (색을 적었으면 위 매칭에서 이미 그 색이 잡히므로 이 필터는 동작하지 않는다)
         if(!/흑색|검정|블랙|black/i.test(line)){
@@ -5950,6 +6085,84 @@ function pvToggleUnit(idx){
   showToast(it.unit === '박스'
     ? '📦 ' + it.qty + '박스' + (bq > 1 ? ' (= ' + (it.qty * bq) + '개)' : '')
     : '🔢 ' + it.qty + '개');
+}
+
+// ══════════════════════════════════════════════════
+//  발주서 변환 안에서 음성으로 주문
+//  말한 내용을 발주 원본(왼쪽)에 한 줄씩 적고, 오른쪽에서 바로 매칭 결과를 보여준다.
+//  대리점명·화물 지점·배송방법도 발주 원본 글에서 자동 인식된다.
+// ══════════════════════════════════════════════════
+var pvRec = null, pvListening = false, pvStopByUser = false;
+function pvVoiceBestAlt(result){
+  var best = result[0].transcript, bestSc = -1;
+  for(var k = 0; k < result.length; k++){
+    var sc = voScoreText(result[k].transcript);
+    if(sc > bestSc){ bestSc = sc; best = result[k].transcript; }
+  }
+  return best;
+}
+// 받아 적은 문장을 다듬어 발주 원본 끝에 줄로 붙인다
+function pvVoiceAppend(spoken){
+  var t = voNormalize(spoken).replace(/주문\s*완료|주문\s*끝|끝났어|다음\s*단계/g, '').trim();
+  if(!t) return;
+  // 품목 줄은 한 줄에 하나씩, 상호·배송 같은 말은 그대로 한 줄
+  var lines = (poHasProduct(t) || /\d+\s*(박스|개)/.test(t)) ? voSplitItems(t) : [t];
+  var ta = document.getElementById('parseTa');
+  var cur = ta.value.replace(/\s+$/, '');
+  ta.value = (cur ? cur + '\n' : '') + lines.join('\n');
+  ta.scrollTop = ta.scrollHeight;
+  parsePreview(true);
+}
+function pvVoiceToggle(){
+  if(pvListening){ pvStopByUser = true; pvVoiceStop(); return; }
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ showToast('이 브라우저는 음성 기능을 지원하지 않습니다 (크롬 사용)'); return; }
+  pvRec = new SR();
+  pvRec.lang = 'ko-KR';
+  pvRec.continuous = true;
+  pvRec.interimResults = true;
+  pvRec.maxAlternatives = 5;       // 후보 문장 중 품목이 가장 잘 맞는 것을 고른다
+  pvListening = true; pvStopByUser = false;
+  var bar = document.getElementById('pvVoiceBar');
+  bar.style.display = 'block';
+  document.getElementById('pvVoiceState').textContent = '듣는 중… 품목과 수량을 말씀하세요';
+  document.getElementById('pvVoiceLive').textContent = '';
+  var btn = document.getElementById('pvMicBtn');
+  btn.textContent = '■ 멈춤'; btn.style.background = '#DC2626';
+  pvRec.onresult = function(e){
+    var interim = '';
+    for(var i = e.resultIndex; i < e.results.length; i++){
+      if(e.results[i].isFinal){
+        var said = pvVoiceBestAlt(e.results[i]);
+        var stop = /주문\s*완료|주문\s*끝|끝났어/.test(said.replace(/\s/g,''));
+        pvVoiceAppend(said);
+        if(stop){ pvStopByUser = true; pvVoiceStop(); return; }
+      } else {
+        interim += e.results[i][0].transcript;
+      }
+    }
+    document.getElementById('pvVoiceLive').textContent = interim ? '🎤 ' + interim : '';
+  };
+  pvRec.onerror = function(e){
+    if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
+      document.getElementById('pvVoiceState').textContent = '마이크 권한을 허용해주세요';
+      pvStopByUser = true;
+    }
+  };
+  pvRec.onend = function(){
+    // 말을 잠깐 멈추면 브라우저가 스스로 끊는다 → 사용자가 멈추지 않았으면 다시 듣기
+    if(pvListening && !pvStopByUser){ try { pvRec.start(); return; } catch(err){} }
+    pvListening = false;
+    var b2 = document.getElementById('pvMicBtn');
+    if(b2){ b2.textContent = '🎙️ 음성'; b2.style.background = '#2855A0'; }
+    var bar2 = document.getElementById('pvVoiceBar');
+    if(bar2) bar2.style.display = 'none';
+  };
+  try { pvRec.start(); } catch(err){ pvListening = false; }
+}
+function pvVoiceStop(){
+  pvListening = false;
+  if(pvRec){ try { pvRec.stop(); } catch(e){} }
 }
 
 // ── 못 읽은 줄에서 바로 품목 검색해 지정 ──
@@ -8353,6 +8566,15 @@ function admLock(){
 }
 
 // 화면에 쓸 행 목록 만들기 (코드 단위)
+// 컨테이너 일정이 없으면 재고 파일의 입고 정보(주차별 수량·세부 입고일정)로 대신 보여준다
+function admStockIncoming(sd){
+  if(!sd) return null;
+  var qty = 0;
+  if(sd.w) Object.keys(sd.w).forEach(function(k){ qty += sd.w[k] || 0; });
+  if(!qty && !sd.eta) return null;
+  var when = sd.eta || (sd.w ? Object.keys(sd.w)[0] : '미정');
+  return [{ ansan: when, qty: qty }];
+}
 function admRows(){
   var rows = [];
   G.forEach(function(g){
@@ -8363,7 +8585,7 @@ function admRows(){
         qty:(sd && typeof sd.s === 'number') ? sd.s : null,
         rate:(sd && sd.r !== null && sd.r !== undefined) ? sd.r : null,
         box:(typeof QTY_MAP !== 'undefined' && QTY_MAP[v.code]) ? QTY_MAP[v.code] : 1,
-        cont:(typeof CONTAINERS !== 'undefined' && CONTAINERS[v.code]) ? CONTAINERS[v.code] : null
+        cont:(typeof CONTAINERS !== 'undefined' && CONTAINERS[v.code]) ? CONTAINERS[v.code] : admStockIncoming(sd)
       });
     });
   });
@@ -8858,6 +9080,9 @@ function extractStockDate(data){
     var d18 = fmtStockDate(data[3][18]);
     if(d18) return d18;
   }
+  // "당일재고 (9/30)" 머리글에서 기준일 (ERP 원본 파일)
+  var fcd = stockFindCols(data);
+  if(fcd.date) return fcd.date;
   // 못 찾으면 주변 탐색 (1~5행, P~U열) - 날짜처럼 보이는 값만
   for(var r=0; r<=5; r++){
     if(!data[r]) continue;
@@ -8885,12 +9110,14 @@ function fmtStockDate(v){
   if(iso){ return parseInt(iso[2])+'월 '+parseInt(iso[3])+'일'; }
   // 6/17, 6.17, 6-17 형식
   var md = s.match(/^(\d{1,2})[\/\.\-](\d{1,2})$/);
-  if(md){ return parseInt(md[1])+'월 '+parseInt(md[2])+'일'; }
+  // 월 1~12·일 1~31일 때만 날짜 (숫자 15.87 같은 값이 "15월 87일"로 찍히던 문제)
+  if(md && +md[1]>=1 && +md[1]<=12 && +md[2]>=1 && +md[2]<=31){ return parseInt(md[1])+'월 '+parseInt(md[2])+'일'; }
   // 2026/6/17, 2026.6.17 형식
   var ymd = s.match(/(\d{4})[\/\.](\d{1,2})[\/\.](\d{1,2})/);
   if(ymd){ return parseInt(ymd[2])+'월 '+parseInt(ymd[3])+'일'; }
   // 이미 "6월 17일" 형태면 그대로
-  if(/\d+월\s*\d+일/.test(s)) return s.replace(/\s+/g,' ');
+  var kd = s.match(/(\d+)월\s*(\d+)일/);
+  if(kd && +kd[1]>=1 && +kd[1]<=12 && +kd[2]>=1 && +kd[2]<=31) return (+kd[1])+'월 '+(+kd[2])+'일';
   // 엑셀 날짜 시리얼 숫자 (40000~60000 범위)
   var n = parseFloat(s);
   if(!isNaN(n) && n>40000 && n<60000){
@@ -8898,6 +9125,143 @@ function fmtStockDate(v){
     if(!isNaN(d.getTime())) return (d.getMonth()+1)+'월 '+d.getDate()+'일';
   }
   return '';
+}
+
+// ══════════════════════════════════════════════════
+//  재고 파일 바로 올리기
+//  예전: ERP 재고표를 구글시트에 붙여넣기 → 앱이 시트를 읽음 (번거로움)
+//  지금: 관리자 체크 → 데이터 탭 → 재고 파일 선택 → 바로 적용
+//        + 구글시트에도 올려서 다른 기기·영업사원도 같은 재고를 보게 한다
+// ══════════════════════════════════════════════════
+var STOCK_CACHE_KEY = 'jsStockCache';
+// "9월 29일" → 비교용 숫자 (0929). 연도 경계(12월→1월)는 업로드 시각으로 보정
+function stockDateKey(d){
+  var m = String(d || '').match(/(\d+)월\s*(\d+)일/);
+  return m ? (+m[1]) * 100 + (+m[2]) : 0;
+}
+// 파싱한 재고를 화면에 적용
+function applyStockRows(rows, srcLabel){
+  var ns = parseStockArray(rows), cnt = Object.keys(ns).length;
+  if(!cnt) return 0;
+  Object.keys(STOCK).forEach(function(k){ delete STOCK[k]; });
+  Object.assign(STOCK, ns);
+  var d = extractStockDate(rows) || new Date().toLocaleDateString('ko-KR', {month:'numeric', day:'numeric'});
+  var el = document.getElementById('stockStatus');
+  if(el) el.textContent = '재고 ' + d + ' 기준' + (srcLabel ? ' · ' + srcLabel : '');
+  try {
+    var q = document.getElementById('srchInp').value;
+    if(q) onSearch(q); else renderLeft(null);
+  } catch(e){}
+  try { if(document.getElementById('admMod').classList.contains('open')) admRender(); } catch(e){}
+  return cnt;
+}
+// 파일 선택 → 읽기 → 확인 → 적용 + 시트 업로드
+function stockUploadFile(inp){
+  var f = inp.files && inp.files[0];
+  if(!f) return;
+  inp.value = '';
+  var box = document.getElementById('stockUpBox');
+  if(box){ box.style.display = 'block'; box.innerHTML = '📂 ' + f.name + ' 읽는 중...'; }
+  withXLSX(function(){
+    var rd = new FileReader();
+    rd.onload = function(e){
+      try {
+        var wb = XLSX.read(new Uint8Array(e.target.result), {type:'array', cellDates:true});
+        // 재고표 시트 찾기: "CODE"·"당일재고" 머리글이 있고 품목이 가장 많은 시트
+        // (파일에 "품목별 적정재고 현황"·"주요품목 재고" 등 여러 시트가 있을 수 있음)
+        var rows = null, sheetName = '', best = -1;
+        for(var i = 0; i < wb.SheetNames.length; i++){
+          var r = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[i]], {header:1, defval:'', raw:true});
+          var fc0 = stockFindCols(r);
+          if(fc0.code < 0) continue;
+          var n0 = 0;
+          for(var k = fc0.hdr + 1; k < r.length; k++){ if(/^\d{2,4}-\d{4,6}$/.test(String((r[k]||[])[fc0.code]||'').trim())) n0++; }
+          var score = n0 + (fc0.stock >= 0 ? 100000 : 0);
+          if(score > best){ best = score; rows = r; sheetName = wb.SheetNames[i]; }
+        }
+        if(!rows){
+          if(box) box.innerHTML = '<b style="color:#DC2626">⚠ 재고표를 찾지 못했습니다</b><br><span style="font-size:11px;color:#64748B">"CODE" 머리글이 있는 시트가 필요합니다. 구글시트에 붙여넣던 ERP 재고표 그대로 올려주세요.</span>';
+          return;
+        }
+        // 날짜 셀이 Date면 문자열로 (시트 전송·날짜 추출 공용)
+        rows = rows.map(function(row){ return (row||[]).map(function(c){
+          if(c instanceof Date && !isNaN(c.getTime())){
+            return c.getFullYear() + '-' + String(c.getMonth()+1).padStart(2,'0') + '-' + String(c.getDate()).padStart(2,'0');
+          }
+          return c;
+        }); });
+        var preview = parseStockArray(rows);
+        var cnt = Object.keys(preview).length;
+        var d = extractStockDate(rows);
+        if(!cnt){
+          if(box) box.innerHTML = '<b style="color:#DC2626">⚠ 재고 품목을 읽지 못했습니다</b><br><span style="font-size:11px;color:#64748B">시트 "' + sheetName + '"에서 코드(6873-1234 형식) 줄을 찾지 못했습니다.</span>';
+          return;
+        }
+        // 현재 재고와 비교해 얼마나 바뀌는지
+        var changed = 0, zeroNow = 0;
+        Object.keys(preview).forEach(function(k){
+          if(!STOCK[k] || STOCK[k].s !== preview[k].s) changed++;
+          if(preview[k].s === 0) zeroNow++;
+        });
+        window.__stockPending = { rows: rows, date: d, name: f.name };
+        if(box) box.innerHTML =
+          '<div style="font-size:12px;font-weight:700;margin-bottom:6px">📦 ' + f.name + '</div>'
+          + '<div style="font-size:11.5px;line-height:1.7;margin-bottom:8px">'
+          + '· 재고 기준일 <b>' + (d || '(파일에 없음 → 오늘)') + '</b><br>'
+          + '· 품목 <b>' + cnt + '</b>개 · 지금과 다른 품목 <b style="color:#2855A0">' + changed + '</b>개 · 재고 0개 ' + zeroNow + '개<br>'
+          + (function(){ var fc = stockFindCols(rows); var L = function(j){ return j >= 0 ? XLSX.utils.encode_col(j) + '열' : '없음'; };
+              return '<span style="font-size:10.5px;color:#64748B">· 시트 "' + sheetName + '" · 당일재고 ' + L(fc.stock) + ' · 적정재고량 ' + L(fc.proper) + ' · 입고일정 ' + L(fc.eta) + '</span>'; })()
+          + '</div>'
+          + '<div style="display:flex;gap:6px">'
+          + '<button onclick="stockUploadCancel()" style="flex:1;padding:9px;background:#f0f0f0;color:#555;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif">취소</button>'
+          + '<button onclick="stockUploadApply()" style="flex:2;padding:9px;background:#059669;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif">적용하고 모두에게 올리기</button>'
+          + '</div>';
+      } catch(err){
+        if(box) box.innerHTML = '<b style="color:#DC2626">⚠ 파일 읽기 실패</b> ' + err.message;
+      }
+    };
+    rd.readAsArrayBuffer(f);
+  });
+}
+function stockUploadCancel(){
+  window.__stockPending = null;
+  var box = document.getElementById('stockUpBox');
+  if(box){ box.style.display = 'none'; box.innerHTML = ''; }
+}
+function stockUploadApply(){
+  var pd = window.__stockPending;
+  if(!pd) return;
+  var cnt = applyStockRows(pd.rows, '');
+  // 이 기기에 저장 → 새로고침해도 유지 (구글시트가 더 오래된 경우 대비)
+  try {
+    localStorage.setItem(STOCK_CACHE_KEY, JSON.stringify({ rows: pd.rows, date: pd.date || '', at: Date.now(), name: pd.name }));
+  } catch(e){ /* 용량 초과 등 — 적용은 이미 됨 */ }
+  var box = document.getElementById('stockUpBox');
+  if(box) box.innerHTML = '✅ <b>' + cnt + '개</b> 품목 재고 적용 완료 · 구글시트로 보내는 중...';
+  // 구글시트에도 올린다 (다른 기기·영업사원 공유)
+  if(typeof fetch !== 'function') return;
+  fetch(SHEET_CSV, {
+    method:'POST', redirect:'follow',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({ action:'uploadStock', rows: pd.rows })
+  }).then(function(r){ return r.text(); }).then(function(t){
+    var ok = false; try { ok = JSON.parse(t).ok === true; } catch(e){}
+    if(box) box.innerHTML = ok
+      ? '✅ <b>' + cnt + '개</b> 품목 적용 완료 · <b>구글시트에도 반영</b>되어 모든 기기에서 같은 재고를 봅니다'
+      : '✅ <b>' + cnt + '개</b> 품목 이 기기에 적용 완료<br><span style="font-size:11px;color:#B45309">⚠ 구글시트 반영은 안 됐습니다 — Apps Script에 재고 업로드 기능을 추가해야 다른 기기에도 보입니다</span>';
+  }).catch(function(){
+    if(box) box.innerHTML = '✅ <b>' + cnt + '개</b> 품목 이 기기에 적용 완료<br><span style="font-size:11px;color:#B45309">⚠ 구글시트 연결 실패 — 다른 기기에는 아직 반영 안 됨</span>';
+  });
+  window.__stockPending = null;
+  showToast('📦 재고 ' + cnt + '개 적용');
+}
+// 앱 시작 시: 이 기기에서 올린 재고가 있으면 먼저 보여준다
+function stockLoadCache(){
+  try {
+    var c = JSON.parse(localStorage.getItem(STOCK_CACHE_KEY) || 'null');
+    if(c && c.rows) applyStockRows(c.rows, '');
+    return c;
+  } catch(e){ return null; }
 }
 
 function loadStockFromSheet() {
@@ -8915,6 +9279,15 @@ function loadStockFromSheet() {
         throw new Error('파싱 실패');
       }
       var ns = parseStockArray(data), cnt = Object.keys(ns).length;
+      // 이 기기에서 직접 올린 재고가 시트보다 최신이면 시트로 덮어쓰지 않는다
+      try {
+        var cache = JSON.parse(localStorage.getItem(STOCK_CACHE_KEY) || 'null');
+        if(cache && cache.date){
+          var sk = stockDateKey(extractStockDate(data)), ck = stockDateKey(cache.date);
+          if(ck && sk && ck > sk){ cnt = 0; applyStockRows(cache.rows, ''); showToast('재고: 기기에 올린 최신본(' + cache.date + ') 사용'); return; }
+          if(sk && ck && sk >= ck) localStorage.removeItem(STOCK_CACHE_KEY);   // 시트가 따라잡음 → 캐시 정리
+        }
+      } catch(e){}
       if (cnt > 0) {
         Object.keys(STOCK).forEach(function(k) { delete STOCK[k]; });
         Object.assign(STOCK, ns);
@@ -8933,13 +9306,42 @@ function loadStockFromSheet() {
     })
     .catch(function(e) {
       console.warn('재고 로드 실패:', e);
-      if (el) el.textContent = '재고 오프라인';
+      // 시트에 못 닿아도 이 기기에 올린 재고가 있으면 그 날짜로 표시
+      var cc = null; try { cc = JSON.parse(localStorage.getItem(STOCK_CACHE_KEY) || 'null'); } catch(x){}
+      if (el) el.textContent = (cc && cc.date) ? ('재고 ' + cc.date + ' 기준 (기기 저장본)') : '재고 오프라인';
       // 5초 후 1회 재시도
       if (!window._stockRetried) {
         window._stockRetried = true;
         setTimeout(loadStockFromSheet, 5000);
       }
     });
+}
+
+// 재고표에서 머리글 이름으로 열 위치를 찾는다.
+// (예전엔 17열=당일재고, 9열=적정재고로 고정 → 실제 ERP 파일은 BD열·AS열이라 엉뚱한 값이 읽혔다)
+function stockFindCols(data){
+  var cols = { code:-1, stock:-1, proper:-1, proper2:-1, eta:-1, hdr:-1, date:'' };
+  var clean = function(v){ return String(v == null ? '' : v).replace(/\s+/g, ' ').trim(); };
+  for(var i = 0; i < Math.min(data.length, 10); i++){
+    var row = data[i] || [];
+    for(var j = 0; j < row.length; j++){
+      var c = clean(row[j]);
+      if(!c) continue;
+      if(c === 'CODE' && cols.code < 0){ cols.code = j; cols.hdr = i; }
+      if(/당일\s*재고/.test(c) && cols.stock < 0){
+        cols.stock = j;
+        var dm = c.match(/\(\s*(\d{1,2})\s*[\/.\-]\s*(\d{1,2})\s*\)/);
+        if(dm && +dm[1] >= 1 && +dm[1] <= 12 && +dm[2] >= 1 && +dm[2] <= 31) cols.date = (+dm[1]) + '월 ' + (+dm[2]) + '일';
+      }
+      // 적정재고량이 두 개(3개월 실적 기준 / 판매계획 기준)면 앞의 것 = 실적 기준
+      if(/적정\s*재고\s*량/.test(c)){
+        if(cols.proper < 0) cols.proper = j;
+        else if(cols.proper2 < 0 && j !== cols.proper) cols.proper2 = j;   // 판매계획 기준 (보조)
+      }
+      if(/입고\s*일정|입고\s*예정/.test(c) && cols.eta < 0) cols.eta = j;
+    }
+  }
+  return cols;
 }
 
 function parseStockArray(data) {
@@ -8976,12 +9378,22 @@ function parseStockArray(data) {
         var ml = '';
         for (var mj=j; mj>=Math.max(0,j-8); mj--) { if(monthLabels[mj]){ml=monthLabels[mj];break;} }
         if (!weekCols.some(function(w){return w.col===j;}))
-          weekCols.push({col:j, label:(ml?ml+' ':'')+c});
+          weekCols.push({col:j, label:((ml?ml+' ':'')+c).replace(/\s+/g,' ')});
       }
     }
   }
 
-  console.log('파싱: code='+codeCol+' stock='+stockCol+' proper='+properCol+' dataStart='+dataStart);
+  // 머리글("당일재고", "적정재고량", "세부 입고일정")이 있으면 그 위치를 쓴다
+  var fc = stockFindCols(data);
+  var etaCol = 26, proper2Col = -1;
+  if(fc.stock >= 0){
+    proper2Col = fc.proper2;
+    stockCol = fc.stock;
+    if(fc.proper >= 0) properCol = fc.proper;
+    etaCol = (fc.eta >= 0) ? fc.eta : -1;
+    if(fc.code >= 0){ codeCol = fc.code; dataStart = fc.hdr + 1; }
+  }
+  console.log('파싱: code='+codeCol+' stock='+stockCol+' proper='+properCol+' eta='+etaCol+' dataStart='+dataStart);
 
   // 데이터 파싱
   for (var i = dataStart; i < data.length; i++) {
@@ -8999,6 +9411,11 @@ function parseStockArray(data) {
     var proper = 0;
     var pv = parseFloat(String(row[properCol]||'').replace(/[,%]/g,''));
     if (!isNaN(pv) && pv > 0) proper = Math.round(pv);
+    // 실적 기준이 0이면(판매 이력 없음) 판매계획 기준 적정재고량을 쓴다
+    if (!proper && proper2Col >= 0) {
+      var pv2 = parseFloat(String(row[proper2Col]||'').replace(/[,%]/g,''));
+      if (!isNaN(pv2) && pv2 > 0) proper = Math.round(pv2);
+    }
 
     // 재고율 = 당일재고 / 적정재고량 * 100 (이전 방식)
     var r = null;
@@ -9015,10 +9432,10 @@ function parseStockArray(data) {
       }
     });
 
-    // AA열(인덱스 26) = 추가 입고 예정일
+    // 추가 입고 예정일 (머리글로 찾은 열, 없으면 예전 AA열)
     var etaDate = '';
-    if (row.length > 26 && row[26] !== undefined && row[26] !== null && String(row[26]).trim() !== '') {
-      etaDate = fmtStockDate(row[26]);
+    if (etaCol >= 0 && row.length > etaCol && row[etaCol] !== undefined && row[etaCol] !== null && String(row[etaCol]).trim() !== '') {
+      etaDate = fmtStockDate(row[etaCol]);
     }
 
     result[code] = {s:s, p:proper, r:r, w:Object.keys(weeks).length>0?weeks:null, eta:etaDate||null};
@@ -9315,6 +9732,7 @@ loadUserKwLocal();               // 사용자 키워드 즉시 로드 (localStor
 loadUserBcLocal(); applyUserBc();  // 관리자 등록 바코드 즉시 반영
 loadUserSyn();                     // 단어 사전 (고정대→브라켓 등)
 loadUserItems();                   // 엑셀로 추가한 신제품 복원
+stockLoadCache();                  // 이 기기에서 올린 재고 먼저 표시
 setTimeout(loadStockFromSheet, 500);
 setTimeout(loadContainers, 800);
 setTimeout(loadUserKwCloud, 1100); // 클라우드 키워드 동기화
