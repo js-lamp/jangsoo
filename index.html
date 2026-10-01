@@ -1328,18 +1328,16 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',sans-serif
         <div class="parse-col-label" style="display:flex;align-items:center;justify-content:space-between;gap:6px">
           <span style="flex:1">📝 발주 원본 (수정 가능)</span>
           <button onclick="resetParse()" title="발주 내용 전체 지우기 (처음부터)" style="padding:5px 9px;background:#fff;color:#DC2626;border:1.5px solid #FCA5A5;border-radius:6px;font-size:11px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer;white-space:nowrap">🔄 새로고침</button>
-          <button onclick="document.getElementById('ocrFile').click()" title="사진 파일 선택 · 또는 입력란에 Ctrl+V로 붙여넣기/드래그도 가능" style="padding:5px 10px;background:#0D9488;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer;white-space:nowrap">📷 사진에서 읽기</button>
-          <input type="file" id="ocrFile" accept="image/*" style="display:none" onchange="ocrFromImage(this.files[0])">
           <button id="pvMicBtn" onclick="pvVoiceToggle()" title="말로 주문 — 받아 적은 글이 발주 원본에 쌓이고 오른쪽에서 바로 매칭됩니다" style="padding:5px 10px;background:#2855A0;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer;white-space:nowrap">🎙️ 음성</button>
         </div>
         <div id="pvVoiceBar" style="display:none;padding:8px 10px;margin:0 0 6px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;font-size:12px;color:#1E3A8A;line-height:1.5">
           <div style="display:flex;align-items:center;gap:6px;font-weight:700"><span id="pvVoiceDot" style="width:9px;height:9px;border-radius:50%;background:#DC2626;display:inline-block"></span><span id="pvVoiceState">듣는 중…</span>
-            <button onclick="pvVoiceToggle()" style="margin-left:auto;padding:3px 10px;background:#DC2626;color:#fff;border:none;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif">■ 멈춤</button></div>
+            <button id="pvVoiceStopBtn" onclick="pvVoiceToggle()" style="margin-left:auto;padding:3px 10px;background:#DC2626;color:#fff;border:none;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;font-family:Noto Sans KR,sans-serif">■ 완료</button></div>
           <div id="pvVoiceLive" style="margin-top:4px;color:#475569;min-height:17px"></div>
-          <div style="margin-top:3px;font-size:10.5px;color:#64748B">예) "슬림샤인 1285 320 주광 두 박스 그리고 에코 센서등 세 개" · 끝나면 "주문완료" 또는 ■ 멈춤</div>
+          <div style="margin-top:3px;font-size:10.5px;color:#64748B">예) "슬림샤인 1285 320 주광 두 박스, 에코 센서등 세 개, 대신 구월동지점 화물" · 다 말하면 ■ 완료</div>
         </div>
         <div id="ocrStatus" style="display:none;padding:8px 10px;margin:0 0 6px;background:#E0F2F1;border-radius:6px;font-size:11px;color:#0D6E56"></div>
-        <textarea class="parse-ta" id="parseTa" oninput="parsePreviewDebounced()" onselect="onParseTaSelect()" onmouseup="onParseTaSelect()" onkeyup="onParseTaSelect()" placeholder="발주 내용을 붙여넣거나 입력하세요.&#10;&#10;📷 사진(캡처)도 여기에 바로 붙여넣기(Ctrl+V) 하거나&#10;   드래그해서 놓으면 자동으로 글자를 읽습니다.&#10;&#10;예시:&#10;슬림샤인 엣지&#10;1280*320 주광색 40개&#10;640*320 주광색 4개"></textarea>
+        <textarea class="parse-ta" id="parseTa" oninput="parsePreviewDebounced()" onselect="onParseTaSelect()" onmouseup="onParseTaSelect()" onkeyup="onParseTaSelect()" placeholder="발주 내용을 붙여넣거나 입력하세요.&#10;&#10;🎙️ 음성 버튼을 누르고 말하면 AI가 품목으로 바꿔 여기에 적습니다.&#10;&#10;예시:&#10;슬림샤인 엣지&#10;1280*320 주광색 40개&#10;640*320 주광색 4개"></textarea>
         <div id="parseLeftAligned" style="display:none;flex:1;overflow-y:auto;padding:8px"></div>
         <button id="kwFromSelBtn" onclick="openKwFromSelection()" style="display:none;flex-shrink:0;margin:0 8px 0;padding:9px;background:#7C3AED;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;font-family:Noto Sans KR,sans-serif;cursor:pointer">🧠 선택한 "<span id="kwSelPreview"></span>" 키워드로 학습</button>
       </div>
@@ -2231,9 +2229,7 @@ var VO_GUIDES = {
 };
 
 function startVoiceOrder(){
-  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if(!SR){ showToast('이 브라우저는 음성 기능을 지원하지 않습니다'); return; }
-  // 음성 주문은 발주서 변환 안에서 한다 — 받아 적은 글과 매칭 결과를 나란히 보며 고칠 수 있게
+  // 음성 주문은 발주서 변환 안에서 한다 (녹음 → AI 변환) — 받아 적은 글과 매칭 결과를 나란히 보며 고칠 수 있게
   openParseMod();
   var st = document.getElementById('storeName');
   var nm = st ? st.value.trim() : '';
@@ -2396,6 +2392,10 @@ function voNormalize(text){
        .replace(/케이\s*씨/g, 'KC').replace(/케이\s*에스/g, 'KS')
        .replace(/(^|\s)이\s*(26|39|27|14|17)(?=\s|$)/g, '$1E$2');   // "이 39" → E39 (소켓)
   // 자주 틀리게 받아 적는 말
+  // "인지구"를 "인치고·인치구·인지고"로, "삼 와트"를 "스마트"로 듣는 경우가 많다
+  s = s.replace(/인\s*[치지]\s*[고구]/g, '인지구');
+  // 인지구 뒤의 "스마트"는 "삼 와트"를 잘못 들은 것 (인지구는 3W뿐이고 스마트 제품이 없음)
+  s = s.replace(/인지구\s*스마트/g, '인지구 3W');
   s = s.replace(/에지/g, '엣지').replace(/매립/g, '매입')
        .replace(/미니\s+크립톤/g, '미니크립톤').replace(/매장\s+램프/g, '매장램프')
        .replace(/(센서|직부|투광|욕실|일자|십자|매입|방|거실|주방)\s+등(?=\s|$|\d)/g, '$1등')
@@ -4071,7 +4071,7 @@ function bindParseScrollSync(){
 }
 
 function closeParseMod(){
-  if(pvListening){ pvStopByUser = true; pvVoiceStop(); }
+  pvVoiceStop();
   document.getElementById('parseMod').classList.remove('open');
   // 명세서로 이어가는 경우가 아니면 단가를 다시 잠근다
   if(!pvGoingToInv) pvLockPrice();
@@ -4184,49 +4184,9 @@ function bindParsePasteDrop(){
   var left = document.querySelector('.parse-left');
   if(!ta) return;
 
-  // 붙여넣기: 클립보드에 이미지가 있으면 OCR, 아니면 기본 텍스트 붙여넣기
-  ta.addEventListener('paste', function(e){
-    var items = (e.clipboardData || window.clipboardData) && (e.clipboardData||window.clipboardData).items;
-    if(!items) return;
-    for(var i=0;i<items.length;i++){
-      if(items[i].type && items[i].type.indexOf('image') === 0){
-        var file = items[i].getAsFile();
-        if(file){
-          e.preventDefault(); // 텍스트 붙여넣기 막고 OCR
-          ocrFromImage(file);
-          return;
-        }
-      }
-    }
-    // 이미지 없으면 그냥 텍스트 붙여넣기 (기본 동작) → 잠시 후 미리보기
+  // 붙여넣기 → 잠시 후 미리보기 (사진 인식은 정확도가 낮아 제거)
+  ta.addEventListener('paste', function(){
     setTimeout(function(){ parsePreviewDebounced(); }, 50);
-  });
-
-  // 드래그앤드롭: 이미지 파일 떨구면 OCR
-  var dropZone = left || ta;
-  ['dragenter','dragover'].forEach(function(ev){
-    dropZone.addEventListener(ev, function(e){
-      e.preventDefault(); e.stopPropagation();
-      ta.style.outline = '2px dashed #0D9488';
-      ta.style.outlineOffset = '-2px';
-    });
-  });
-  ['dragleave','drop'].forEach(function(ev){
-    dropZone.addEventListener(ev, function(e){
-      e.preventDefault(); e.stopPropagation();
-      ta.style.outline = '';
-    });
-  });
-  dropZone.addEventListener('drop', function(e){
-    var files = e.dataTransfer && e.dataTransfer.files;
-    if(files && files.length){
-      for(var i=0;i<files.length;i++){
-        if(files[i].type && files[i].type.indexOf('image') === 0){
-          ocrFromImage(files[i]);
-          return;
-        }
-      }
-    }
   });
 }
 
@@ -4279,7 +4239,7 @@ function ocrFromImage(file){
     reader.readAsDataURL(file);
   });
   // 같은 파일 다시 선택 가능하게 초기화
-  document.getElementById('ocrFile').value = '';
+  var __of=document.getElementById('ocrFile'); if(__of) __of.value = '';
 }
 // OCR 결과 정리: 상품코드(바코드) 줄 처리 + 잡음 제거
 function ocrCleanText(text){
@@ -6092,7 +6052,7 @@ function pvToggleUnit(idx){
 //  말한 내용을 발주 원본(왼쪽)에 한 줄씩 적고, 오른쪽에서 바로 매칭 결과를 보여준다.
 //  대리점명·화물 지점·배송방법도 발주 원본 글에서 자동 인식된다.
 // ══════════════════════════════════════════════════
-var pvRec = null, pvListening = false, pvStopByUser = false;
+var pvRec = null, pvListening = false, pvStopByUser = false, pvPendingFinal = '';   // (예전 브라우저 인식기용, 미사용)
 function pvVoiceBestAlt(result){
   var best = result[0].transcript, bestSc = -1;
   for(var k = 0; k < result.length; k++){
@@ -6103,66 +6063,148 @@ function pvVoiceBestAlt(result){
 }
 // 받아 적은 문장을 다듬어 발주 원본 끝에 줄로 붙인다
 function pvVoiceAppend(spoken){
-  var t = voNormalize(spoken).replace(/주문\s*완료|주문\s*끝|끝났어|다음\s*단계/g, '').trim();
-  if(!t) return;
-  // 품목 줄은 한 줄에 하나씩, 상호·배송 같은 말은 그대로 한 줄
-  var lines = (poHasProduct(t) || /\d+\s*(박스|개)/.test(t)) ? voSplitItems(t) : [t];
+  // AI 결과는 한 줄에 한 품목. 한 줄에 여러 품목이 섞여 오면 나눈다.
+  var out = [];
+  String(spoken || '').split(/\r?\n/).forEach(function(ln){
+    var t = voNormalize(ln.replace(/^[\s\-*•·\d.)]+(?=\D)/, '')).replace(/주문\s*완료|주문\s*끝/g, '').trim();
+    if(!t) return;
+    var parts = (poHasProduct(t) || /\d+\s*(박스|개)/.test(t)) ? voSplitItems(t) : [t];
+    parts.forEach(function(x){ if(x.trim()) out.push(x.trim()); });
+  });
+  if(!out.length) return;
   var ta = document.getElementById('parseTa');
   var cur = ta.value.replace(/\s+$/, '');
-  ta.value = (cur ? cur + '\n' : '') + lines.join('\n');
+  ta.value = (cur ? cur + '\n' : '') + out.join('\n');
   ta.scrollTop = ta.scrollHeight;
   parsePreview(true);
 }
-function pvVoiceToggle(){
-  if(pvListening){ pvStopByUser = true; pvVoiceStop(); return; }
-  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if(!SR){ showToast('이 브라우저는 음성 기능을 지원하지 않습니다 (크롬 사용)'); return; }
-  pvRec = new SR();
-  pvRec.lang = 'ko-KR';
-  pvRec.continuous = true;
-  pvRec.interimResults = true;
-  pvRec.maxAlternatives = 5;       // 후보 문장 중 품목이 가장 잘 맞는 것을 고른다
-  pvListening = true; pvStopByUser = false;
-  var bar = document.getElementById('pvVoiceBar');
+// ══════════════════════════════════════════════════
+//  음성 주문 (AI): 녹음 → Apps Script → Gemini가 품목 목록을 보고 주문 줄로 변환
+//  브라우저 내장 인식기는 품목명(인지구·볼구 등)을 몰라 정확도가 낮았다.
+//  Gemini에게 우리 품목 목록을 함께 주면 "인치고 스마트"처럼 들려도 "인지구 3W"로 바로잡는다.
+// ══════════════════════════════════════════════════
+var pvMedia = null, pvChunks = [], pvStream = null, pvTimer = null, pvRecAt = 0, pvBusy = false;
+var PV_MAX_SEC = 90;
+function pvVoiceUI(state, msg){
+  var bar = document.getElementById('pvVoiceBar'), btn = document.getElementById('pvMicBtn');
+  var st = document.getElementById('pvVoiceState'), lv = document.getElementById('pvVoiceLive');
+  var dot = document.getElementById('pvVoiceDot'), stopBtn = document.getElementById('pvVoiceStopBtn');
+  if(state === 'idle'){
+    bar.style.display = msg ? 'block' : 'none';
+    if(msg){ st.textContent = msg; lv.textContent = ''; dot.style.background = '#94A3B8'; if(stopBtn) stopBtn.style.display = 'none'; }
+    btn.textContent = '🎙️ 음성'; btn.style.background = '#2855A0'; btn.disabled = false;
+    return;
+  }
   bar.style.display = 'block';
-  document.getElementById('pvVoiceState').textContent = '듣는 중… 품목과 수량을 말씀하세요';
-  document.getElementById('pvVoiceLive').textContent = '';
-  var btn = document.getElementById('pvMicBtn');
-  btn.textContent = '■ 멈춤'; btn.style.background = '#DC2626';
-  pvRec.onresult = function(e){
-    var interim = '';
-    for(var i = e.resultIndex; i < e.results.length; i++){
-      if(e.results[i].isFinal){
-        var said = pvVoiceBestAlt(e.results[i]);
-        var stop = /주문\s*완료|주문\s*끝|끝났어/.test(said.replace(/\s/g,''));
-        pvVoiceAppend(said);
-        if(stop){ pvStopByUser = true; pvVoiceStop(); return; }
-      } else {
-        interim += e.results[i][0].transcript;
+  if(state === 'rec'){
+    dot.style.background = '#DC2626'; st.textContent = '녹음 중… 말이 끝나면 ■ 완료';
+    if(stopBtn){ stopBtn.style.display = ''; stopBtn.textContent = '■ 완료'; }
+    btn.textContent = '■ 완료'; btn.style.background = '#DC2626';
+  } else if(state === 'busy'){
+    dot.style.background = '#F59E0B'; st.textContent = '🤖 AI가 품목으로 바꾸는 중…'; lv.textContent = msg || '';
+    if(stopBtn) stopBtn.style.display = 'none';
+    btn.textContent = '⏳ 변환 중'; btn.style.background = '#94A3B8'; btn.disabled = true;
+  }
+}
+function pvVoiceToggle(){
+  if(pvBusy) return;
+  if(pvMedia && pvMedia.state === 'recording'){ pvVoiceStop(); return; }
+  if(!navigator.mediaDevices || !window.MediaRecorder){ showToast('이 브라우저는 녹음을 지원하지 않습니다 (크롬 사용)'); return; }
+  navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } })
+    .then(function(stream){
+      pvStream = stream; pvChunks = [];
+      var types = ['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus'];
+      var mt = ''; for(var t = 0; t < types.length; t++){ if(MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(types[t])){ mt = types[t]; break; } }
+      pvMedia = mt ? new MediaRecorder(stream, { mimeType: mt }) : new MediaRecorder(stream);
+      pvMedia.ondataavailable = function(e){ if(e.data && e.data.size) pvChunks.push(e.data); };
+      pvMedia.onstop = function(){
+        clearInterval(pvTimer);
+        try { pvStream.getTracks().forEach(function(tr){ tr.stop(); }); } catch(e){}
+        var blob = new Blob(pvChunks, { type: pvMedia.mimeType || 'audio/webm' });
+        if(Date.now() - pvRecAt < 700 || !blob.size){ pvVoiceUI('idle', '너무 짧습니다. 다시 눌러 말씀해 주세요.'); return; }
+        pvVoiceSend(blob);
+      };
+      pvMedia.start(250);
+      pvRecAt = Date.now();
+      pvVoiceUI('rec');
+      var lv = document.getElementById('pvVoiceLive');
+      pvTimer = setInterval(function(){
+        var sec = Math.floor((Date.now() - pvRecAt) / 1000);
+        lv.textContent = '⏺ ' + Math.floor(sec/60) + ':' + String(sec%60).padStart(2,'0') + '  (최대 ' + PV_MAX_SEC + '초)';
+        if(sec >= PV_MAX_SEC) pvVoiceStop();
+      }, 250);
+    })
+    .catch(function(){ pvVoiceUI('idle', '🎤 마이크 권한을 허용해 주세요 (주소창 자물쇠 → 권한)'); });
+}
+// 녹음을 16kHz 모노 WAV로 바꾼다 — Gemini 모든 모델이 확실히 받는 형식
+function pvToWav(blob){
+  return blob.arrayBuffer().then(function(buf){
+    var AC = window.AudioContext || window.webkitAudioContext;
+    var ac = new AC();
+    return new Promise(function(res, rej){ ac.decodeAudioData(buf, res, rej); }).then(function(audio){
+      try { ac.close(); } catch(e){}
+      var src = audio.getChannelData(0), rate = audio.sampleRate, target = 16000;
+      var n = Math.floor(src.length * target / rate), pcm = new Int16Array(n);
+      for(var i = 0; i < n; i++){
+        var v = src[Math.floor(i * rate / target)];
+        v = Math.max(-1, Math.min(1, v)); pcm[i] = v < 0 ? v * 0x8000 : v * 0x7FFF;
       }
+      var out = new DataView(new ArrayBuffer(44 + pcm.length * 2));
+      var w = function(o, str){ for(var c = 0; c < str.length; c++) out.setUint8(o + c, str.charCodeAt(c)); };
+      w(0,'RIFF'); out.setUint32(4, 36 + pcm.length*2, true); w(8,'WAVE'); w(12,'fmt ');
+      out.setUint32(16,16,true); out.setUint16(20,1,true); out.setUint16(22,1,true);
+      out.setUint32(24,target,true); out.setUint32(28,target*2,true); out.setUint16(32,2,true); out.setUint16(34,16,true);
+      w(36,'data'); out.setUint32(40, pcm.length*2, true);
+      for(var j = 0; j < pcm.length; j++) out.setInt16(44 + j*2, pcm[j], true);
+      return new Blob([out], { type: 'audio/wav' });
+    });
+  });
+}
+function pvBlobToB64(blob){
+  return new Promise(function(res){ var r = new FileReader(); r.onload = function(){ res(String(r.result).split(',')[1] || ''); }; r.readAsDataURL(blob); });
+}
+// Gemini에게 줄 품목 목록 ("품목명 | 색온도들")
+function pvCatalogText(){
+  return G.map(function(g){
+    var cts = []; (g.variants||[]).forEach(function(v){ if(v.ct && v.ct !== '-' && cts.indexOf(v.ct) < 0) cts.push(v.ct); });
+    return g.name + (cts.length ? ' | ' + cts.join('/') : '');
+  }).join('\n');
+}
+function pvVoiceSend(blob){
+  pvBusy = true;
+  pvVoiceUI('busy', '녹음을 보내는 중…');
+  pvToWav(blob).catch(function(){ return blob; }).then(function(wav){
+    return pvBlobToB64(wav).then(function(b64){
+      pvVoiceUI('busy', '');
+      return fetch(SHEET_CSV, {
+        method: 'POST', redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'voiceOrder', audio: b64, mime: wav.type || 'audio/wav', catalog: pvCatalogText() })
+      });
+    });
+  }).then(function(r){ return r.text(); }).then(function(t){
+    pvBusy = false;
+    var res = null; try { res = JSON.parse(t); } catch(e){}
+    if(!res){ pvVoiceUI('idle', '⚠ Apps Script 응답을 읽지 못했습니다 — 통합 GAS로 교체·재배포했는지 확인하세요'); return; }
+    if(!res.ok){
+      var why = String(res.error || res.err || '');
+      pvVoiceUI('idle', /unknown/.test(why) ? '⚠ Apps Script에 음성 기능이 없습니다 — 새 통합 GAS로 교체·재배포하세요'
+        : /키|key/i.test(why) ? '⚠ Gemini 키가 등록되지 않았습니다 — Apps Script 스크립트 속성에 GEMINI_API_KEY 등록'
+        : '⚠ 변환 실패: ' + why);
+      return;
     }
-    document.getElementById('pvVoiceLive').textContent = interim ? '🎤 ' + interim : '';
-  };
-  pvRec.onerror = function(e){
-    if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
-      document.getElementById('pvVoiceState').textContent = '마이크 권한을 허용해주세요';
-      pvStopByUser = true;
-    }
-  };
-  pvRec.onend = function(){
-    // 말을 잠깐 멈추면 브라우저가 스스로 끊는다 → 사용자가 멈추지 않았으면 다시 듣기
-    if(pvListening && !pvStopByUser){ try { pvRec.start(); return; } catch(err){} }
-    pvListening = false;
-    var b2 = document.getElementById('pvMicBtn');
-    if(b2){ b2.textContent = '🎙️ 음성'; b2.style.background = '#2855A0'; }
-    var bar2 = document.getElementById('pvVoiceBar');
-    if(bar2) bar2.style.display = 'none';
-  };
-  try { pvRec.start(); } catch(err){ pvListening = false; }
+    var text = String(res.text || '').trim();
+    if(!text){ pvVoiceUI('idle', '말씀을 알아듣지 못했습니다. 다시 눌러 말씀해 주세요.'); return; }
+    pvVoiceAppend(text);
+    pvVoiceUI('idle', '✅ ' + text.split('\n').length + '줄 추가 · 계속하려면 🎙️ 음성');
+    setTimeout(function(){ if(!pvBusy && !(pvMedia && pvMedia.state === 'recording')) pvVoiceUI('idle'); }, 4000);
+  }).catch(function(){
+    pvBusy = false;
+    pvVoiceUI('idle', '⚠ 인터넷 연결 또는 Apps Script 연결에 실패했습니다');
+  });
 }
 function pvVoiceStop(){
-  pvListening = false;
-  if(pvRec){ try { pvRec.stop(); } catch(e){} }
+  if(pvMedia && pvMedia.state === 'recording'){ try { pvMedia.stop(); } catch(e){} }
 }
 
 // ── 못 읽은 줄에서 바로 품목 검색해 지정 ──
